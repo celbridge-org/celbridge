@@ -20,8 +20,7 @@ public class ReloadProjectCommand : CommandBase, IReloadProjectCommand
         var currentProject = _projectService.CurrentProject;
         if (currentProject is null)
         {
-            // No project is open, so there is nothing to reload.
-            return Result.Ok();
+            return Result.Fail("Failed to reload the project because no project is loaded.");
         }
 
         string projectFilePath = currentProject.ProjectFilePath;

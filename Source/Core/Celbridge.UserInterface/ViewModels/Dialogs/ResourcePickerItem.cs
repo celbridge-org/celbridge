@@ -30,12 +30,6 @@ public class ResourcePickerItem
     public bool IsReadOnly => WritableState != WritableState.Writable;
 
     /// <summary>
-    /// Whether the resource accepts edits. Drives the dimmed-opacity binding for
-    /// the icon and display text, which dim when the resource is read-only.
-    /// </summary>
-    public bool IsWritable => !IsReadOnly;
-
-    /// <summary>
     /// Localised explanation of why the resource is read-only. Empty when
     /// writable. Drives AutomationProperties.HelpText so screen readers carry
     /// the same signal as the visual dimming.

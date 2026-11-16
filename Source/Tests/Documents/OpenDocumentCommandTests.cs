@@ -5,6 +5,7 @@ using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
+using Celbridge.Tests.Helpers;
 
 namespace Celbridge.Tests.Documents;
 
@@ -29,7 +30,9 @@ public class OpenDocumentCommandTests
     public void Setup()
     {
         _documentsService = Substitute.For<IDocumentsService>();
-        _documentsService.GetDocumentViewType(Arg.Any<ResourceKey>()).Returns(DocumentViewType.TextDocument);
+        _documentsService
+            .ResolveDefaultEditorIdAsync(Arg.Any<ResourceKey>())
+            .Returns(Task.FromResult(DocumentConstants.CodeEditorId));
         _documentsService
             .OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>())
             .Returns(Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Opened));
@@ -37,6 +40,8 @@ public class OpenDocumentCommandTests
         _documentsPanel = Substitute.For<IDocumentsPanel>();
 
         var workspaceService = Substitute.For<IWorkspaceService>();
+        var safeModeService = TestSafeMode.Create(isActive: false);
+        workspaceService.SafeModeService.Returns(safeModeService);
         workspaceService.DocumentsService.Returns(_documentsService);
         workspaceService.DocumentsPanel.Returns(_documentsPanel);
 
@@ -314,6 +319,83 @@ public class OpenDocumentCommandTests
         await command.ExecuteAsync();
 
         _documentsPanel.DidNotReceiveWithAnyArgs().SetSelectedDocument(default, default);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WhenNoEditorCanOpenTheFile_ShowsTheUnsupportedFileDialog()
+    {
+        var shownMessage = StubUnsupportedFileDialog();
+        _documentsService
+            .ResolveDefaultEditorIdAsync(Arg.Any<ResourceKey>())
+            .Returns(Task.FromResult(EditorId.Empty));
+
+        var command = CreateCommand();
+        command.FileResource = new ResourceKey("data/table.xlsx");
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        shownMessage().Should().Be("Documents_OpenDocumentFailedNotSupported");
+        await _documentsService.DidNotReceiveWithAnyArgs().OpenDocument(default, default);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_ANamedEditorForAFileThatNoEditorCanOpen_ShowsTheUnsupportedFileDialog()
+    {
+        // Open With offers the code editor for a file of an unknown type, and the file turns out to be binary.
+        var shownMessage = StubUnsupportedFileDialog();
+        _documentsService
+            .ResolveDefaultEditorIdAsync(Arg.Any<ResourceKey>())
+            .Returns(Task.FromResult(EditorId.Empty));
+
+        var command = CreateCommand();
+        command.FileResource = new ResourceKey("data/blob.xyz");
+        command.EditorId = DocumentConstants.CodeEditorId;
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        shownMessage().Should().Be("Documents_OpenDocumentFailedNotSupported");
+        await _documentsService.DidNotReceiveWithAnyArgs().OpenDocument(default, default);
+    }
+
+    [TestCase("images/photo.png")]
+    [TestCase("data/table.xlsx")]
+    public async Task ExecuteAsync_InSafeMode_TheUnsupportedFileDialogNamesSafeMode(string fileName)
+    {
+        // In Safe Mode the registry claims neither type, and each file sniffs as binary.
+        var safeModeService = TestSafeMode.Create(isActive: true);
+        _workspaceWrapper.WorkspaceService.SafeModeService.Returns(safeModeService);
+        _documentsService
+            .ResolveDefaultEditorIdAsync(Arg.Any<ResourceKey>())
+            .Returns(Task.FromResult(EditorId.Empty));
+        var shownMessage = StubUnsupportedFileDialog();
+
+        var command = CreateCommand();
+        command.FileResource = new ResourceKey(fileName);
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        shownMessage().Should().Be("Documents_OpenDocumentFailedSafeMode");
+        await _documentsService.DidNotReceiveWithAnyArgs().OpenDocument(default, default);
+    }
+
+    // The localizer returns each key as the text, so a test can tell which message the dialog showed. Returns a
+    // function that reads that message.
+    private Func<string> StubUnsupportedFileDialog()
+    {
+        _stringLocalizer[Arg.Any<string>(), Arg.Any<object[]>()]
+            .Returns(call => new LocalizedString((string)call[0], (string)call[0]));
+        _stringLocalizer[Arg.Any<string>()]
+            .Returns(call => new LocalizedString((string)call[0], (string)call[0]));
+
+        var shownMessage = string.Empty;
+        _dialogService
+            .ShowConfirmationDialogAsync(Arg.Any<string>(), Arg.Do<string>(message => shownMessage = message), Arg.Any<ConfirmationDialogOptions?>())
+            .Returns(Task.FromResult(Result<bool>.Ok(false)));
+
+        return () => shownMessage;
     }
 
     private void OpenInSection(ResourceKey resource, DocumentSection section)

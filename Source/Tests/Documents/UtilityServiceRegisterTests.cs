@@ -9,6 +9,7 @@ using Celbridge.UserInterface.Services;
 using Celbridge.Community;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
+using Celbridge.Tests.Helpers;
 
 namespace Celbridge.Tests.Documents;
 
@@ -83,6 +84,8 @@ public class UtilityServiceRegisterTests
         _documentsService = Substitute.For<IDocumentsService>();
 
         var workspaceService = Substitute.For<IWorkspaceService>();
+        var safeModeService = TestSafeMode.Create(isActive: false);
+        workspaceService.SafeModeService.Returns(safeModeService);
         workspaceService.ResourceService.Returns(resourceService);
         workspaceService.PackageService.Returns(Substitute.For<IPackageService>());
         workspaceService.DocumentsService.Returns(_documentsService);
@@ -210,6 +213,57 @@ public class UtilityServiceRegisterTests
 
         projectItems.Should().ContainSingle();
         projectItems[0].FileResource.Should().Be(new ResourceKey("Notes.md"));
+    }
+
+    [Test]
+    public async Task CreateUtilitiesAsync_InSafeMode_BuildsOnlyTheItemsOnTheList()
+    {
+        // The project has one shortcut, and a package contributes a utility.
+        var project = Substitute.For<IProject>();
+        project.ProjectFilePath.Returns(ProjectFilePath);
+        project.Config.Returns(new ProjectConfig
+        {
+            DocumentShortcuts = new List<DocumentShortcut>
+            {
+                new() { Resource = "Notes.md" }
+            }
+        });
+
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns(project);
+        _serviceProvider.GetService(typeof(IProjectService)).Returns(projectService);
+
+        var safeModeService = TestSafeMode.Create(isActive: true);
+        _workspaceWrapper.WorkspaceService.SafeModeService.Returns(safeModeService);
+
+        var packageUtility = new ResolvedEditor
+        {
+            EditorId = new EditorId("acme-tools.widget"),
+            Contribution = new EditorContribution
+            {
+                UtilityDescriptor = new UtilityDescriptor()
+            }
+        };
+
+        var service = CreateService();
+
+        service.RegisterBuiltInUtilityItems(new List<UtilityRailItem>
+        {
+            CreateBuiltInUtilityItem(BuiltInUtilityIds.Explorer, "Explorer"),
+            CreateBuiltInUtilityItem(BuiltInUtilityIds.Search, "Search")
+        });
+
+        await service.CreateUtilitiesAsync(new List<ResolvedEditor> { packageUtility });
+
+        var itemIds = service.GetRailItems().Select(railItem => railItem.ItemId);
+        itemIds.Should().Equal(
+            BuiltInUtilityIds.Explorer,
+            BuiltInUtilityIds.Search,
+            BuiltInShortcutIds.ProjectSettings);
+
+        // The package's utility is never created, so its backing file is never seeded.
+        service.HasUtility(packageUtility.EditorId).Should().BeFalse();
+        await _resourceFileSystem.DidNotReceiveWithAnyArgs().GetInfoAsync(default);
     }
 
     [Test]

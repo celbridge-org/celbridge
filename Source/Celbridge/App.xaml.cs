@@ -182,12 +182,14 @@ public partial class App : Application
             var launchArgs = activatedEventArgs.Data as ILaunchActivatedEventArgs;
             var argumentText = launchArgs?.Arguments ?? string.Empty;
             var arguments = Celbridge.Utilities.WindowsCommandLine.Split(argumentText);
+            ApplyTrustArgument(arguments);
             OpenCommandLineProject(arguments, appActivationService, logger);
         }
 #else
         var arguments = Environment.GetCommandLineArgs()
             .Skip(1)
             .ToList();
+        ApplyTrustArgument(arguments);
         OpenCommandLineProject(arguments, appActivationService, logger);
 
         // The macOS open-document handler is installed onto the app delegate class in Program.Main (before the
@@ -357,6 +359,18 @@ public partial class App : Application
         WebHost.ServiceConfiguration.ConfigureServices(services);
         Workshop.ServiceConfiguration.ConfigureServices(services);
         Workspace.ServiceConfiguration.ConfigureServices(services);
+    }
+
+    // A release build ignores the argument. So only a Debug build can open a project as trusted without asking.
+    private void ApplyTrustArgument(IReadOnlyList<string> arguments)
+    {
+#if DEBUG
+        if (arguments.Contains(ProjectConstants.AssumeTrustedArgument))
+        {
+            var projectService = Host!.Services.GetRequiredService<IProjectService>();
+            projectService.AssumeTrusted();
+        }
+#endif
     }
 
     // Opens the first argument that has the project file extension. A relative path is taken relative to the

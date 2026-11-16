@@ -24,6 +24,7 @@ public static class ServiceConfiguration
 
         PlatformServiceConfiguration.ConfigureServices(services);
 
+        services.AddTransient<ISafeModeService, SafeModeService>();
         services.AddTransient<IWorkspaceSettingsService, WorkspaceSettingsService>();
         services.AddTransient<IBindableWorkspaceSettings, BindableWorkspaceSettings>();
         services.AddTransient<IWorkspaceService, WorkspaceService>();

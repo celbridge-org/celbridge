@@ -1,7 +1,7 @@
 namespace Celbridge.Projects;
 
 /// <summary>
-/// String constants for project files and folders.
+/// String constants for projects, their files and their folders.
 /// </summary>
 public static class ProjectConstants
 {
@@ -9,6 +9,12 @@ public static class ProjectConstants
     /// File extension for Celbridge projects.
     /// </summary>
     public const string ProjectFileExtension = ".celbridge";
+
+    /// <summary>
+    /// A launch argument. With it, a Debug build treats every project it opens as trusted. Nothing records the
+    /// trust. A release build ignores the argument.
+    /// </summary>
+    public const string AssumeTrustedArgument = "--assume-trusted";
 
     /// <summary>
     /// Oldest Celbridge version whose projects this build can open. A project whose celbridge-version is

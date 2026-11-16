@@ -235,7 +235,8 @@ public abstract partial class DocumentView : UserControl, IDocumentView
             EditTarget: EditTarget,
             ReleaseFocus: releaseFocus,
             GrantDomFocus: grantDomFocus,
-            OnFocusGained: () => messengerService.Send(new DocumentViewFocusedMessage(FileResource)));
+            OnFocusGained: () =>
+                messengerService.Send(new DocumentViewFocusedMessage(FileResource, IsTabClick: false)));
 
         webViewFocusRegistry.Register(webView, focusContext);
     }

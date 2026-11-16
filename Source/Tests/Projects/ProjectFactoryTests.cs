@@ -54,7 +54,7 @@ public class ProjectFactoryTests
         var migrationResult = CreateSuccessfulMigrationResult();
 
         // Act
-        var result = await _factory.LoadAsync(string.Empty, migrationResult);
+        var result = await _factory.LoadAsync(string.Empty, migrationResult, isTrusted: true);
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -69,7 +69,7 @@ public class ProjectFactoryTests
         var migrationResult = CreateSuccessfulMigrationResult();
 
         // Act
-        var result = await _factory.LoadAsync(nonExistentPath, migrationResult);
+        var result = await _factory.LoadAsync(nonExistentPath, migrationResult, isTrusted: true);
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -90,7 +90,7 @@ public class ProjectFactoryTests
         try
         {
             // Act
-            var result = await _factory.LoadAsync(projectPath, migrationResult);
+            var result = await _factory.LoadAsync(projectPath, migrationResult, isTrusted: true);
 
             // Assert
             result.IsSuccess.Should().BeTrue();
@@ -112,7 +112,7 @@ public class ProjectFactoryTests
 
         try
         {
-            var result = await _factory.LoadAsync(projectPath, migrationResult);
+            var result = await _factory.LoadAsync(projectPath, migrationResult, isTrusted: true);
 
             result.IsSuccess.Should().BeTrue();
 
@@ -138,7 +138,7 @@ public class ProjectFactoryTests
         try
         {
             // Act
-            var result = await _factory.LoadAsync(projectPath, migrationResult);
+            var result = await _factory.LoadAsync(projectPath, migrationResult, isTrusted: true);
 
             // Assert
             result.IsSuccess.Should().BeTrue();
@@ -168,7 +168,7 @@ public class ProjectFactoryTests
         try
         {
             // Act
-            var result = await _factory.LoadAsync(projectPath, migrationResult);
+            var result = await _factory.LoadAsync(projectPath, migrationResult, isTrusted: true);
 
             // Assert - Project should still be created so UI can show the error
             result.IsSuccess.Should().BeTrue();

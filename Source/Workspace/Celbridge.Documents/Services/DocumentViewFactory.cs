@@ -1,5 +1,6 @@
 using Celbridge.Documents.Helpers;
 using Celbridge.Logging;
+using Celbridge.Packages;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Services;
@@ -45,10 +46,12 @@ public class DocumentViewFactory
                 .WithErrors(resolveResult);
         }
 
-        if (!requestedEditorId.IsEmpty)
+        // An explicit editor request short-circuits the resolution chain, and fails rather than falling through to
+        // another editor. In Safe Mode, a request for an editor that is off falls through to the other routes.
+        var safeModeService = _workspaceWrapper.WorkspaceService.SafeModeService;
+        if (!requestedEditorId.IsEmpty
+            && safeModeService.IsAllowed(requestedEditorId))
         {
-            // An explicit editor request short-circuits the resolution chain, and fails rather
-            // than falling through to another editor.
             return CreateForRequestedEditor(fileResource, requestedEditorId);
         }
 
@@ -68,9 +71,10 @@ public class DocumentViewFactory
     }
 
     /// <summary>
-    /// The editor the resource opens with when none is requested, or Empty when no editor can open it.
+    /// Returns the default editor for the resource, or Empty when no editor can open the resource. An open that
+    /// names no editor tries this editor first.
     /// </summary>
-    public async Task<EditorId> ResolveEditorIdAsync(ResourceKey fileResource)
+    public async Task<EditorId> ResolveDefaultEditorIdAsync(ResourceKey fileResource)
     {
         await foreach (var factory in ResolveFactoriesAsync(fileResource))
         {
@@ -111,10 +115,10 @@ public class DocumentViewFactory
         }
 
         // Markdown is plain text, so it can still be edited as text when no Markdown editor is
-        // available. BrowserDocument and FileViewer only open in their own views.
+        // available. A browser document is text too, and opens as text when no browser editor is available.
+        // FileViewer only opens in its own view.
         var viewType = _fileTypeClassifier.GetDocumentViewType(fileResource);
-        if (viewType != DocumentViewType.TextDocument
-            && viewType != DocumentViewType.Markdown)
+        if (!OpensAsText(viewType))
         {
             yield break;
         }
@@ -138,7 +142,7 @@ public class DocumentViewFactory
     }
 
     // The sidecar 'editor' field is the user's per-file "Open With X" choice. Null when no override is
-    // set, the editor is unregistered, or it cannot handle the resource.
+    // set, the editor is unregistered, or it cannot open the resource.
     private async Task<IDocumentEditorFactory?> GetSidecarFactoryAsync(ResourceKey fileResource)
     {
         var sidecarEditorResult = await _preferenceStore.GetSidecarPreferenceAsync(fileResource);
@@ -156,8 +160,7 @@ public class DocumentViewFactory
         }
 
         var sidecarFactory = sidecarFactoryResult.Value;
-        if (!IsCodeEditor(sidecarEditorId)
-            && !sidecarFactory.CanHandleResource(fileResource))
+        if (!CanOpen(sidecarFactory, fileResource))
         {
             return null;
         }
@@ -175,13 +178,9 @@ public class DocumentViewFactory
         }
         var requestedFactory = getFactoryResult.Value;
 
-        // The code editor is the "view as text" option in Open With and may be
-        // requested for any file, so the extension check is skipped for that one id.
-        // Other editors still go through CanHandleResource.
-        if (!IsCodeEditor(requestedEditorId)
-            && !requestedFactory.CanHandleResource(fileResource))
+        if (!CanOpen(requestedFactory, fileResource))
         {
-            return Result.Fail($"Document editor '{requestedEditorId}' cannot handle file resource: '{fileResource}'");
+            return Result.Fail($"Document editor '{requestedEditorId}' cannot open file resource: '{fileResource}'");
         }
 
         var createResult = requestedFactory.CreateDocumentView(fileResource);
@@ -192,6 +191,37 @@ public class DocumentViewFactory
         }
 
         return createResult;
+    }
+
+    // The code editor is the "view as text" option in Open With. So the code editor opens a file in any supported
+    // format, even when the extension is not on the code editor's list. Every other editor opens only the files
+    // that it handles.
+    private bool CanOpen(IDocumentEditorFactory factory, ResourceKey fileResource)
+    {
+        if (IsCodeEditor(factory.EditorId))
+        {
+            var viewType = _fileTypeClassifier.GetDocumentViewType(fileResource);
+            return viewType != DocumentViewType.UnsupportedFormat;
+        }
+
+        return factory.CanHandleResource(fileResource);
+    }
+
+    private bool OpensAsText(DocumentViewType viewType)
+    {
+        switch (viewType)
+        {
+            case DocumentViewType.TextDocument:
+            case DocumentViewType.Markdown:
+                return true;
+
+            case DocumentViewType.BrowserDocument:
+                var browserEditorResult = _documentEditorRegistry.GetFactoryById(BuiltInEditors.BrowserEditorId);
+                return browserEditorResult.IsFailure;
+
+            default:
+                return false;
+        }
     }
 
     private static bool IsCodeEditor(EditorId editorId)

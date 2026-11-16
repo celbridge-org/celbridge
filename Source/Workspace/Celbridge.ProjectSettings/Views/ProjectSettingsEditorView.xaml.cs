@@ -27,9 +27,11 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
     public ProjectSettingsEditorViewModel ViewModel { get; }
 
     public string ReloadProjectText => _stringLocalizer.GetString("ProjectSettings_ReloadProject");
+    public string TrustProjectText => _stringLocalizer.GetString("ProjectSettings_TrustProject");
     public string ReloadCaptionText => _stringLocalizer.GetString("ProjectSettings_ReloadCaption");
     public string ConfigErrorTitleText => _stringLocalizer.GetString("ProjectSettings_ConfigErrorTitle");
     public string ConfigErrorCaptionText => _stringLocalizer.GetString("ProjectSettings_ConfigErrorCaption");
+    public string SafeModeCaptionText => _stringLocalizer.GetString("ProjectSettings_SafeModeCaption");
     public string OpenInCodeEditorText => _stringLocalizer.GetString("ProjectSettings_OpenInCodeEditor");
     public string ViewLoadReportText => _stringLocalizer.GetString("ProjectSettings_ViewLoadReport");
     public string ViewLoadReportTooltip => _stringLocalizer.GetString("ProjectSettings_ViewLoadReportTooltip");
@@ -53,6 +55,11 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
     // user had open.
     private List<SettingsSection> BuildSections()
     {
+        var safeModeView = new SafeModeSectionView
+        {
+            ViewModel = ViewModel
+        };
+
         var informationView = new InformationSectionView
         {
             ViewModel = ViewModel.InformationSection
@@ -85,6 +92,12 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
 
         var sections = new List<SettingsSection>
         {
+            new(
+                ProjectSettingsEditorViewModel.SafeModeSectionKey,
+                "bs-shield-exclamation",
+                _stringLocalizer.GetString("ProjectSettings_SafeModeHeader"),
+                _stringLocalizer.GetString("ProjectSettings_SafeModeDescription"),
+                safeModeView),
             new(
                 "Information",
                 "bs-info-circle",

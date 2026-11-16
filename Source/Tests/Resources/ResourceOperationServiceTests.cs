@@ -156,7 +156,8 @@ public class ResourceOperationServiceTests
             new ProjectConfig(),
             MigrationResult.Success(),
             ConfigIsHealthy: true,
-            ConfigLoadFailure: null);
+            ConfigLoadFailure: null,
+            IsTrusted: true);
 
         _projectService.CurrentProject.Returns(project);
     }

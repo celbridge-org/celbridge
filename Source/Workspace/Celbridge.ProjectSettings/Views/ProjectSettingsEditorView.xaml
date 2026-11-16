@@ -57,6 +57,12 @@
                    Style="{StaticResource SupportingTextStyle}"
                    TextWrapping="Wrap"/>
 
+        <TextBlock Text="{x:Bind SafeModeCaptionText}"
+                   AutomationProperties.AutomationId="project-settings-safe-mode-caption"
+                   Style="{StaticResource SupportingTextStyle}"
+                   TextWrapping="Wrap"
+                   Visibility="{x:Bind ViewModel.IsSafeMode, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
         <Border Background="{ThemeResource ChromeBackgroundBrush}"
                 BorderBrush="{ThemeResource DividerBrush}"
                 BorderThickness="1"
@@ -74,6 +80,14 @@
           <Button Content="{x:Bind ViewLoadReportText}"
                   ToolTipService.ToolTip="{x:Bind ViewLoadReportTooltip}"
                   Command="{x:Bind ViewModel.InformationSection.OpenLoadReportCommand}"/>
+          <Button Content="{x:Bind TrustProjectText}"
+                  AutomationProperties.AutomationId="project-settings-error-trust-button"
+                  Command="{x:Bind ViewModel.TrustProjectCommand}"
+                  Visibility="{x:Bind ViewModel.IsTrusted, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverted}"/>
+          <Button Content="{x:Bind ReloadProjectText}"
+                  AutomationProperties.AutomationId="project-settings-error-reload-button"
+                  Command="{x:Bind ViewModel.ReloadProjectCommand}"
+                  Visibility="{x:Bind ViewModel.IsTrusted, Converter={StaticResource BoolToVisibilityConverter}}"/>
         </StackPanel>
 
       </StackPanel>

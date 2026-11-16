@@ -150,9 +150,9 @@ public interface IDocumentsService
     Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorId editorId = default);
 
     /// <summary>
-    /// Returns the document view type for the specified file resource.
+    /// Returns the default editor for the file resource, or Empty when no editor can open the file.
     /// </summary>
-    DocumentViewType GetDocumentViewType(ResourceKey fileResource);
+    Task<EditorId> ResolveDefaultEditorIdAsync(ResourceKey fileResource);
 
     /// <summary>
     /// Returns the view of the active document, or null when there is none (including when no workspace is

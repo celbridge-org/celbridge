@@ -26,6 +26,12 @@ public interface IFeatureFlags
     void ApplyProjectOverrides(IReadOnlyDictionary<string, bool> overrides);
 
     /// <summary>
+    /// Turns every feature off, including the features that the project or the application turns on. The
+    /// features stay off until the project overrides are cleared.
+    /// </summary>
+    void TurnOffAllFeatures();
+
+    /// <summary>
     /// Clears all project-level overrides, reverting to application-level settings only.
     /// </summary>
     void ClearProjectOverrides();

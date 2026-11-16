@@ -29,6 +29,11 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     // contribution issues change.
     private const string PackagesSectionKey = "Packages";
 
+    /// <summary>
+    /// The key of the Safe Mode section, which is shown only in Safe Mode.
+    /// </summary>
+    public const string SafeModeSectionKey = "SafeMode";
+
     private readonly ICommandService _commandService;
     private readonly ILogger<ProjectSettingsEditorViewModel> _logger;
     private readonly IStringLocalizer _stringLocalizer;
@@ -81,6 +86,16 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     /// </summary>
     public bool HasConfigErrorDetail => !string.IsNullOrWhiteSpace(ConfigErrorDetail);
 
+    /// <summary>
+    /// Returns true while the workspace is in Safe Mode. The error panel then says that most features are off.
+    /// </summary>
+    public bool IsSafeMode { get; }
+
+    /// <summary>
+    /// Returns true when the user has trusted the project. An untrusted project opens in Safe Mode.
+    /// </summary>
+    public bool IsTrusted { get; }
+
     [ObservableProperty]
     private IReadOnlyList<SettingsSection> _sections = Array.Empty<SettingsSection>();
 
@@ -95,6 +110,8 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     public FeatureFlagsSectionViewModel FeatureFlagsSection { get; }
 
     public IRelayCommand ReloadProjectCommand { get; }
+
+    public IRelayCommand TrustProjectCommand { get; }
 
     public IRelayCommand OpenInCodeEditorCommand { get; }
 
@@ -138,11 +155,16 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         _settings = settingsService;
 
         ReloadProjectCommand = new AsyncRelayCommand(ReloadProjectAsync);
+        TrustProjectCommand = new AsyncRelayCommand(TrustProjectAsync);
         OpenInCodeEditorCommand = new RelayCommand(OpenInCodeEditor);
 
         var project = projectService.CurrentProject;
         HasConfigError = project is not null && !project.ConfigIsHealthy;
         ConfigErrorDetail = project?.ConfigLoadFailure?.MessageChain ?? string.Empty;
+
+        var safeModeService = workspaceWrapper.WorkspaceService.SafeModeService;
+        IsSafeMode = safeModeService.IsActive;
+        IsTrusted = !safeModeService.Causes.Contains(SafeModeCause.Untrusted);
 
         _context = new ProjectSettingsContext(workspaceWrapper, projectService, commandService, MarkPending);
         InformationSection = new InformationSectionViewModel(_context, projectLoadReporter);
@@ -240,21 +262,39 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Supplies the sections to show, in rail order, and selects the one the user last had open. Called by
-    /// the view, which is the only place that can build each section's content.
+    /// Supplies every section, in rail order, and selects the one to open at. The Safe Mode section is shown only in
+    /// Safe Mode. In Safe Mode, that section comes first, and the editor opens at that section. Otherwise the editor
+    /// opens at the section the user last had open. Called by the view, which is the only place that can build each
+    /// section's content.
     /// </summary>
     public void InitializeSections(IReadOnlyList<SettingsSection> sections)
     {
-        Guard.IsTrue(sections.Count > 0);
+        var safeModeSection = sections.FirstOrDefault(section => section.Key == SafeModeSectionKey);
+        var shownSections = sections
+            .Where(section => section.Key != SafeModeSectionKey)
+            .ToList();
+        if (IsSafeMode && safeModeSection is not null)
+        {
+            shownSections.Insert(0, safeModeSection);
+        }
+
+        Guard.IsTrue(shownSections.Count > 0);
 
         _sectionPersistenceEnabled = false;
-        Sections = sections;
+        Sections = shownSections;
 
-        // An unrecognized or empty key lands on the first section, which is what a new project gets.
-        var storedKey = _settings.Get(SettingCatalog.Layout.ProjectSettingsSelectedSection);
-        var storedSection = sections.FirstOrDefault(section => section.Key == storedKey);
+        if (IsSafeMode && safeModeSection is not null)
+        {
+            SelectedSection = safeModeSection;
+        }
+        else
+        {
+            // An unrecognized or empty key lands on the first section, which is what a new project gets.
+            var storedKey = _settings.Get(SettingCatalog.Layout.ProjectSettingsSelectedSection);
+            var storedSection = shownSections.FirstOrDefault(section => section.Key == storedKey);
 
-        SelectedSection = storedSection ?? sections[0];
+            SelectedSection = storedSection ?? shownSections[0];
+        }
 
         _sectionPersistenceEnabled = true;
     }
@@ -344,6 +384,13 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         _lastSelectedSection = value;
 
         if (!_sectionPersistenceEnabled)
+        {
+            return;
+        }
+
+        // The Safe Mode section is gone after the next full load. So the stored section stays the one the user last
+        // had open outside Safe Mode.
+        if (value.Key == SafeModeSectionKey)
         {
             return;
         }
@@ -457,19 +504,32 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(HasPendingChanges));
     }
 
-    // The reload rebuilds the workspace from the file, so the draft has to reach disk first. The save
-    // tick would get there on its own within a second, which is exactly the window a user clicking
-    // Reload straight after an edit falls into.
+    // Reloading rebuilds the workspace from the project file. The draft is saved first, because the save tick may not
+    // have written the user's latest edits yet.
     private async Task ReloadProjectAsync()
     {
         var saveResult = await SaveConfigAsync();
         if (saveResult.IsFailure)
         {
-            _logger.LogError(saveResult, "Failed to save the project config before reloading.");
+            _logger.LogError(saveResult, "Failed to save the project config before reloading the project.");
             return;
         }
 
         _commandService.Execute<IReloadProjectCommand>();
+    }
+
+    // Trusting the project reloads it, and the reload rebuilds the workspace from the project file. The draft is saved
+    // first, because the save tick may not have written the user's latest edits yet.
+    private async Task TrustProjectAsync()
+    {
+        var saveResult = await SaveConfigAsync();
+        if (saveResult.IsFailure)
+        {
+            _logger.LogError(saveResult, "Failed to save the project config before trusting the project.");
+            return;
+        }
+
+        _commandService.Execute<ITrustProjectCommand>();
     }
 
     // Reopens the project file in the Code Editor, which is the only editor that can show a file the

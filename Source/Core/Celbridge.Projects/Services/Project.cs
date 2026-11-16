@@ -11,7 +11,8 @@ public record Project(
     ProjectConfig Config,
     MigrationResult MigrationResult,
     bool ConfigIsHealthy,
-    Result? ConfigLoadFailure) : IProject
+    Result? ConfigLoadFailure,
+    bool IsTrusted) : IProject
 {
     public bool IsProjectFile(ResourceKey resource)
     {

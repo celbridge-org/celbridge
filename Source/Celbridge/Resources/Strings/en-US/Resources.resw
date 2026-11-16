@@ -404,6 +404,15 @@ This file could not be saved</value>
   <data name="Notification_ViewReportButton" xml:space="preserve">
     <value>View Report</value>
   </data>
+  <data name="Notification_OpenProjectSettingsButton" xml:space="preserve">
+    <value>Open Project Settings</value>
+  </data>
+  <data name="Notification_SafeMode_ConfigurationFailed" xml:space="preserve">
+    <value>Safe Mode is on. The project file could not be read</value>
+  </data>
+  <data name="Notification_SafeMode_Untrusted" xml:space="preserve">
+    <value>Safe Mode is on. You haven't trusted this project</value>
+  </data>
   <data name="Notification_ProjectLoadIssues_One" xml:space="preserve">
     <value>The project loaded with 1 issue</value>
   </data>
@@ -430,6 +439,9 @@ This file could not be saved</value>
   </data>
   <data name="NotificationCentre_Title" xml:space="preserve">
     <value>Notifications</value>
+  </data>
+  <data name="NotificationCentre_SafeModeLabel" xml:space="preserve">
+    <value>(Safe Mode)</value>
   </data>
   <data name="NotificationCentre_ClearAll" xml:space="preserve">
     <value>Clear All</value>
@@ -856,6 +868,11 @@ This file could not be saved</value>
 
 Open with default application instead?</value>
   </data>
+  <data name="Documents_OpenDocumentFailedSafeMode" xml:space="preserve">
+    <value>Celbridge can't open '{0}' files in Safe Mode.
+
+Open with default application instead?</value>
+  </data>
   <data name="ResourceTree_Run" xml:space="preserve">
     <value>Run</value>
   </data>
@@ -1038,6 +1055,21 @@ Open with default application instead?</value>
   </data>
   <data name="ProjectSettings_ConfigErrorCaption" xml:space="preserve">
     <value>Project settings cannot be shown until the file is valid. Open it as text to repair it, then reload the project.</value>
+  </data>
+  <data name="ProjectSettings_SafeModeCaption" xml:space="preserve">
+    <value>Safe Mode is on. Most features are switched off.</value>
+  </data>
+  <data name="ProjectSettings_SafeModeHeader" xml:space="preserve">
+    <value>Safe Mode</value>
+  </data>
+  <data name="ProjectSettings_SafeModeDescription" xml:space="preserve">
+    <value>See why Safe Mode is on, and open the project fully.</value>
+  </data>
+  <data name="ProjectSettings_SafeModeUntrusted" xml:space="preserve">
+    <value>This project's code stays off until you trust the project. Trust it only if you know where it came from.</value>
+  </data>
+  <data name="ProjectSettings_TrustProject" xml:space="preserve">
+    <value>Trust Project</value>
   </data>
   <data name="ProjectSettings_OpenInCodeEditor" xml:space="preserve">
     <value>Open in Code Editor</value>
@@ -1586,13 +1618,30 @@ Open with default application instead?</value>
     <value>Project Upgrade Failed</value>
   </data>
   <data name="ProjectUpgradeFailedAlert_Message" xml:space="preserve">
-    <value>Failed to upgrade project "{0}". See the project load report for details.</value>
+    <value>Could not upgrade the project '{0}'. Safe Mode is on.</value>
   </data>
   <data name="ProjectConfigErrorAlert_Title" xml:space="preserve">
     <value>Project Configuration Error</value>
   </data>
   <data name="ProjectConfigErrorAlert_Message" xml:space="preserve">
-    <value>The project "{0}" has a configuration error. See the project load report for details.</value>
+    <value>The project '{0}' has a configuration error. Safe Mode is on.</value>
+  </data>
+  <data name="ProjectSafeModeAlert_ViewLoadReport" xml:space="preserve">
+    <value>View Load Report</value>
+  </data>
+  <data name="ProjectTrustDialog_Title" xml:space="preserve">
+    <value>Do you trust this project?</value>
+  </data>
+  <data name="ProjectTrustDialog_Message" xml:space="preserve">
+    <value>Projects can run code on your computer. If you're not sure where this project came from, open it in Safe Mode.
+
+{0}</value>
+  </data>
+  <data name="ProjectTrustDialog_TrustProject" xml:space="preserve">
+    <value>Trust Project</value>
+  </data>
+  <data name="ProjectTrustDialog_OpenInSafeMode" xml:space="preserve">
+    <value>Open in Safe Mode</value>
   </data>
   <data name="ProjectNewerVersionAlert_Title" xml:space="preserve">
     <value>Newer Version Required</value>
@@ -2005,6 +2054,9 @@ Open with default application instead?</value>
   <data name="Report_Finding_Project_ConfigEntrySkipped" xml:space="preserve">
     <value>Config entry skipped: {0}</value>
   </data>
+  <data name="Report_Finding_Project_ConfigParseFailed" xml:space="preserve">
+    <value>The project file could not be read.</value>
+  </data>
   <data name="Report_Finding_Package_PackageLoadFailed" xml:space="preserve">
     <value>Package failed to load: {0}</value>
   </data>
@@ -2085,6 +2137,18 @@ Open with default application instead?</value>
   </data>
   <data name="Report_ProjectLoad_Fact_Outcome" xml:space="preserve">
     <value>Outcome</value>
+  </data>
+  <data name="Report_ProjectLoad_Fact_SafeMode" xml:space="preserve">
+    <value>Safe Mode</value>
+  </data>
+  <data name="Report_ProjectLoad_Fact_SafeModeValue" xml:space="preserve">
+    <value>On. {0}</value>
+  </data>
+  <data name="Report_ProjectLoad_SafeModeCause_ConfigurationFailed" xml:space="preserve">
+    <value>The project file could not be read.</value>
+  </data>
+  <data name="Report_ProjectLoad_SafeModeCause_Untrusted" xml:space="preserve">
+    <value>The project is not trusted on this computer.</value>
   </data>
   <data name="Report_ProjectLoad_Fact_LoadDuration" xml:space="preserve">
     <value>Load duration</value>

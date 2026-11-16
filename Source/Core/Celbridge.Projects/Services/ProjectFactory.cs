@@ -23,9 +23,9 @@ internal class ProjectFactory
 
     /// <summary>
     /// Loads a project from the specified file path: parses its config, creates its data folder if it has
-    /// none, and returns a populated Project.
+    /// none, and returns a populated Project. isTrusted says whether the project opens trusted.
     /// </summary>
-    public async Task<Result<IProject>> LoadAsync(string projectFilePath, MigrationResult migrationResult)
+    public async Task<Result<IProject>> LoadAsync(string projectFilePath, MigrationResult migrationResult, bool isTrusted)
     {
         if (string.IsNullOrWhiteSpace(projectFilePath))
         {
@@ -90,7 +90,8 @@ internal class ProjectFactory
                 config,
                 migrationResult,
                 configIsHealthy,
-                configLoadFailure);
+                configLoadFailure,
+                isTrusted);
 
             return Result<IProject>.Ok(project);
         }

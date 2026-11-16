@@ -1,5 +1,7 @@
 using Celbridge.Automation;
+using Celbridge.Commands;
 using Celbridge.Dialog;
+using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Settings;
@@ -10,8 +12,7 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Projects.Services;
 
 /// <summary>
-/// Handles the complete workflow of loading a project, including the checks that can refuse it, the project lock,
-/// migration checks, upgrade confirmation dialogs, error alerts, and showing the workspace.
+/// Runs the load of a project, from the checks that can refuse the project to showing the workspace.
 /// </summary>
 internal class ProjectLoader : IProjectLoader
 {
@@ -25,6 +26,7 @@ internal class ProjectLoader : IProjectLoader
     private readonly ISettingsService _settingsService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IMessengerService _messengerService;
+    private readonly ICommandService _commandService;
     private readonly IAutomationService _automationService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IProjectLoadReporter _loadReporter;
@@ -40,6 +42,7 @@ internal class ProjectLoader : IProjectLoader
         ISettingsService settingsService,
         IWorkspaceWrapper workspaceWrapper,
         IMessengerService messengerService,
+        ICommandService commandService,
         IAutomationService automationService,
         IStringLocalizer stringLocalizer,
         IProjectLoadReporter loadReporter)
@@ -54,6 +57,7 @@ internal class ProjectLoader : IProjectLoader
         _settingsService = settingsService;
         _workspaceWrapper = workspaceWrapper;
         _messengerService = messengerService;
+        _commandService = commandService;
         _automationService = automationService;
         _stringLocalizer = stringLocalizer;
         _loadReporter = loadReporter;
@@ -219,43 +223,43 @@ internal class ProjectLoader : IProjectLoader
 
         // A version this build can't open, or a declined upgrade, ends the load before the current project closes.
         // The refused load's report is written separately from the current project's load report.
-        bool userConfirmedUpgrade = false;
-        switch (migrationResult.Status)
+        if (migrationResult.Status is MigrationStatus.NewerCelbridgeVersion
+            or MigrationStatus.UnsupportedCelbridgeVersion)
         {
-            case MigrationStatus.NewerCelbridgeVersion:
-            case MigrationStatus.UnsupportedCelbridgeVersion:
+            // This version of Celbridge cannot open the project
+            _logger.LogError($"Cannot load project '{projectName}' - Celbridge version v{migrationResult.OldVersion} is not supported by application version v{migrationResult.NewVersion}");
+            ForgetPreviousProject(projectFilePath);
+
+            await _loadReporter.WriteRefusedLoadReportAsync(projectFilePath, migrationResult, userCancelledUpgrade: false);
+
+            await ShowCelbridgeVersionAlertAsync(projectName, migrationResult);
+
+            return Result<bool>.Fail($"Failed to load project: '{projectFilePath}'")
+                .WithErrors(migrationResult.OperationResult);
+        }
+
+        // The trust dialog comes after every check that can refuse the project. So Celbridge never asks about a
+        // project that it then refuses.
+        var isTrusted = await ResolveTrustAsync(projectFilePath);
+
+        bool userConfirmedUpgrade = false;
+        if (migrationResult.Status == MigrationStatus.UpgradeRequired)
+        {
+            var confirmed = await ShowUpgradeConfirmationDialogAsync(
+                projectName,
+                migrationResult.OldVersion,
+                migrationResult.NewVersion);
+
+            if (!confirmed)
             {
-                // This version of Celbridge cannot open the project
-                _logger.LogError($"Cannot load project '{projectName}' - Celbridge version v{migrationResult.OldVersion} is not supported by application version v{migrationResult.NewVersion}");
-                ForgetPreviousProject(projectFilePath);
+                _logger.LogInformation($"User cancelled project upgrade for '{projectName}'");
+                await _loadReporter.WriteRefusedLoadReportAsync(projectFilePath, migrationResult, userCancelledUpgrade: true);
 
-                await _loadReporter.WriteRefusedLoadReportAsync(projectFilePath, migrationResult, userCancelledUpgrade: false);
-
-                await ShowCelbridgeVersionAlertAsync(projectName, migrationResult);
-
-                return Result<bool>.Fail($"Failed to load project: '{projectFilePath}'")
-                    .WithErrors(migrationResult.OperationResult);
+                // Not a failure. The user chose to keep the current project.
+                return false;
             }
 
-            case MigrationStatus.UpgradeRequired:
-            {
-                var confirmed = await ShowUpgradeConfirmationDialogAsync(
-                    projectName,
-                    migrationResult.OldVersion,
-                    migrationResult.NewVersion);
-
-                if (!confirmed)
-                {
-                    _logger.LogInformation($"User cancelled project upgrade for '{projectName}'");
-                    await _loadReporter.WriteRefusedLoadReportAsync(projectFilePath, migrationResult, userCancelledUpgrade: true);
-
-                    // Not a failure. The user chose to keep the current project.
-                    return false;
-                }
-
-                userConfirmedUpgrade = true;
-                break;
-            }
+            userConfirmedUpgrade = true;
         }
 
         // Close any loaded project. A teardown that fails still closes the project, so the load goes on.
@@ -271,7 +275,7 @@ internal class ProjectLoader : IProjectLoader
         Result loadResult;
         try
         {
-            loadResult = await UpgradeAndLoadAsync(projectFilePath, migrationResult, userConfirmedUpgrade);
+            loadResult = await UpgradeAndLoadAsync(projectFilePath, migrationResult, userConfirmedUpgrade, isTrusted);
         }
         catch (Exception exception)
         {
@@ -308,10 +312,11 @@ internal class ProjectLoader : IProjectLoader
 
     // Runs once the current project has closed. Upgrades the new project if the user confirmed the upgrade, then loads
     // the project and shows the workspace.
-    private async Task<Result> UpgradeAndLoadAsync(string projectFilePath, MigrationResult migrationResult, bool userConfirmedUpgrade)
+    private async Task<Result> UpgradeAndLoadAsync(string projectFilePath, MigrationResult migrationResult, bool userConfirmedUpgrade, bool isTrusted)
     {
         var projectName = Path.GetFileNameWithoutExtension(projectFilePath);
 
+        var upgradeFailed = false;
         if (userConfirmedUpgrade)
         {
             _logger.LogInformation($"User confirmed upgrade for '{projectName}' from v{migrationResult.OldVersion} to v{migrationResult.NewVersion}");
@@ -320,28 +325,73 @@ internal class ProjectLoader : IProjectLoader
 
             if (migrationResult.Status != MigrationStatus.Complete)
             {
-                // Upgrade failed - show alert but continue to load with limited functionality
-                _logger.LogWarning($"Project upgrade failed for '{projectName}', continuing with limited functionality");
-                await ShowUpgradeFailedAlertAsync(projectName);
+                _logger.LogWarning($"Project upgrade failed for '{projectName}', so the project opens in Safe Mode");
+                upgradeFailed = true;
             }
         }
         else if (migrationResult.Status is MigrationStatus.InvalidConfig
             or MigrationStatus.InvalidVersion
             or MigrationStatus.Failed)
         {
-            // Configuration error - show alert but continue to load with limited functionality
-            _logger.LogWarning($"Project '{projectName}' has configuration errors, continuing with limited functionality");
-            await ShowConfigErrorAlertAsync(projectName);
+            _logger.LogWarning($"Project '{projectName}' has configuration errors, so the project opens in Safe Mode");
         }
 
         _loadReporter.RecordMigrationResult(migrationResult, userConfirmedUpgrade, userCancelledUpgrade: false);
 
         // Load the project and navigate to workspace
-        var loadResult = await LoadProjectInternalAsync(projectFilePath, migrationResult);
+        var loadResult = await LoadProjectInternalAsync(projectFilePath, migrationResult, isTrusted);
 
         _loadReporter.RecordLoadOutcome(loadResult.IsSuccess, loadResult);
 
+        if (loadResult.IsSuccess)
+        {
+            await ShowSafeModeAlertAsync(projectName, upgradeFailed);
+        }
+
         return loadResult;
+    }
+
+    // Shown once the workspace has loaded, so the alert takes the place of the load's progress dialog. The alert
+    // offers the load report, which gives the failure.
+    private async Task ShowSafeModeAlertAsync(string projectName, bool upgradeFailed)
+    {
+        var safeModeService = _workspaceWrapper.WorkspaceService.SafeModeService;
+        if (!safeModeService.Causes.Contains(SafeModeCause.ConfigurationFailed))
+        {
+            return;
+        }
+
+        var titleKey = upgradeFailed ? "ProjectUpgradeFailedAlert_Title" : "ProjectConfigErrorAlert_Title";
+        var messageKey = upgradeFailed ? "ProjectUpgradeFailedAlert_Message" : "ProjectConfigErrorAlert_Message";
+        var title = _stringLocalizer.GetString(titleKey);
+        var message = _stringLocalizer.GetString(messageKey, projectName);
+
+        var options = new ConfirmationDialogOptions
+        {
+            PrimaryButtonText = _stringLocalizer.GetString("ProjectSafeModeAlert_ViewLoadReport"),
+            SecondaryButtonText = _stringLocalizer.GetString("DialogButton_Close")
+        };
+
+        var answerResult = await _dialogService.ShowConfirmationDialogAsync(title, message, options);
+        if (answerResult.IsFailure
+            || !answerResult.Value)
+        {
+            return;
+        }
+
+        await OpenLoadReportAsync();
+    }
+
+    // Writes the report first, so the report includes the load's outcome.
+    private async Task OpenLoadReportAsync()
+    {
+        var reportSummary = await _loadReporter.FlushAsync();
+        if (reportSummary is null)
+        {
+            return;
+        }
+
+        _commandService.Execute<IOpenDocumentCommand>(command => command.FileResource = reportSummary.Resource);
     }
 
     // A refused project can't open as it stands, so the next launch skips it. The setting is cleared only when it
@@ -353,6 +403,56 @@ internal class ProjectLoader : IProjectLoader
         {
             _settingsService.Set(SettingCatalog.Project.PreviousProject, string.Empty);
         }
+    }
+
+    // Returns true when the user trusts the project, asking first when the project is untrusted. A project opened in
+    // Safe Mode stays untrusted, so the next open asks again.
+    private async Task<bool> ResolveTrustAsync(string projectFilePath)
+    {
+        if (await _projectService.IsTrustedAsync(projectFilePath))
+        {
+            return true;
+        }
+
+        var trusted = await ShowTrustDialogAsync(projectFilePath);
+        if (!trusted)
+        {
+            _logger.LogInformation($"Opening the untrusted project in Safe Mode: '{projectFilePath}'");
+            return false;
+        }
+
+        // The project opens fully even when the trust can't be recorded. The next open then asks again.
+        var trustResult = await _projectService.TrustProjectAsync(projectFilePath);
+        if (trustResult.IsFailure)
+        {
+            _logger.LogWarning(trustResult, $"Failed to record the trust for the project: '{projectFilePath}'");
+        }
+
+        return true;
+    }
+
+    // Open in Safe Mode is the default button, so Return never trusts a project. Closing the dialog, or a dialog
+    // that fails to show, opens the project in Safe Mode too.
+    private async Task<bool> ShowTrustDialogAsync(string projectFilePath)
+    {
+        var title = _stringLocalizer.GetString("ProjectTrustDialog_Title");
+        var displayPath = DisplayPathFormatter.AbbreviateHomeFolder(projectFilePath);
+        var message = _stringLocalizer.GetString("ProjectTrustDialog_Message", displayPath);
+
+        var options = new ConfirmationDialogOptions
+        {
+            PrimaryButtonText = _stringLocalizer.GetString("ProjectTrustDialog_TrustProject"),
+            SecondaryButtonText = _stringLocalizer.GetString("ProjectTrustDialog_OpenInSafeMode"),
+            IsDestructive = true
+        };
+
+        var answerResult = await _dialogService.ShowConfirmationDialogAsync(title, message, options);
+        if (answerResult.IsFailure)
+        {
+            return false;
+        }
+
+        return answerResult.Value;
     }
 
     private async Task<bool> ShowUpgradeConfirmationDialogAsync(string projectName, string oldVersion, string newVersion)
@@ -368,20 +468,6 @@ internal class ProjectLoader : IProjectLoader
         }
 
         return confirmResult.Value;
-    }
-
-    private async Task ShowUpgradeFailedAlertAsync(string projectName)
-    {
-        var title = _stringLocalizer.GetString("ProjectUpgradeFailedAlert_Title");
-        var message = _stringLocalizer.GetString("ProjectUpgradeFailedAlert_Message", projectName);
-        await _dialogService.ShowAlertDialogAsync(title, message);
-    }
-
-    private async Task ShowConfigErrorAlertAsync(string projectName)
-    {
-        var title = _stringLocalizer.GetString("ProjectConfigErrorAlert_Title");
-        var message = _stringLocalizer.GetString("ProjectConfigErrorAlert_Message", projectName);
-        await _dialogService.ShowAlertDialogAsync(title, message);
     }
 
     private async Task ShowCelbridgeVersionAlertAsync(string projectName, MigrationResult migrationResult)
@@ -410,9 +496,9 @@ internal class ProjectLoader : IProjectLoader
         await _dialogService.ShowAlertDialogAsync(title, message);
     }
 
-    private async Task<Result> LoadProjectInternalAsync(string projectFilePath, MigrationResult migrationResult)
+    private async Task<Result> LoadProjectInternalAsync(string projectFilePath, MigrationResult migrationResult, bool isTrusted)
     {
-        var loadResult = await _projectService.LoadProjectAsync(projectFilePath, migrationResult);
+        var loadResult = await _projectService.LoadProjectAsync(projectFilePath, migrationResult, isTrusted);
         if (loadResult.IsFailure)
         {
             return Result.Fail($"Failed to open project file '{projectFilePath}'")

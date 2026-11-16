@@ -9,12 +9,13 @@ namespace Celbridge.UserInterface.Services;
 
 /// <summary>
 /// Records what the application's notification sources report as entries in the notification centre. A
-/// project load that found issues is a condition. A failed resource operation, an extraction that skipped
-/// entries, a discarded save and a notification raised by an editor are each an event.
+/// project load that found issues is a condition, and so is Safe Mode. A failed resource operation, an extraction
+/// that skipped entries, a discarded save and a notification raised by an editor are each an event.
 /// </summary>
 public sealed class NotificationComposer
 {
     private const string ProjectLoadSource = "project-load";
+    private const string SafeModeSource = "safe-mode";
 
     private readonly IMessengerService _messengerService;
     private readonly ILocalizerService _localizerService;
@@ -45,17 +46,29 @@ public sealed class NotificationComposer
         _isStarted = true;
 
         // Each source raises its message on whichever thread it runs on, and the centre accepts calls from any.
-        _messengerService.Register<ProjectLoadNotificationMessage>(this, OnProjectLoadNotification);
+        _messengerService.Register<ProjectLoadIssuesReportedMessage>(this, OnProjectLoadIssuesReported);
+        _messengerService.Register<WorkspaceLoadedInSafeModeMessage>(this, OnWorkspaceLoadedInSafeMode);
         _messengerService.Register<ResourceOperationFailedMessage>(this, OnResourceOperationFailed);
         _messengerService.Register<ArchiveEntriesSkippedMessage>(this, OnArchiveEntriesSkipped);
         _messengerService.Register<WorkspaceItemSaveDiscardedMessage>(this, OnWorkspaceItemSaveDiscarded);
         _messengerService.Register<EditorNotificationMessage>(this, OnEditorNotification);
     }
 
-    private void OnProjectLoadNotification(object recipient, ProjectLoadNotificationMessage message)
+    private void OnProjectLoadIssuesReported(object recipient, ProjectLoadIssuesReportedMessage message)
     {
         var content = ComposeLoadNotification(message.Summary);
         _notificationCentre.RecordCondition(ProjectLoadSource, content);
+    }
+
+    private void OnWorkspaceLoadedInSafeMode(object recipient, WorkspaceLoadedInSafeModeMessage message)
+    {
+        if (message.Causes.Count == 0)
+        {
+            return;
+        }
+
+        var content = ComposeSafeModeNotification(message);
+        _notificationCentre.RecordCondition(SafeModeSource, content);
     }
 
     private void OnResourceOperationFailed(object recipient, ResourceOperationFailedMessage message)
@@ -136,6 +149,26 @@ public sealed class NotificationComposer
         // The report's severity is the notification's. The project loaded either way, because a version the
         // application cannot open never reaches the workspace at all.
         return Compose(summary.Severity, messageKey, ComposeReportAction(summary.Resource), summary.IssueCount);
+    }
+
+    // The action opens the project file, which opens Project Settings. The entry gives one cause. A failure comes
+    // before an untrusted project, because trusting the project leaves the failure in place.
+    private NotificationContent ComposeSafeModeNotification(WorkspaceLoadedInSafeModeMessage message)
+    {
+        var label = _localizerService.GetString("Notification_OpenProjectSettingsButton");
+        var action = new OpenDocumentAction(message.ProjectFileResource, label);
+
+        var cause = message.Causes.FirstOrDefault(cause => cause != SafeModeCause.Untrusted, SafeModeCause.Untrusted);
+
+        // An untrusted project's entry is a warning, because the user chose Safe Mode. A failure's entry is an error.
+        var (severity, messageKey) = cause switch
+        {
+            SafeModeCause.Untrusted => (ReportSeverity.Warning, "Notification_SafeMode_Untrusted"),
+            SafeModeCause.ConfigurationFailed => (ReportSeverity.Error, "Notification_SafeMode_ConfigurationFailed"),
+            _ => throw new ArgumentOutOfRangeException(nameof(cause), cause, "Unhandled Safe Mode cause")
+        };
+
+        return Compose(severity, messageKey, action);
     }
 
     private NotificationContent ComposeOperationNotification(ResourceOperationFailedMessage message)

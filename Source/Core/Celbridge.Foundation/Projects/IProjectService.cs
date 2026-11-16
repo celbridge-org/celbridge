@@ -39,9 +39,27 @@ public interface IProjectService
 
     /// <summary>
     /// Load the project file at the specified path.
-    /// The migrationResult should be obtained from ProjectLoader before calling this method.
+    /// The migrationResult should be obtained from ProjectLoader before calling this method. isTrusted says
+    /// whether the project opens trusted.
     /// </summary>
-    Task<Result<IProject>> LoadProjectAsync(string projectFilePath, MigrationResult migrationResult);
+    Task<Result<IProject>> LoadProjectAsync(string projectFilePath, MigrationResult migrationResult, bool isTrusted);
+
+    /// <summary>
+    /// Returns true when the user trusts the project at the given path on this machine. The project data folder
+    /// records the trust.
+    /// </summary>
+    Task<bool> IsTrustedAsync(string projectFilePath);
+
+    /// <summary>
+    /// Records that the user trusts the project at the given path on this machine. The trust stays.
+    /// </summary>
+    Task<Result> TrustProjectAsync(string projectFilePath);
+
+    /// <summary>
+    /// From this call on, the instance treats every project it opens as trusted. Nothing records the trust. Only a
+    /// Debug build supports the call. In a release build, the call throws NotSupportedException.
+    /// </summary>
+    void AssumeTrusted();
 
     /// <summary>
     /// Reconciles the current project's config against the discovered editor contributions and returns

@@ -4,9 +4,10 @@ namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Decides what a focus report does to the active document: whether the report makes its document active,
-/// whether a change of active document carries the keyboard to it, and whether a press inside a document
-/// hands the keyboard to it. Pure functions, so the rules that keep focus and activation from driving
-/// each other can be exercised without a live web surface or window.
+/// whether the report comes from a document behind another tab, whether a change of active document carries
+/// the keyboard to it, and whether a press inside a document hands the keyboard to it. Pure functions, so the
+/// rules that keep focus and activation from driving each other can be exercised without a live web surface or
+/// window.
 /// </summary>
 public static class ActiveDocumentFocusPolicy
 {
@@ -25,6 +26,22 @@ public static class ActiveDocumentFocusPolicy
         // Activating each time would reselect its tab and re-broadcast the active document for a move that
         // changed nothing.
         return documentResource != activeDocument;
+    }
+
+    /// <summary>
+    /// Returns true if a focus report comes from a document behind another tab in its section.
+    /// </summary>
+    public static bool IsFromHiddenDocument(ResourceKey documentResource, ResourceKey shownDocument, bool isTabClick)
+    {
+        // A tab click brings its own document to the front.
+        if (isTabClick)
+        {
+            return false;
+        }
+
+        // A closing popup can hand the keyboard back to a web surface while another tab comes to the front. The
+        // surface reports that focus after the other tab is showing.
+        return documentResource != shownDocument;
     }
 
     /// <summary>

@@ -1,7 +1,9 @@
 using Celbridge.Documents.Helpers;
+using Celbridge.Packages;
 using Celbridge.Resources;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
+using Celbridge.Tests.Helpers;
 
 namespace Celbridge.Tests.Documents;
 
@@ -9,7 +11,9 @@ namespace Celbridge.Tests.Documents;
 /// Covers DocumentViewFactory.CreateAsync across each step of the resolution chain: sidecar wins,
 /// requested editor used directly, the project editor-associations map, the first factory in
 /// resolution order, and the text-file fallback that prefers the code editor and skips placeholder
-/// factories. ResolveEditorIdAsync walks the same chain and names the editor without creating a view.
+/// factories. ResolveDefaultEditorIdAsync walks the same chain for an open that names no editor, and creates
+/// no view. The code editor opens only a file in a supported format. In Safe Mode, a request for an editor
+/// that is off falls through to the other routes.
 /// </summary>
 [TestFixture]
 public class DocumentViewFactoryTests
@@ -40,6 +44,8 @@ public class DocumentViewFactoryTests
         resourceService.RootHandlers.Returns(TestRootHandlers.Create(projectFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
+        var safeModeService = TestSafeMode.Create(isActive: false);
+        workspaceService.SafeModeService.Returns(safeModeService);
         resourceService.Sidecars.Returns(_sidecarService);
         workspaceService.ResourceService.Returns(resourceService);
 
@@ -47,6 +53,9 @@ public class DocumentViewFactoryTests
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         _textBinarySniffer = Substitute.For<ITextBinarySniffer>();
+
+        // A file type that no editor claims is sniffed. Each file is text unless a test says otherwise.
+        _textBinarySniffer.IsTextFile(Arg.Any<string>()).Returns(Result<bool>.Ok(true));
 
         _fileTypeHelper = new FileTypeHelper();
         _fileTypeHelper.SetDocumentEditorRegistry(_registry);
@@ -204,6 +213,37 @@ public class DocumentViewFactoryTests
     }
 
     [Test]
+    public async Task CreateAsync_RequestedEditor_CodeEditorRefusesAFileInAnUnsupportedFormat()
+    {
+        // A binary file of an unknown type is in an unsupported format.
+        _textBinarySniffer.IsTextFile(Arg.Any<string>()).Returns(Result<bool>.Ok(false));
+        _registry.RegisterFactory(CreateFakeFactory(
+            DocumentConstants.CodeEditorId, ".cs", Substitute.For<IDocumentView>(), canHandle: false));
+
+        var result = await CreateFactory().CreateAsync(
+            new ResourceKey("blob.xyz"),
+            DocumentConstants.CodeEditorId);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task CreateAsync_SidecarEditor_CodeEditorIsSkippedForAFileInAnUnsupportedFormat()
+    {
+        _textBinarySniffer.IsTextFile(Arg.Any<string>()).Returns(Result<bool>.Ok(false));
+        _registry.RegisterFactory(CreateFakeFactory(
+            DocumentConstants.CodeEditorId, ".cs", Substitute.For<IDocumentView>(), canHandle: false));
+        StubSidecarEditor(DocumentConstants.CodeEditorId.ToString());
+
+        var factory = CreateFactory();
+        var result = await factory.CreateAsync(new ResourceKey("blob.xyz"), EditorId.Empty);
+        var editorId = await factory.ResolveDefaultEditorIdAsync(new ResourceKey("blob.xyz"));
+
+        result.IsFailure.Should().BeTrue();
+        editorId.IsEmpty.Should().BeTrue();
+    }
+
+    [Test]
     public async Task CreateAsync_RequestedEditor_FailsWhenIdIsUnregistered()
     {
         var result = await CreateFactory().CreateAsync(
@@ -351,7 +391,7 @@ public class DocumentViewFactoryTests
     }
 
     [Test]
-    public async Task ResolveEditorIdAsync_SidecarEditor_WinsOverEverythingElse()
+    public async Task ResolveDefaultEditorIdAsync_SidecarEditor_WinsOverEverythingElse()
     {
         var sidecarEditorId = new EditorId("test.sidecar-editor");
         var defaultFactory = CreateFakeFactory(
@@ -362,13 +402,13 @@ public class DocumentViewFactoryTests
 
         StubSidecarEditor("test.sidecar-editor");
 
-        var editorId = await CreateFactory().ResolveEditorIdAsync(new ResourceKey("doc.md"));
+        var editorId = await CreateFactory().ResolveDefaultEditorIdAsync(new ResourceKey("doc.md"));
 
         editorId.Should().Be(sidecarEditorId);
     }
 
     [Test]
-    public async Task ResolveEditorIdAsync_FollowsTheFileExtension()
+    public async Task ResolveDefaultEditorIdAsync_FollowsTheFileExtension()
     {
         // A rename across extensions resolves to the editor that claims the new name.
         var consoleEditorId = new EditorId("test.console");
@@ -378,15 +418,15 @@ public class DocumentViewFactoryTests
         _registry.RegisterFactory(codeFactory);
 
         var factory = CreateFactory();
-        var consoleResolved = await factory.ResolveEditorIdAsync(new ResourceKey("doc.console"));
-        var textResolved = await factory.ResolveEditorIdAsync(new ResourceKey("doc.txt"));
+        var consoleResolved = await factory.ResolveDefaultEditorIdAsync(new ResourceKey("doc.console"));
+        var textResolved = await factory.ResolveDefaultEditorIdAsync(new ResourceKey("doc.txt"));
 
         consoleResolved.Should().Be(consoleEditorId);
         textResolved.Should().Be(DocumentConstants.CodeEditorId);
     }
 
     [Test]
-    public async Task ResolveEditorIdAsync_TextFallback_IsTheCodeEditor()
+    public async Task ResolveDefaultEditorIdAsync_TextFallback_IsTheCodeEditor()
     {
         // Unknown extension, sniffer reports text, no factory claims it.
         _textBinarySniffer.IsTextFile(Arg.Any<string>()).Returns(Result<bool>.Ok(true));
@@ -395,19 +435,46 @@ public class DocumentViewFactoryTests
             DocumentConstants.CodeEditorId, ".cs", Substitute.For<IDocumentView>(), canHandle: false);
         _registry.RegisterFactory(codeFactory);
 
-        var editorId = await CreateFactory().ResolveEditorIdAsync(new ResourceKey("doc.xyz"));
+        var editorId = await CreateFactory().ResolveDefaultEditorIdAsync(new ResourceKey("doc.xyz"));
 
         editorId.Should().Be(DocumentConstants.CodeEditorId);
     }
 
     [Test]
-    public async Task ResolveEditorIdAsync_IsEmptyWhenNoEditorCanOpenTheFile()
+    public async Task ResolveDefaultEditorIdAsync_IsEmptyWhenNoEditorCanOpenTheFile()
     {
         _textBinarySniffer.IsTextFile(Arg.Any<string>()).Returns(Result<bool>.Ok(false));
 
-        var editorId = await CreateFactory().ResolveEditorIdAsync(new ResourceKey("doc.xyz"));
+        var editorId = await CreateFactory().ResolveDefaultEditorIdAsync(new ResourceKey("doc.xyz"));
 
         editorId.IsEmpty.Should().BeTrue();
+    }
+
+    [TestCase("run.console", "celbridge-console.console")]
+    [TestCase("page.html", "celbridge.html")]
+    [TestCase("readme.md", "celbridge.markdown")]
+    [TestCase("links.browser", "celbridge.browser-editor")]
+    public async Task InSafeMode_ARequestForAnEditorThatIsOff_FallsThroughToTheCodeEditor(string fileName, string editorId)
+    {
+        var codeView = TurnOnSafeMode();
+
+        var result = await CreateFactory().CreateAsync(new ResourceKey(fileName), new EditorId(editorId));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(codeView);
+    }
+
+    // Turns Safe Mode on, and registers the code editor alone. In Safe Mode, the other editors never register.
+    // Returns the code editor's view.
+    private IDocumentView TurnOnSafeMode()
+    {
+        var safeModeService = TestSafeMode.Create(isActive: true);
+        _workspaceWrapper.WorkspaceService.SafeModeService.Returns(safeModeService);
+
+        var codeView = Substitute.For<IDocumentView>();
+        _registry.RegisterFactory(CreateFakeFactory(DocumentConstants.CodeEditorId, ".txt", codeView));
+
+        return codeView;
     }
 
     private DocumentViewFactory CreateFactory()

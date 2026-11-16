@@ -474,7 +474,7 @@ public partial class DocumentTab : TabViewItem
 
         // Focus shows the active document on its own, so make this tab active before toggling rather
         // than relying on the first tap of the double having already done it.
-        _messengerService.Send(new DocumentViewFocusedMessage(ViewModel.FileResource));
+        _messengerService.Send(new DocumentViewFocusedMessage(ViewModel.FileResource, IsTabClick: true));
 
         _commandService.Execute<ISetLayoutCommand>(command =>
         {
@@ -493,7 +493,7 @@ public partial class DocumentTab : TabViewItem
         }
 
         // Send message to notify that this tab was clicked - this updates the active document
-        var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
+        var message = new DocumentViewFocusedMessage(ViewModel.FileResource, IsTabClick: true);
         _messengerService.Send(message);
 
         // Focus the document when the tab is clicked (even if tab is already selected). The view gives its

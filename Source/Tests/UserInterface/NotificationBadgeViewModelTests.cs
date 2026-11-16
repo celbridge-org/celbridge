@@ -2,9 +2,11 @@ using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Notifications;
 using Celbridge.Reports;
+using Celbridge.Tests.Helpers;
 using Celbridge.Tests.Localization;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Controls;
+using Celbridge.Workspace;
 
 namespace Celbridge.Tests.UserInterface;
 
@@ -20,6 +22,7 @@ public class NotificationBadgeViewModelTests
     private IDispatcher _dispatcher = null!;
     private ICommandService _commandService = null!;
     private IOpenDocumentCommand _openDocumentCommand = null!;
+    private IWorkspaceWrapper _workspaceWrapper = null!;
 
     private MessageHandler<object, NotificationsChangedMessage>? _changedHandler;
 
@@ -61,14 +64,53 @@ public class NotificationBadgeViewModelTests
 
         _centre = new NotificationCentre(_messengerService);
 
+        _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+
         _viewModel = new NotificationBadgeViewModel(
             _messengerService,
             _dispatcher,
             new TestLocalizerService(),
             _centre,
-            _commandService);
+            _commandService,
+            _workspaceWrapper);
 
         _viewModel.OnLoaded();
+    }
+
+    [Test]
+    public void TheSafeModeLabel_ShowsWhileTheWorkspaceIsInSafeMode()
+    {
+        var workspaceService = Substitute.For<IWorkspaceService>();
+        var safeModeService = TestSafeMode.Create(isActive: true);
+        workspaceService.SafeModeService.Returns(safeModeService);
+        _workspaceWrapper.HasWorkspaceService.Returns(true);
+        _workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        _centre.RecordCondition("safe-mode", new NotificationContent(ReportSeverity.Error, "Safe Mode is on"));
+
+        _viewModel.IsSafeMode.Should().BeTrue();
+    }
+
+    [Test]
+    public void TheSafeModeLabel_IsHiddenOutsideSafeMode()
+    {
+        var workspaceService = Substitute.For<IWorkspaceService>();
+        var safeModeService = TestSafeMode.Create(isActive: false);
+        workspaceService.SafeModeService.Returns(safeModeService);
+        _workspaceWrapper.HasWorkspaceService.Returns(true);
+        _workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        _centre.RecordCondition("project-load", new NotificationContent(ReportSeverity.Warning, "The project loaded with 1 issue"));
+
+        _viewModel.IsSafeMode.Should().BeFalse();
+    }
+
+    [Test]
+    public void TheSafeModeLabel_IsHiddenWithNoWorkspace()
+    {
+        _centre.AddEvent(new NotificationContent(ReportSeverity.Info, "Conversion finished"));
+
+        _viewModel.IsSafeMode.Should().BeFalse();
     }
 
     [Test]

@@ -33,6 +33,9 @@ public static class ReportFindingCatalog
 
         public static readonly ReportFindingDescriptor ConfigEntrySkipped =
             new(new ReportCode("CEL_PROJECT_005"), "Report_Finding_Project_ConfigEntrySkipped", ReportSeverity.Warning);
+
+        public static readonly ReportFindingDescriptor ConfigParseFailed =
+            new(new ReportCode("CEL_PROJECT_006"), "Report_Finding_Project_ConfigParseFailed", ReportSeverity.Error);
     }
 
     /// <summary>

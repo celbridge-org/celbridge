@@ -14,7 +14,6 @@ public partial class WebViewSettingsViewModel : ObservableObject
     private bool _isClearing;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsClearButtonVisible))]
     private bool _isConfirmingClear;
 
     [ObservableProperty]
@@ -36,11 +35,6 @@ public partial class WebViewSettingsViewModel : ObservableObject
     /// True when the clear action can be started: the platform supports clearing and no clear is running.
     /// </summary>
     public bool IsClearEnabled => IsClearAvailable && !IsClearing;
-
-    /// <summary>
-    /// True when the Clear button is showing. It gives up the row to the confirmation while that is up.
-    /// </summary>
-    public bool IsClearButtonVisible => !IsConfirmingClear;
 
     public WebViewSettingsViewModel(
         Logging.ILogger<WebViewSettingsViewModel> logger,

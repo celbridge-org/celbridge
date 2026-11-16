@@ -1,9 +1,11 @@
 using Celbridge.Messaging;
+using Celbridge.Packages;
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Resources.Services.Roots;
 using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Documents;
@@ -11,7 +13,8 @@ namespace Celbridge.Tests.Documents;
 /// <summary>
 /// Covers DocumentLayoutStore: restore-parsing edge cases (corrupted layout,
 /// invalid resource keys, section clamps), the documents a project opens on load,
-/// and the basic settings-writing shape of the Store* methods.
+/// the basic settings-writing shape of the Store* methods, and a load in Safe Mode, which leaves the layout
+/// unchanged.
 /// </summary>
 [TestFixture]
 public class DocumentLayoutStoreTests
@@ -404,6 +407,65 @@ public class DocumentLayoutStoreTests
     }
 
     [Test]
+    public async Task InSafeMode_TheStoredLayoutStaysUnchanged()
+    {
+        var safeModeService = TestSafeMode.Create(isActive: true);
+        _workspaceWrapper.WorkspaceService.SafeModeService.Returns(safeModeService);
+
+        // The last session left two documents open, each with its own editor's state. Safe Mode turns the
+        // first document's editor off, so it fails to reopen. The second reopens in the code editor.
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new("notes/readme.md", WindowIndex: 0, Section: "main_left", TabOrder: 0),
+            new("notes/todo.md", WindowIndex: 0, Section: "main_left", TabOrder: 1),
+        };
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("OpenDocumentAddresses")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+
+        var editorStates = new Dictionary<string, DocumentLayoutStore.StoredEditorState>
+        {
+            ["project:notes/readme.md"] = new(BuiltInEditors.MarkdownEditorId.ToString(), "{\"scroll\":0.5}"),
+            ["project:notes/todo.md"] = new(BuiltInEditors.MarkdownEditorId.ToString(), "{\"scroll\":0.2}"),
+        };
+        _propertyBag.GetPropertyAsync<Dictionary<string, DocumentLayoutStore.StoredEditorState>>("DocumentEditorStates")
+            .Returns(Task.FromResult<Dictionary<string, DocumentLayoutStore.StoredEditorState>?>(editorStates));
+
+        var failedResource = new ResourceKey("notes/readme.md");
+        _documentsPanel.OpenDocument(failedResource, Arg.Any<OpenDocumentOptions?>())
+            .Returns(Task.FromResult(Result<OpenDocumentOutcome>.Fail("The editor is off")));
+
+        var reopenedResource = new ResourceKey("notes/todo.md");
+        var reopenedAddress = new DocumentAddress(WindowIndex: 0, Section: DocumentSection.MainLeft, TabOrder: 0);
+        _documentsPanel.GetOpenDocuments().Returns(new List<OpenDocumentInfo>
+        {
+            new(reopenedResource, reopenedAddress, DocumentConstants.CodeEditorId),
+        });
+        _documentsPanel.ActiveDocument.Returns(reopenedResource);
+
+        // A shortcut that opens on load stays closed, because Safe Mode turns the project's shortcuts off.
+        var documentShortcuts = new List<DocumentShortcut>
+        {
+            new() { Resource = "notes/later.md", OpenOnLoad = true },
+        };
+
+        await _store.RestorePanelStateAsync(documentShortcuts);
+
+        // The workspace load and the session store the layout after the restore.
+        await _store.StoreOpenDocumentAddressesAsync();
+        await _store.StoreActiveDocumentAsync();
+        await _store.StoreAreaSplitRatiosAsync();
+        await _store.StoreDocumentEditorStatesAsync();
+        await _store.StoreDocumentEditorStateAsync(reopenedResource, null);
+
+        await _documentsPanel.DidNotReceive().OpenDocument(new ResourceKey("notes/later.md"), Arg.Any<OpenDocumentOptions?>());
+
+        var writes = _propertyBag.ReceivedCalls()
+            .Select(call => call.GetMethodInfo().Name)
+            .Where(name => name is "SetPropertyAsync" or "DeletePropertyAsync" or "SetDataVersionAsync");
+        writes.Should().BeEmpty();
+    }
+
+    [Test]
     public async Task StoreActiveDocumentAsync_WritesPanelActiveDocumentString()
     {
         // The store reads the panel's active document directly (not the gated
@@ -473,6 +535,27 @@ public class DocumentLayoutStoreTests
             Arg.Is<Dictionary<string, DocumentLayoutStore.StoredEditorState>>(d =>
                 !d.ContainsKey(targetResource.ToString())
                 && d[otherResource.ToString()].State == "{\"scroll\":1.0}"));
+    }
+
+    [Test]
+    public async Task AStoreAfterTheWorkspaceUnloads_DropsTheWrite()
+    {
+        // The wrapper loses the workspace service when the workspace unloads. A late store then writes nothing.
+        _workspaceWrapper.WorkspaceService.Returns(_ => throw new InvalidOperationException("No workspace is loaded"));
+
+        var resource = new ResourceKey("notes/readme.md");
+        var state = new DocumentEditorState(new EditorId("celbridge.markdown"), "{\"scroll\":0.5}");
+
+        Func<Task> storeAll = async () =>
+        {
+            await _store.StoreOpenDocumentAddressesAsync();
+            await _store.StoreActiveDocumentAsync();
+            await _store.StoreAreaSplitRatiosAsync();
+            await _store.StoreDocumentEditorStatesAsync();
+            await _store.StoreDocumentEditorStateAsync(resource, state);
+        };
+
+        await storeAll.Should().NotThrowAsync();
     }
 
     [Test]

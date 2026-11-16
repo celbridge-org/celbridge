@@ -2,9 +2,12 @@ using Celbridge.Commands;
 using Celbridge.Documents.Helpers;
 using Celbridge.Messaging;
 using Celbridge.Modules;
+using Celbridge.Packages;
+using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
+using Celbridge.Tests.Helpers;
 
 namespace Celbridge.Tests.Documents;
 
@@ -30,10 +33,16 @@ public class DocumentsServiceTests
     private ISetFieldsCommand? _capturedSetCommand;
     private IOpenDocumentCommand? _capturedOpenCommand;
     private Result<OpenDocumentOutcome> _openResult = null!;
+    private IServiceProvider? _previousServiceProvider;
+    private IWorkspaceService _workspaceService = null!;
+    private IModuleService _moduleService = null!;
+    private MessageHandler<object, PackagesInitializedMessage>? _packagesInitializedHandler;
 
     [SetUp]
     public void Setup()
     {
+        _previousServiceProvider = ServiceLocator.ServiceProvider;
+
         _capturedRemoveCommand = null;
         _capturedSetCommand = null;
         _capturedOpenCommand = null;
@@ -80,8 +89,15 @@ public class DocumentsServiceTests
 
         var messengerService = Substitute.For<IMessengerService>();
 
-        var moduleService = Substitute.For<IModuleService>();
-        moduleService.LoadedModules.Returns(new List<IModule>());
+        // Capture the handler so a test can deliver the message without a live messenger.
+        messengerService
+            .When(service => service.Register(
+                Arg.Any<object>(),
+                Arg.Any<MessageHandler<object, PackagesInitializedMessage>>()))
+            .Do(call => _packagesInitializedHandler = call.Arg<MessageHandler<object, PackagesInitializedMessage>>());
+
+        _moduleService = Substitute.For<IModuleService>();
+        _moduleService.LoadedModules.Returns(new List<IModule>());
 
         _sidecarService = Substitute.For<ISidecarService>();
         _sidecarService.IsSidecarKey(Arg.Any<ResourceKey>()).Returns(false);
@@ -92,14 +108,16 @@ public class DocumentsServiceTests
         _documentsPanel = Substitute.For<IDocumentsPanel>();
         _documentsPanel.GetOpenDocuments().Returns(Array.Empty<OpenDocumentInfo>());
 
-        var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.ResourceService.Sidecars.Returns(_sidecarService);
-        workspaceService.DocumentsPanel.Returns(_documentsPanel);
+        _workspaceService = Substitute.For<IWorkspaceService>();
+        var safeModeService = TestSafeMode.Create(isActive: false);
+        _workspaceService.SafeModeService.Returns(safeModeService);
+        _workspaceService.ResourceService.Sidecars.Returns(_sidecarService);
+        _workspaceService.DocumentsPanel.Returns(_documentsPanel);
 
         // The service guards that the workspace page is not yet loaded during construction.
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.IsWorkspaceLoaded.Returns(false);
-        workspaceWrapper.WorkspaceService.Returns(workspaceService);
+        workspaceWrapper.WorkspaceService.Returns(_workspaceService);
 
         _stringLocalizer = Substitute.For<IStringLocalizer>();
         _stringLocalizer["OpenWith_DefaultFormat", Arg.Any<object[]>()]
@@ -123,11 +141,24 @@ public class DocumentsServiceTests
             Substitute.For<ILogger<DocumentsService>>(),
             messengerService,
             _commandService,
-            moduleService,
+            _moduleService,
             workspaceWrapper,
             _textBinarySniffer);
 
         _registry = (DocumentEditorRegistry)_documentsService.DocumentEditorRegistry;
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        if (_previousServiceProvider is not null)
+        {
+            ServiceLocator.Initialize(_previousServiceProvider);
+        }
+        else
+        {
+            ServiceLocator.Reset();
+        }
     }
 
     [Test]
@@ -377,5 +408,97 @@ public class DocumentsServiceTests
         factory.IsPlaceholder.Returns(false);
         factory.CanHandleResource(Arg.Any<ResourceKey>()).Returns(true);
         return factory;
+    }
+
+    [Test]
+    public void InSafeMode_AnEditorThatIsOff_NeverRegisters()
+    {
+        // Built before the Returns call, because building the service sets up substitutes of its own.
+        var safeModeService = TestSafeMode.Create(isActive: true);
+        _workspaceService.SafeModeService.Returns(safeModeService);
+
+        DeliverPackagesInitialized();
+
+        RegisteredEditorIds().Should().BeEquivalentTo(new[]
+        {
+            BuiltInEditors.ProjectSettingsEditorId,
+            BuiltInEditors.CodeEditorId,
+        });
+    }
+
+    [Test]
+    public void OutsideSafeMode_EveryEditorRegisters()
+    {
+        DeliverPackagesInitialized();
+
+        RegisteredEditorIds().Should().BeEquivalentTo(new[]
+        {
+            BuiltInEditors.ProjectSettingsEditorId,
+            BuiltInEditors.BrowserEditorId,
+            new EditorId("acme.editor"),
+            BuiltInEditors.CodeEditorId,
+            BuiltInEditors.MarkdownEditorId,
+        });
+    }
+
+    // Delivers the message that registers the editors. The modules contribute the Project Settings and browser
+    // editors, a package contributes one editor, and the built-ins are the code and Markdown editors.
+    private void DeliverPackagesInitialized()
+    {
+        // Built before the Returns call, because building a factory sets up substitutes of its own.
+        var moduleFactories = new List<IDocumentEditorFactory>
+        {
+            CreateFactory(BuiltInEditors.ProjectSettingsEditorId, ".celbridge", "Project Settings"),
+            CreateFactory(BuiltInEditors.BrowserEditorId, ".browser", "Browser"),
+        };
+
+        var module = Substitute.For<IModule>();
+        module.CreateDocumentEditorFactories(Arg.Any<IServiceProvider>()).Returns(moduleFactories);
+        _moduleService.LoadedModules.Returns(new List<IModule> { module });
+
+        var packageService = Substitute.For<IPackageService>();
+        packageService.GetResolvedEditors().Returns(new List<ResolvedEditor>
+        {
+            CreateResolvedEditor("acme.editor", ".acme"),
+        });
+        packageService.GetBuiltInEditors().Returns(new List<ResolvedEditor>
+        {
+            CreateResolvedEditor(BuiltInEditors.CodeEditorId.ToString(), ".txt"),
+            CreateResolvedEditor(BuiltInEditors.MarkdownEditorId.ToString(), ".md"),
+        });
+        _workspaceService.PackageService.Returns(packageService);
+
+        var localizationService = Substitute.For<IPackageLocalizationService>();
+        _serviceProvider.GetService(typeof(IPackageLocalizationService)).Returns(localizationService);
+
+        // The editor associations step reads the project through the global ServiceLocator. The fixture restores
+        // the ServiceLocator after each test. No project is loaded, so the step adds no association.
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns((IProject?)null);
+        var locatorProvider = Substitute.For<IServiceProvider>();
+        locatorProvider.GetService(typeof(IProjectService)).Returns(projectService);
+        ServiceLocator.Initialize(locatorProvider);
+
+        _packagesInitializedHandler!.Invoke(this, new PackagesInitializedMessage());
+    }
+
+    private IEnumerable<EditorId> RegisteredEditorIds()
+    {
+        return _registry.GetAllFactories().Select(factory => factory.EditorId);
+    }
+
+    private static ResolvedEditor CreateResolvedEditor(string editorId, string extension)
+    {
+        var contribution = new EditorContribution
+        {
+            Id = "editor",
+            FileTypes = [new EditorFileType { FileExtension = extension }],
+        };
+
+        return new ResolvedEditor
+        {
+            EditorId = new EditorId(editorId),
+            Contribution = contribution
+        };
     }
 }

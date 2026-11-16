@@ -133,7 +133,7 @@ public sealed partial class DocumentSectionView : UserControl
             return;
         }
 
-        var message = new DocumentViewFocusedMessage(documentView.FileResource);
+        var message = new DocumentViewFocusedMessage(documentView.FileResource, IsTabClick: false);
         _messengerService.Send(message);
 
         // A press over a web surface belongs to the page: it takes the keyboard natively and reports that

@@ -90,12 +90,23 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
     // The session object for a console, created if it has none yet. Separate from the launch because a launch
     // waits for a view's size, so a caller reports that size through the session before awaiting the launch.
+    // Returns null in Safe Mode.
     private ConsoleSession? GetOrCreateSession(ResourceKey resource)
     {
         lock (_sessionsLock)
         {
+            // Checked before the Safe Mode state, which is gone once the workspace unloads.
             if (_disposed)
             {
+                return null;
+            }
+
+            // In Safe Mode, no console session starts. A session would run the console file's startup script and
+            // triggers. The check is in this service, so it applies to every editor that shows a console file.
+            var safeModeService = _workspaceWrapper.WorkspaceService.SafeModeService;
+            if (safeModeService.IsActive)
+            {
+                _logger.LogDebug("Safe Mode is on, so no console session starts for '{Resource}'", resource);
                 return null;
             }
 

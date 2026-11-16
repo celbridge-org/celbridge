@@ -529,6 +529,17 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             return;
         }
 
+        // A report from a document behind another tab is out of date. The keyboard goes back to the active document.
+        var shownDocument = location.SectionView.GetSelectedDocument();
+        if (ActiveDocumentFocusPolicy.IsFromHiddenDocument(message.DocumentResource, shownDocument, message.IsTabClick))
+        {
+            _logger.LogDebug(
+                "A focus report named {Document}, which is behind another tab",
+                message.DocumentResource);
+            FocusActiveDocument();
+            return;
+        }
+
         SectionContainer.ActivateDocument(
             message.DocumentResource,
             location.SectionView.Section,

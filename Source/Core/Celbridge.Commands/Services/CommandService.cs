@@ -4,6 +4,7 @@ using Celbridge.Dialog;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Settings;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.UI.Dispatching;
 
@@ -33,7 +34,9 @@ public class CommandService : ICommandService
 
     private bool _stopped = false;
 
-    private static readonly TimeSpan WatchdogWarningInterval = TimeSpan.FromSeconds(5);
+    // How long an operation runs before the watchdog warns about it, and how long the watchdog waits between
+    // warnings.
+    internal TimeSpan WatchdogWarningInterval { get; init; } = TimeSpan.FromSeconds(5);
 
     // How long the command loop parks when the queue is empty. Enqueuing a command signals
     // _commandEnqueued, so this interval only bounds how often the application update ticks,
@@ -49,6 +52,10 @@ public class CommandService : ICommandService
     // The UI thread's queue, which the loop yields to between commands. Null when the loop runs without a UI
     // thread, as in unit tests.
     private DispatcherQueue? _dispatcherQueue;
+
+    // The _stopwatch time at which the last dialog closed. The watchdog counts an operation's time from the later of
+    // the operation's start and this time.
+    private TimeSpan _lastDialogClosedTime;
 
     public CommandService(
         IServiceProvider serviceProvider,
@@ -66,6 +73,13 @@ public class CommandService : ICommandService
         _settingsService = settingsService;
         _workspaceWrapper = workspaceWrapper;
         _dialogService = dialogService;
+
+        _messengerService.Register<ModalDialogClosedMessage>(this, OnModalDialogClosed);
+    }
+
+    private void OnModalDialogClosed(object recipient, ModalDialogClosedMessage message)
+    {
+        _lastDialogClosedTime = _stopwatch.Elapsed;
     }
 
     public Result Execute<T>(
@@ -354,6 +368,8 @@ public class CommandService : ICommandService
     // The serial queue cannot advance until the awaited operation returns, so a genuine hang would
     // otherwise leave no trace. The operation is never cancelled. The watchdog only emits a warning,
     // and repeats it while the operation stays blocked so a permanent hang keeps reporting itself.
+    // An operation that shows a dialog waits for the user's answer, and that wait is not a hang. So the
+    // watchdog stays quiet while a dialog is open, and counts again from the moment the dialog closes.
     private async Task<Result> ExecuteWithWatchdogAsync(Task<Result> operation, string operationName)
     {
         // The application update completes synchronously on almost every tick, so allocating the
@@ -377,10 +393,24 @@ public class CommandService : ICommandService
                 return await operation;
             }
 
-            var blockedSeconds = (_stopwatch.Elapsed - startElapsed).TotalSeconds;
+            if (_dialogService.IsDialogOpen)
+            {
+                continue;
+            }
+
+            var countStart = startElapsed > _lastDialogClosedTime
+                ? startElapsed
+                : _lastDialogClosedTime;
+
+            var blockedTime = _stopwatch.Elapsed - countStart;
+            if (blockedTime < WatchdogWarningInterval)
+            {
+                continue;
+            }
+
             _logger.LogWarning(
-                $"Command queue blocked: {operationName} has run for {blockedSeconds:F0}s without completing. " +
-                $"No further commands will execute until it returns.");
+                $"Command queue blocked: {operationName} has run for {blockedTime.TotalSeconds:F0}s without completing, " +
+                $"counted from its start or from the last dialog closing. No further commands will execute until it returns.");
         }
     }
 

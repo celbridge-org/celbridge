@@ -30,7 +30,7 @@ public sealed partial class DockedUtilityDocumentView : DocumentView
         // any other document tab. Docking back into the panel re-points the controller at its Utility context.
         _focusContext = new CustomEditorFocusContext(
             FocusPanelId.Documents,
-            () => messengerService.Send(new DocumentViewFocusedMessage(FileResource)));
+            () => messengerService.Send(new DocumentViewFocusedMessage(FileResource, IsTabClick: false)));
     }
 
     /// <summary>

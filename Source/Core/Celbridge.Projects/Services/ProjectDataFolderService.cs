@@ -24,8 +24,9 @@ internal sealed class ProjectDataFolderService : IProjectDataFolderService
         WriteIndented = true
     };
 
-    // project.json records the path of the project folder that the data folder belongs to.
-    private sealed record ProjectInfo(string ProjectFolderPath);
+    // project.json records the project folder's path and whether the user trusts the project. The data folder
+    // belongs to that project folder.
+    private sealed record ProjectInfo(string ProjectFolderPath, bool Trusted);
 
     private readonly ILogger<ProjectDataFolderService> _logger;
     private readonly IAppEnvironment _appEnvironment;
@@ -78,19 +79,84 @@ internal sealed class ProjectDataFolderService : IProjectDataFolderService
                 .WithErrors(createResult);
         }
 
-        var projectInfo = new ProjectInfo(ProjectFileHelper.GetProjectFolderPath(projectFilePath));
-        var projectInfoJson = JsonSerializer.Serialize(projectInfo, ProjectInfoJsonOptions);
-
-        var writeResult = await _fileSystem.WriteAllTextAsync(projectInfoPath, projectInfoJson);
+        // A new project.json says untrusted. Only the user's answer marks the project trusted.
+        var writeResult = await WriteProjectInfoAsync(projectFilePath, trusted: false);
         if (writeResult.IsFailure)
         {
-            return Result<string>.Fail($"Failed to write the project data folder's {ProjectInfoFileName}: '{projectInfoPath}'")
+            return Result<string>.Fail($"Failed to create the project data folder: '{dataFolderPath}'")
                 .WithErrors(writeResult);
         }
 
         _logger.LogDebug($"Created the project data folder: '{dataFolderPath}'");
 
         return dataFolderPath;
+    }
+
+    public async Task<bool> IsTrustedAsync(string projectFilePath)
+    {
+        var projectInfoPath = Path.Combine(GetDataFolderPath(projectFilePath), ProjectInfoFileName);
+
+        var readResult = await _fileSystem.ReadAllTextAsync(projectInfoPath);
+        if (readResult.IsFailure)
+        {
+            return false;
+        }
+
+        ProjectInfo? projectInfo;
+        try
+        {
+            projectInfo = JsonSerializer.Deserialize<ProjectInfo>(readResult.Value, ProjectInfoJsonOptions);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        if (projectInfo is null)
+        {
+            return false;
+        }
+
+        return projectInfo.Trusted;
+    }
+
+    public async Task<Result> MarkTrustedAsync(string projectFilePath)
+    {
+        var dataFolderResult = await EnsureDataFolderAsync(projectFilePath);
+        if (dataFolderResult.IsFailure)
+        {
+            return Result.Fail($"Failed to mark the project trusted: '{projectFilePath}'")
+                .WithErrors(dataFolderResult);
+        }
+
+        // The whole file is written again, which also replaces a project.json that can't be read.
+        var writeResult = await WriteProjectInfoAsync(projectFilePath, trusted: true);
+        if (writeResult.IsFailure)
+        {
+            return Result.Fail($"Failed to mark the project trusted: '{projectFilePath}'")
+                .WithErrors(writeResult);
+        }
+
+        _logger.LogInformation($"Marked the project trusted: '{projectFilePath}'");
+
+        return Result.Ok();
+    }
+
+    private async Task<Result> WriteProjectInfoAsync(string projectFilePath, bool trusted)
+    {
+        var projectInfoPath = Path.Combine(GetDataFolderPath(projectFilePath), ProjectInfoFileName);
+
+        var projectInfo = new ProjectInfo(ProjectFileHelper.GetProjectFolderPath(projectFilePath), trusted);
+        var projectInfoJson = JsonSerializer.Serialize(projectInfo, ProjectInfoJsonOptions);
+
+        var writeResult = await _fileSystem.WriteAllTextAsync(projectInfoPath, projectInfoJson);
+        if (writeResult.IsFailure)
+        {
+            return Result.Fail($"Failed to write the project data folder's {ProjectInfoFileName}: '{projectInfoPath}'")
+                .WithErrors(writeResult);
+        }
+
+        return Result.Ok();
     }
 
     public async Task<Result> ClearDataFolderAsync(string projectFilePath)

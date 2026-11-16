@@ -38,14 +38,14 @@ export class EditorController {
     create(containerElement) {
         this.#containerElement = containerElement;
 
-        // Determine the initial Monaco theme from the app's effective theme. appState may be empty this
-        // early (before the snapshot arrives); #setupThemeListener corrects it as soon as it does.
-        const initialTheme = celbridge.appState.current.theme === 'Dark' ? 'vs-dark' : 'vs-light';
+        // With fixedOverflowWidgets on, Monaco hosts its context menu in this container, outside the
+        // .monaco-editor element. Monaco sets the theme's color variables on .monaco-editor and on every
+        // .monaco-component element. So this class gives the menu its background, border and shadow.
+        containerElement.classList.add('monaco-component');
 
         this.#editor = monaco.editor.create(containerElement, {
             language: 'plaintext',
             automaticLayout: true,
-            theme: initialTheme,
             minimap: { autohide: true },
             wordWrap: 'on',
             // Render hovers, suggestions, and the find widget's toggle tooltips on a fixed layer attached to
@@ -937,7 +937,7 @@ export class EditorController {
         // do not read prefers-color-scheme here: it follows only the OS and would ignore an in-app
         // override, and the @media query was unreliable on WebView2 theme swaps anyway.
         const applyMonacoTheme = (theme) => {
-            monaco.editor.setTheme(theme === 'Dark' ? 'vs-dark' : 'vs-light');
+            monaco.editor.setTheme(theme === 'Dark' ? 'vs-dark' : 'vs');
         };
 
         applyMonacoTheme(celbridge.appState.current.theme);

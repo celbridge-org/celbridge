@@ -10,8 +10,8 @@ using Celbridge.Resources;
 namespace Celbridge.Tests.Projects;
 
 /// <summary>
-/// Covers the recent projects list: the order it comes back in, the entries it drops, and the fact that
-/// excluding the open project is matched by path rather than by taking the head off the list.
+/// Covers the recent projects list: the order it comes back in, the entries it drops, and how the list
+/// excludes the open project by its path. Also covers creating a project, and the trust of a project.
 /// </summary>
 [TestFixture]
 public class ProjectServiceTests
@@ -81,6 +81,33 @@ public class ProjectServiceTests
 
         result.IsSuccess.Should().BeTrue();
         clearedBeforeTheTemplate.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task CreateProject_MarksTheNewProjectTrusted()
+    {
+        // A project created on this machine never asks whether the user trusts it.
+        var projectFilePath = MakeProjectFilePath("Created");
+        StubProjectMissing(projectFilePath);
+
+        var template = CreateEmptyTemplate();
+        _projectTemplateService.CreateFromTemplateAsync(projectFilePath, template, Arg.Any<bool>())
+            .Returns(Result.Ok());
+
+        var result = await _projectService.CreateProjectAsync(new NewProjectConfig(projectFilePath, template));
+
+        result.IsSuccess.Should().BeTrue();
+        (await _projectService.IsTrustedAsync(projectFilePath)).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task AssumeTrusted_TrustsAProjectWithoutReadingOrRecordingTheTrust()
+    {
+        _projectService.AssumeTrusted();
+
+        (await _projectService.IsTrustedAsync(NewestProject)).Should().BeTrue();
+        _projectDataFolderService.TrustReads.Should().Be(0);
+        _projectDataFolderService.TrustedPaths.Should().BeEmpty();
     }
 
     [Test]
@@ -293,6 +320,22 @@ public class ProjectServiceTests
             ClearedPaths.Add(projectFilePath);
             return Task.FromResult(ClearResult);
         }
+
+        public List<string> TrustedPaths { get; } = new();
+
+        public int TrustReads { get; private set; }
+
+        public Task<bool> IsTrustedAsync(string projectFilePath)
+        {
+            TrustReads++;
+            return Task.FromResult(TrustedPaths.Contains(projectFilePath));
+        }
+
+        public Task<Result> MarkTrustedAsync(string projectFilePath)
+        {
+            TrustedPaths.Add(projectFilePath);
+            return Task.FromResult(Result.Ok());
+        }
     }
 
     private static ProjectTemplate CreateEmptyTemplate()
@@ -327,7 +370,7 @@ public class ProjectServiceTests
         StubStoredProjects();
 
         var migrationResult = MigrationResult.Success();
-        var loadResult = _projectService.LoadProjectAsync(projectFilePath, migrationResult).GetAwaiter().GetResult();
+        var loadResult = _projectService.LoadProjectAsync(projectFilePath, migrationResult, isTrusted: true).GetAwaiter().GetResult();
         loadResult.IsSuccess.Should().BeTrue();
 
         return loadResult.Value;

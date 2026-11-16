@@ -15,6 +15,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly WorkspaceItemSaver _workspaceItemSaver;
 
+    public ISafeModeService SafeModeService { get; }
     public IWorkspaceSettingsService WorkspaceSettings { get; }
     public IBindableWorkspaceSettings BindableWorkspaceSettings { get; }
     public IPackageService PackageService { get; }
@@ -47,6 +48,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
         // Create instances of the required sub-services
 
+        SafeModeService = serviceProvider.GetRequiredService<ISafeModeService>();
         WorkspaceSettings = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
         BindableWorkspaceSettings = serviceProvider.GetRequiredService<IBindableWorkspaceSettings>();
         PackageService = serviceProvider.GetRequiredService<IPackageService>();

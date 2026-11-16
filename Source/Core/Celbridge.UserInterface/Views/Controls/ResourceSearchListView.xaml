@@ -4,12 +4,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:vm="using:Celbridge.UserInterface.ViewModels"
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
-  xmlns:services="using:Celbridge.UserInterface.Services"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
-
-  <UserControl.Resources>
-    <services:BoolToDimmedOpacityConverter x:Key="BoolToDimmedOpacityConverter"/>
-  </UserControl.Resources>
 
   <!-- The list takes whatever height the dialog gives the control. -->
   <Grid>
@@ -115,12 +110,12 @@
             <controls:FileIcon Grid.Column="0"
                                Size="18"
                                IconDefinition="{x:Bind IconDefinition}"
-                               Opacity="{x:Bind IsWritable, Converter={StaticResource BoolToDimmedOpacityConverter}}"
+                               Opacity="{x:Bind IsReadOnly, Converter={StaticResource BoolToDimmedOpacityConverter}, ConverterParameter=Inverted}"
                                VerticalAlignment="Center"/>
 
             <TextBlock Grid.Column="1"
                        Text="{x:Bind DisplayText}"
-                       Opacity="{x:Bind IsWritable, Converter={StaticResource BoolToDimmedOpacityConverter}}"
+                       Opacity="{x:Bind IsReadOnly, Converter={StaticResource BoolToDimmedOpacityConverter}, ConverterParameter=Inverted}"
                        VerticalAlignment="Center"
                        Margin="8,0,0,0"
                        TextTrimming="CharacterEllipsis"/>

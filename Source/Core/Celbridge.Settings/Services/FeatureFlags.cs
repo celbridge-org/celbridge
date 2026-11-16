@@ -16,6 +16,8 @@ public class FeatureFlags : IFeatureFlags
 
     private IReadOnlyDictionary<string, bool> _projectOverrides = new Dictionary<string, bool>();
 
+    private bool _allFeaturesOff;
+
     public FeatureFlags(
         IConfiguration configuration,
         IMessengerService messengerService)
@@ -26,6 +28,11 @@ public class FeatureFlags : IFeatureFlags
 
     public bool IsEnabled(string featureName)
     {
+        if (_allFeaturesOff)
+        {
+            return false;
+        }
+
         if (_projectOverrides.TryGetValue(featureName, out var overrideValue))
         {
             return overrideValue;
@@ -48,9 +55,16 @@ public class FeatureFlags : IFeatureFlags
         _messengerService.Send(new FeatureFlagsChangedMessage());
     }
 
+    public void TurnOffAllFeatures()
+    {
+        _allFeaturesOff = true;
+        _messengerService.Send(new FeatureFlagsChangedMessage());
+    }
+
     public void ClearProjectOverrides()
     {
         _projectOverrides = new Dictionary<string, bool>();
+        _allFeaturesOff = false;
         _messengerService.Send(new FeatureFlagsChangedMessage());
     }
 }
