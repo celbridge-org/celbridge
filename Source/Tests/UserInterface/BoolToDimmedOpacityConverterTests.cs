@@ -28,4 +28,24 @@ public class BoolToDimmedOpacityConverterTests
 
         opacity.Should().Be(0.5);
     }
+
+    [Test]
+    public void TrueInverted_MapsToDimmedOpacity()
+    {
+        var converter = new BoolToDimmedOpacityConverter();
+
+        var opacity = converter.Convert(true, typeof(double), "Inverted", null!);
+
+        opacity.Should().Be(0.5);
+    }
+
+    [Test]
+    public void FalseInverted_MapsToFullOpacity()
+    {
+        var converter = new BoolToDimmedOpacityConverter();
+
+        var opacity = converter.Convert(false, typeof(double), "Inverted", null!);
+
+        opacity.Should().Be(1.0);
+    }
 }

@@ -48,7 +48,10 @@ internal static class TestResourcePolicy
         public Task<Result<IReadOnlyList<string>>> GetConflictingFileNamesAsync(NewProjectConfig config) => throw new NotImplementedException();
         public Task<Result<IReadOnlyList<string>>> FindProjectFilesAsync(string folderPath) => throw new NotImplementedException();
         public Task<Result> CreateProjectAsync(NewProjectConfig config, bool replaceExistingFiles = false) => throw new NotImplementedException();
-        public Task<Result<IProject>> LoadProjectAsync(string projectFilePath, MigrationResult migrationResult) => throw new NotImplementedException();
+        public Task<Result<IProject>> LoadProjectAsync(string projectFilePath, MigrationResult migrationResult, bool isTrusted) => throw new NotImplementedException();
+        public Task<bool> IsTrustedAsync(string projectFilePath) => throw new NotImplementedException();
+        public Task<Result> TrustProjectAsync(string projectFilePath) => throw new NotImplementedException();
+        public void AssumeTrusted() => throw new NotImplementedException();
         public Task<ProjectConfigReconcileResult?> ReconcileConfigAsync(IReadOnlyList<EditorContribution> discoveredContributions, bool persistNormalizedConfig) => throw new NotImplementedException();
         public void ClearCurrentProject() => throw new NotImplementedException();
         public List<RecentProject> GetRecentProjects(bool excludeCurrentProject) => throw new NotImplementedException();

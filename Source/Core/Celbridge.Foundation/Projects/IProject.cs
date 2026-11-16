@@ -52,6 +52,11 @@ public interface IProject
     MigrationResult MigrationResult { get; }
 
     /// <summary>
+    /// True when the user trusts the project on this machine. An untrusted project opens in Safe Mode.
+    /// </summary>
+    bool IsTrusted { get; }
+
+    /// <summary>
     /// True when the resource is this project's .celbridge file, which sits at the project root.
     /// </summary>
     bool IsProjectFile(ResourceKey resource);

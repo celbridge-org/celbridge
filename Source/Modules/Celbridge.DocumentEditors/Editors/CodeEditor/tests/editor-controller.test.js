@@ -78,6 +78,31 @@ async function flushMicrotasks() {
     await Promise.resolve();
 }
 
+describe('EditorController.create', () => {
+    it('gives the container the theme colors, so the context menu Monaco hosts there has its background', () => {
+        installMonacoStub(createMockEditor(createMockModel()));
+        const container = document.createElement('div');
+
+        new EditorController().create(container);
+
+        expect(container.classList.contains('monaco-component')).toBe(true);
+    });
+
+    it('sets the Monaco theme that matches the app theme, and follows it when it changes', () => {
+        installMonacoStub(createMockEditor(createMockModel()));
+        celbridge.appState.current.theme = 'Light';
+
+        new EditorController().create(document.createElement('div'));
+        expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('vs');
+
+        __capturedHandlers.onAppStateChanged({ theme: 'Dark' });
+        expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('vs-dark');
+
+        __capturedHandlers.onAppStateChanged({ theme: 'Light' });
+        expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('vs');
+    });
+});
+
 describe('EditorController.handleExternalChange', () => {
     let model;
     let editor;

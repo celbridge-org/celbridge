@@ -1,4 +1,6 @@
-namespace Celbridge.UserInterface.Helpers;
+using Path = System.IO.Path;
+
+namespace Celbridge.Utilities;
 
 /// <summary>
 /// Formats absolute filesystem paths for display in the user interface.
@@ -30,12 +32,7 @@ public static class DisplayPathFormatter
             return path;
         }
 
-        // Windows and macOS both match paths without regard to case; Linux filesystems are case sensitive.
-        var comparison = OperatingSystem.IsLinux()
-            ? StringComparison.Ordinal
-            : StringComparison.OrdinalIgnoreCase;
-
-        if (!path.StartsWith(homeFolderPath, comparison))
+        if (!path.StartsWith(homeFolderPath, PathComparison.Comparison))
         {
             return path;
         }

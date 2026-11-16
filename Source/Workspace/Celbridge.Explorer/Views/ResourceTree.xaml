@@ -6,13 +6,10 @@
   xmlns:models="using:Celbridge.Explorer.Models"
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
   xmlns:converters="using:Celbridge.UserInterface.Converters"
-  xmlns:services="using:Celbridge.UserInterface.Services"
   DataContext="{x:Bind ViewModel}"
   Background="{ThemeResource ContentBackgroundBrush}">
 
   <UserControl.Resources>
-    <services:InverseBoolToDimmedOpacityConverter x:Key="InverseBoolToDimmedOpacityConverter"/>
-
     <!-- MenuFlyout for context menu -->
     <MenuFlyout x:Name="ResourceContextMenu"/>
 
@@ -48,7 +45,7 @@
         <local:ResourceIcon Grid.Column="1"
                             IsFolder="{x:Bind IsFolder}"
                             FileIcon="{x:Bind FileIcon}"
-                            Opacity="{x:Bind IsDimmed, Converter={StaticResource InverseBoolToDimmedOpacityConverter}}"
+                            Opacity="{x:Bind IsDimmed, Converter={StaticResource BoolToDimmedOpacityConverter}, ConverterParameter=Inverted}"
                             Margin="0,0,8,0"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Left" />
@@ -56,7 +53,7 @@
         <!-- Resource name (semi-bold for project folder, dimmed when read-only or hidden) -->
         <TextBlock Grid.Column="2"
                    Text="{x:Bind Name}"
-                   Opacity="{x:Bind IsDimmed, Converter={StaticResource InverseBoolToDimmedOpacityConverter}}"
+                   Opacity="{x:Bind IsDimmed, Converter={StaticResource BoolToDimmedOpacityConverter}, ConverterParameter=Inverted}"
                    VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis"
                    FontWeight="{x:Bind IsProjectFolder, Converter={StaticResource ProjectFolderFontWeightConverter}}" />

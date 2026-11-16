@@ -53,7 +53,6 @@ public class WebViewSettingsViewModelTests
         viewModel.BeginClearBrowsingDataCommand.Execute(null);
 
         viewModel.IsConfirmingClear.Should().BeTrue();
-        viewModel.IsClearButtonVisible.Should().BeFalse();
         _commandService.DidNotReceive().ExecuteImmediate<IClearBrowsingDataCommand>(
             Arg.Any<Action<IClearBrowsingDataCommand>?>(), Arg.Any<string>(), Arg.Any<int>());
     }
@@ -84,7 +83,6 @@ public class WebViewSettingsViewModelTests
         viewModel.CancelClearBrowsingDataCommand.Execute(null);
 
         viewModel.IsConfirmingClear.Should().BeFalse();
-        viewModel.IsClearButtonVisible.Should().BeTrue();
         _commandService.DidNotReceive().ExecuteImmediate<IClearBrowsingDataCommand>(
             Arg.Any<Action<IClearBrowsingDataCommand>?>(), Arg.Any<string>(), Arg.Any<int>());
         viewModel.IsStatusVisible.Should().BeFalse();

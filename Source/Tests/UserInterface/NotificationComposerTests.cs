@@ -107,6 +107,28 @@ public class NotificationComposerTests
         action.Label.Should().Be("Open Project Settings");
     }
 
+    [Test]
+    public void SafeModeForAnUntrustedProject_IsAWarningConditionThatOpensProjectSettings()
+    {
+        SendWorkspaceLoadedInSafeMode(SafeModeCause.Untrusted);
+
+        var notification = _centre.Notifications.Should().ContainSingle().Subject;
+        notification.Kind.Should().Be(NotificationKind.Condition);
+        notification.Content.Severity.Should().Be(ReportSeverity.Warning);
+        notification.Content.Message.Should().Be("Safe Mode is on. You haven't trusted this project");
+        notification.Content.Action!.Resource.Should().Be(new ResourceKey("Acme.celbridge"));
+    }
+
+    [Test]
+    public void SafeModeForAnUntrustedProjectThatAlsoFailed_GivesTheFailureAsAnError()
+    {
+        SendWorkspaceLoadedInSafeMode(SafeModeCause.Untrusted, SafeModeCause.ConfigurationFailed);
+
+        var notification = _centre.Notifications.Should().ContainSingle().Subject;
+        notification.Content.Severity.Should().Be(ReportSeverity.Error);
+        notification.Content.Message.Should().Be("Safe Mode is on. The project file could not be read");
+    }
+
     // Each cause needs its own text. A cause without one fails here, not during a load.
     [Test]
     public void EachCauseOfSafeMode_HasItsOwnText([Values] SafeModeCause cause)

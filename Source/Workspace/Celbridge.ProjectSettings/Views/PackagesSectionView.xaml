@@ -9,7 +9,6 @@
   <UserControl.Resources>
 
     <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-    <services:BoolToDimmedOpacityConverter x:Key="BoolToDimmedOpacityConverter"/>
 
     <Style x:Key="ContributionCardStyle" TargetType="Border">
       <Setter Property="Background" Value="{ThemeResource ContentBackgroundBrush}"/>

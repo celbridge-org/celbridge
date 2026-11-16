@@ -19,6 +19,9 @@ internal class ProjectService : IProjectService
     private readonly IProjectDataFolderService _projectDataFolderService;
     private readonly ILocalFileSystem _fileSystem;
 
+    // Once set, the field stays set for the session. Every project then counts as trusted, and no trust is recorded.
+    private bool _assumesTrusted;
+
     public IProject? CurrentProject { get; private set; }
 
     public ProjectService(
@@ -77,7 +80,8 @@ internal class ProjectService : IProjectService
             project.Config,
             project.MigrationResult,
             project.ConfigIsHealthy,
-            project.ConfigLoadFailure);
+            project.ConfigLoadFailure,
+            project.IsTrusted);
 
         ReplaceRecentProject(project.ProjectFilePath, newProjectFilePath);
     }
@@ -173,6 +177,14 @@ internal class ProjectService : IProjectService
                     .WithErrors(createResult);
             }
 
+            // A project created on this machine starts trusted. If the trust can't be recorded, the project still
+            // exists, and its first open asks.
+            var trustResult = await _projectDataFolderService.MarkTrustedAsync(projectFilePath);
+            if (trustResult.IsFailure)
+            {
+                _logger.LogWarning(trustResult, $"Failed to mark the new project trusted: '{projectFilePath}'");
+            }
+
             return Result.Ok();
         }
         catch (Exception ex)
@@ -182,11 +194,36 @@ internal class ProjectService : IProjectService
         }
     }
 
-    public async Task<Result<IProject>> LoadProjectAsync(string projectFilePath, MigrationResult migrationResult)
+    public async Task<bool> IsTrustedAsync(string projectFilePath)
+    {
+        if (_assumesTrusted)
+        {
+            return true;
+        }
+
+        return await _projectDataFolderService.IsTrustedAsync(projectFilePath);
+    }
+
+    public async Task<Result> TrustProjectAsync(string projectFilePath)
+    {
+        return await _projectDataFolderService.MarkTrustedAsync(projectFilePath);
+    }
+
+    public void AssumeTrusted()
+    {
+#if DEBUG
+        _assumesTrusted = true;
+        _logger.LogInformation("This instance assumes that every project it opens is trusted");
+#else
+        throw new NotSupportedException("Only a Debug build can assume that every project is trusted.");
+#endif
+    }
+
+    public async Task<Result<IProject>> LoadProjectAsync(string projectFilePath, MigrationResult migrationResult, bool isTrusted)
     {
         try
         {
-            var loadResult = await _projectFactory.LoadAsync(projectFilePath, migrationResult);
+            var loadResult = await _projectFactory.LoadAsync(projectFilePath, migrationResult, isTrusted);
             if (loadResult.IsFailure)
             {
                 return Result<IProject>.Fail($"Failed to load project: {projectFilePath}")

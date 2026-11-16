@@ -410,6 +410,9 @@ This file could not be saved</value>
   <data name="Notification_SafeMode_ConfigurationFailed" xml:space="preserve">
     <value>Safe Mode is on. The project file could not be read</value>
   </data>
+  <data name="Notification_SafeMode_Untrusted" xml:space="preserve">
+    <value>Safe Mode is on. You haven't trusted this project</value>
+  </data>
   <data name="Notification_ProjectLoadIssues_One" xml:space="preserve">
     <value>The project loaded with 1 issue</value>
   </data>
@@ -1056,6 +1059,18 @@ Open with default application instead?</value>
   <data name="ProjectSettings_SafeModeCaption" xml:space="preserve">
     <value>Safe Mode is on. Most features are switched off.</value>
   </data>
+  <data name="ProjectSettings_SafeModeHeader" xml:space="preserve">
+    <value>Safe Mode</value>
+  </data>
+  <data name="ProjectSettings_SafeModeDescription" xml:space="preserve">
+    <value>See why Safe Mode is on, and open the project fully.</value>
+  </data>
+  <data name="ProjectSettings_SafeModeUntrusted" xml:space="preserve">
+    <value>This project's code stays off until you trust the project. Trust it only if you know where it came from.</value>
+  </data>
+  <data name="ProjectSettings_TrustProject" xml:space="preserve">
+    <value>Trust Project</value>
+  </data>
   <data name="ProjectSettings_OpenInCodeEditor" xml:space="preserve">
     <value>Open in Code Editor</value>
   </data>
@@ -1614,6 +1629,20 @@ Open with default application instead?</value>
   <data name="ProjectSafeModeAlert_ViewLoadReport" xml:space="preserve">
     <value>View Load Report</value>
   </data>
+  <data name="ProjectTrustDialog_Title" xml:space="preserve">
+    <value>Do you trust this project?</value>
+  </data>
+  <data name="ProjectTrustDialog_Message" xml:space="preserve">
+    <value>Projects can run code on your computer. If you're not sure where this project came from, open it in Safe Mode.
+
+{0}</value>
+  </data>
+  <data name="ProjectTrustDialog_TrustProject" xml:space="preserve">
+    <value>Trust Project</value>
+  </data>
+  <data name="ProjectTrustDialog_OpenInSafeMode" xml:space="preserve">
+    <value>Open in Safe Mode</value>
+  </data>
   <data name="ProjectNewerVersionAlert_Title" xml:space="preserve">
     <value>Newer Version Required</value>
   </data>
@@ -2117,6 +2146,9 @@ Open with default application instead?</value>
   </data>
   <data name="Report_ProjectLoad_SafeModeCause_ConfigurationFailed" xml:space="preserve">
     <value>The project file could not be read.</value>
+  </data>
+  <data name="Report_ProjectLoad_SafeModeCause_Untrusted" xml:space="preserve">
+    <value>The project is not trusted on this computer.</value>
   </data>
   <data name="Report_ProjectLoad_Fact_LoadDuration" xml:space="preserve">
     <value>Load duration</value>

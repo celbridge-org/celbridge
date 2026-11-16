@@ -61,7 +61,8 @@ public class TrashServiceTests
             new ProjectConfig(),
             MigrationResult.Success(),
             ConfigIsHealthy: true,
-            ConfigLoadFailure: null);
+            ConfigLoadFailure: null,
+            IsTrusted: true);
 
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns(project);

@@ -32,6 +32,11 @@ public class SafeModeService : ISafeModeService
         var project = projectService.CurrentProject;
         Guard.IsNotNull(project);
 
+        if (!project.IsTrusted)
+        {
+            _causes.Add(SafeModeCause.Untrusted);
+        }
+
         if (!project.ConfigIsHealthy)
         {
             _causes.Add(SafeModeCause.ConfigurationFailed);

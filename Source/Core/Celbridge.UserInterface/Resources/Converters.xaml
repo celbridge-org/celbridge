@@ -4,7 +4,10 @@
 
     <!-- Converts a boolean value to an opacity value (true = 1.0, false = 0.0) -->
     <services:BoolToOpacityConverter x:Key="BoolToOpacityConverter"/>
-    
+
+    <!-- Converts a boolean value to an opacity value (true = 1.0, false = dimmed). ConverterParameter=Inverted dims a true value instead -->
+    <services:BoolToDimmedOpacityConverter x:Key="BoolToDimmedOpacityConverter"/>
+
     <!-- Converts a boolean value to a Visibility value (true = Visible, false = Collapsed) -->
     <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
 

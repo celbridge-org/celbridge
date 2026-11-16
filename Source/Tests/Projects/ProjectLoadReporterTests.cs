@@ -286,6 +286,19 @@ public class ProjectLoadReporterTests
         GetSectionFacts(report, "Summary")["Safe Mode"].Should().Be("On. The project file could not be read.");
     }
 
+    [Test]
+    public async Task FlushAsync_InSafeModeForTwoCauses_TheSummaryGivesBoth()
+    {
+        _reporter.BeginLoad(_projectFilePath);
+        _reporter.RecordSafeModeCauses([SafeModeCause.Untrusted, SafeModeCause.ConfigurationFailed]);
+        _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
+
+        var report = await FlushAndReadAsync();
+
+        GetSectionFacts(report, "Summary")["Safe Mode"].Should().Be(
+            "On. The project is not trusted on this computer. The project file could not be read.");
+    }
+
     // Each cause needs its own text. A cause without one fails here, not during a load.
     [Test]
     public async Task FlushAsync_InSafeMode_EachCauseHasItsOwnText([Values] SafeModeCause cause)

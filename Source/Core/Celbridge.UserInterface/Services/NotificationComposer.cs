@@ -151,21 +151,24 @@ public sealed class NotificationComposer
         return Compose(summary.Severity, messageKey, ComposeReportAction(summary.Resource), summary.IssueCount);
     }
 
-    // The action opens the project file, which opens Project Settings.
+    // The action opens the project file, which opens Project Settings. The entry gives one cause. A failure comes
+    // before an untrusted project, because trusting the project leaves the failure in place.
     private NotificationContent ComposeSafeModeNotification(WorkspaceLoadedInSafeModeMessage message)
     {
         var label = _localizerService.GetString("Notification_OpenProjectSettingsButton");
         var action = new OpenDocumentAction(message.ProjectFileResource, label);
 
-        // The configuration cause is a failure, so the entry is an error.
-        var cause = message.Causes[0];
-        var messageKey = cause switch
+        var cause = message.Causes.FirstOrDefault(cause => cause != SafeModeCause.Untrusted, SafeModeCause.Untrusted);
+
+        // An untrusted project's entry is a warning, because the user chose Safe Mode. A failure's entry is an error.
+        var (severity, messageKey) = cause switch
         {
-            SafeModeCause.ConfigurationFailed => "Notification_SafeMode_ConfigurationFailed",
+            SafeModeCause.Untrusted => (ReportSeverity.Warning, "Notification_SafeMode_Untrusted"),
+            SafeModeCause.ConfigurationFailed => (ReportSeverity.Error, "Notification_SafeMode_ConfigurationFailed"),
             _ => throw new ArgumentOutOfRangeException(nameof(cause), cause, "Unhandled Safe Mode cause")
         };
 
-        return Compose(ReportSeverity.Error, messageKey, action);
+        return Compose(severity, messageKey, action);
     }
 
     private NotificationContent ComposeOperationNotification(ResourceOperationFailedMessage message)

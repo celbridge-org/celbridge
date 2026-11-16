@@ -142,7 +142,8 @@ public class ProjectSettingsEditorFactoryTests
             new ProjectConfig(),
             MigrationResult.Success(),
             ConfigIsHealthy: true,
-            ConfigLoadFailure: null);
+            ConfigLoadFailure: null,
+            IsTrusted: true);
 
         _projectService.CurrentProject.Returns(project);
     }

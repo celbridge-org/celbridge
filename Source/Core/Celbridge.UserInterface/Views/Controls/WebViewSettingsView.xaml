@@ -15,7 +15,7 @@
     <StackPanel Spacing="8">
       <Button Content="{x:Bind ClearBrowsingDataString}"
               HorizontalAlignment="Left"
-              Visibility="{x:Bind ViewModel.IsClearButtonVisible, Mode=OneWay}"
+              Visibility="{x:Bind ViewModel.IsConfirmingClear, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverted}"
               IsEnabled="{x:Bind ViewModel.IsClearEnabled, Mode=OneWay}"
               Command="{x:Bind ViewModel.BeginClearBrowsingDataCommand}"/>
 

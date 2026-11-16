@@ -14,6 +14,7 @@ A JSON object with these fields:
 - `configuration` (string) — the build configuration, `Debug` or `Release`. Only a `Debug` build has the test automation tools in the `ui` namespace.
 - `isLoaded` (bool) — whether a project is currently loaded.
 - `projectName` (string) — the project name, empty when no project is loaded.
+- `safeMode` (object) — `{isActive, causes}`. `isActive` says whether the loaded project is in Safe Mode, where most features are off and none of the project's code runs. `causes` names each reason for Safe Mode. `Untrusted` means the user has not trusted the project on this computer. `ConfigurationFailed` means the project file failed to load. `causes` is empty outside Safe Mode. Only the user can trust a project. The user trusts it in the dialog that asks when the project opens, or with the Trust Project button in Project Settings. No tool in a release build sets the trust.
 - `packages` (array) — each project package as the project loaded, with its `name` and `packageVersion`. Bundled packages are omitted, and the list is empty when no project is loaded. `app_list_packages` reports the same packages with their folders.
 - `packageLoadFailureCount` (int) — the number of packages in the project tree that failed to load. `app_list_packages` gives the reasons.
 - `featureFlags` (object) — maps every declared flag name to its enabled state for the loaded project. Consult before calling a feature-gated tool.

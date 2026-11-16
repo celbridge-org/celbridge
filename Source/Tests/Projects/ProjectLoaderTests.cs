@@ -23,7 +23,7 @@ namespace Celbridge.Tests.Projects;
 /// project already open here, the lock, the version and the upgrade prompt. A lock that another instance has taken
 /// leads to a different outcome for each way a load can start. The tests also cover when the lock is kept and
 /// released, and the load report. They also cover a load that fails or throws, and the alerts a refused version
-/// raises.
+/// raises. The trust dialog asks about an untrusted project after those checks and before the upgrade prompt.
 /// </summary>
 [TestFixture]
 public class ProjectLoaderTests
@@ -31,6 +31,7 @@ public class ProjectLoaderTests
     private const string ProjectFilePath = "/projects/Acme/Acme.celbridge";
     private const string OtherProjectFilePath = "/projects/Acme/Other.celbridge";
     private const string CurrentProjectFilePath = "/projects/Current/Current.celbridge";
+    private const string TrustDialogTitle = "Do you trust this project?";
 
     private IProjectMigrationService _migrationService = null!;
     private IProjectService _projectService = null!;
@@ -44,6 +45,7 @@ public class ProjectLoaderTests
     private IAutomationService _automationService = null!;
     private IProjectLoadReporter _loadReporter = null!;
     private ICommandService _commandService = null!;
+    private ProjectUnloader _projectUnloader = null!;
     private ProjectLoader _projectLoader = null!;
 
     [SetUp]
@@ -72,7 +74,7 @@ public class ProjectLoaderTests
         _migrationService.CheckMigrationAsync(ProjectFilePath).Returns(MigrationResult.Success());
         StubFolderProjectFiles(ProjectFilePath);
         _projectLoadResult = Result<IProject>.Ok(CreateProject(ProjectFilePath));
-        _projectService.LoadProjectAsync(Arg.Any<string>(), Arg.Any<MigrationResult>())
+        _projectService.LoadProjectAsync(Arg.Any<string>(), Arg.Any<MigrationResult>(), Arg.Any<bool>())
             .Returns(_ =>
             {
                 if (_projectLoadResult.IsSuccess)
@@ -82,11 +84,14 @@ public class ProjectLoaderTests
 
                 return _projectLoadResult;
             });
+        // By default the project is trusted, so no trust dialog shows.
+        _projectService.IsTrustedAsync(Arg.Any<string>()).Returns(true);
+        _projectService.TrustProjectAsync(Arg.Any<string>()).Returns(Result.Ok());
         _applicationShell.ShowWorkspaceAsync(Arg.Any<CancellationTokenSource>()).Returns(Result.Ok());
         _applicationShell.CloseWorkspaceAsync().Returns(Result.Ok());
         _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
 
-        var projectUnloader = new ProjectUnloader(
+        _projectUnloader = new ProjectUnloader(
             new NullLogger<ProjectUnloader>(),
             _projectService,
             _applicationShell,
@@ -99,7 +104,7 @@ public class ProjectLoaderTests
             _migrationService,
             _projectService,
             _projectLockService,
-            projectUnloader,
+            _projectUnloader,
             _dialogService,
             _applicationShell,
             _settingsService,
@@ -301,7 +306,7 @@ public class ProjectLoaderTests
         var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
 
         result.IsSuccess.Should().BeTrue();
-        await _projectService.Received(1).LoadProjectAsync(ProjectFilePath, Arg.Any<MigrationResult>());
+        await _projectService.Received(1).LoadProjectAsync(ProjectFilePath, Arg.Any<MigrationResult>(), Arg.Any<bool>());
     }
 
     [Test]
@@ -320,7 +325,7 @@ public class ProjectLoaderTests
                 message.Contains("v1.4.0 or later") &&
                 message.Contains("(v1.3.0)")));
 
-        await _projectService.DidNotReceiveWithAnyArgs().LoadProjectAsync(default!, default!);
+        await _projectService.DidNotReceiveWithAnyArgs().LoadProjectAsync(default!, default!, default);
     }
 
     [Test]
@@ -339,7 +344,7 @@ public class ProjectLoaderTests
                 message.Contains("v0.3.0") &&
                 message.Contains($"before v{ProjectConstants.MinimumSupportedCelbridgeVersion}")));
 
-        await _projectService.DidNotReceiveWithAnyArgs().LoadProjectAsync(default!, default!);
+        await _projectService.DidNotReceiveWithAnyArgs().LoadProjectAsync(default!, default!, default);
     }
 
     [Test]
@@ -399,7 +404,7 @@ public class ProjectLoaderTests
         AssertTheCurrentProjectStaysOpen();
         _projectLockService.HeldProjectFiles.Should().NotContain(ProjectFilePath);
         await _migrationService.DidNotReceiveWithAnyArgs().PerformMigrationUpgradeAsync(default!);
-        await _projectService.DidNotReceiveWithAnyArgs().LoadProjectAsync(default!, default!);
+        await _projectService.DidNotReceiveWithAnyArgs().LoadProjectAsync(default!, default!, default);
         _automationService.DidNotReceive().LogEvent(Arg.Any<ProjectLoadFailedEvent>());
     }
 
@@ -499,7 +504,7 @@ public class ProjectLoaderTests
             _dialogService.ShowAlertDialogAsync("Project Already Open", Arg.Any<string>());
             _applicationShell.ExitApplicationAsync();
         });
-        await _projectService.DidNotReceiveWithAnyArgs().LoadProjectAsync(default!, default!);
+        await _projectService.DidNotReceiveWithAnyArgs().LoadProjectAsync(default!, default!, default);
     }
 
     [Test]
@@ -511,7 +516,7 @@ public class ProjectLoaderTests
 
         result.IsSuccess.Should().BeTrue();
         await _dialogService.DidNotReceiveWithAnyArgs().ShowAlertDialogAsync(default!, default!);
-        await _projectService.DidNotReceiveWithAnyArgs().LoadProjectAsync(default!, default!);
+        await _projectService.DidNotReceiveWithAnyArgs().LoadProjectAsync(default!, default!, default);
         await _applicationShell.DidNotReceive().ExitApplicationAsync();
         _automationService.Received(1).LogEvent(new PreviousProjectSkippedEvent(ProjectFilePath));
         _automationService.DidNotReceive().LogEvent(Arg.Any<ProjectLoadFailedEvent>());
@@ -654,6 +659,223 @@ public class ProjectLoaderTests
         result.IsSuccess.Should().BeTrue();
         await _dialogService.DidNotReceiveWithAnyArgs().ShowAlertDialogAsync(default!, default!);
         await _dialogService.DidNotReceiveWithAnyArgs().ShowConfirmationDialogAsync(default!, default!, default);
+    }
+
+    [Test]
+    public async Task ATrustedProject_OpensFullyWithoutTheTrustDialog()
+    {
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsSuccess.Should().BeTrue();
+        await AssertTheTrustDialogNeverShows();
+        await _projectService.Received(1).LoadProjectAsync(ProjectFilePath, Arg.Any<MigrationResult>(), true);
+    }
+
+    [TestCase(ProjectLoadOrigin.RunningWindow)]
+    [TestCase(ProjectLoadOrigin.PreviousProject)]
+    [TestCase(ProjectLoadOrigin.LaunchFile)]
+    public async Task AnUntrustedProject_AsksWhetherTheUserTrustsIt(ProjectLoadOrigin origin)
+    {
+        _projectService.IsTrustedAsync(ProjectFilePath).Returns(false);
+        StubConfirmationAnswer(false);
+
+        await _projectLoader.LoadProjectAsync(ProjectFilePath, origin);
+
+        // Open in Safe Mode is the accented default, so Return opens the project in Safe Mode.
+        await _dialogService.Received(1).ShowConfirmationDialogAsync(
+            TrustDialogTitle,
+            Arg.Is<string>(message => message.Contains("Safe Mode")),
+            Arg.Is<ConfirmationDialogOptions?>(options => IsTrustDialog(options)));
+    }
+
+    [Test]
+    public async Task TheTrustDialog_NamesTheProjectFileBelowThePrompt()
+    {
+        _projectService.IsTrustedAsync(ProjectFilePath).Returns(false);
+        StubConfirmationAnswer(false);
+
+        await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        // ProjectFilePath is outside the home folder, so the message shows it in full, with no ~.
+        await _dialogService.Received(1).ShowConfirmationDialogAsync(
+            TrustDialogTitle,
+            Arg.Is<string>(message => message.StartsWith("Projects can run code") && message.EndsWith($"\n\n{ProjectFilePath}")),
+            Arg.Any<ConfirmationDialogOptions?>());
+    }
+
+    [Test]
+    public async Task TheTrustDialog_ShowsWithTheLockHeldAndTheCurrentProjectStillOpen()
+    {
+        _projectService.IsTrustedAsync(ProjectFilePath).Returns(false);
+        var lockHeldWhenAsked = false;
+        var currentProjectWhenAsked = string.Empty;
+        _dialogService.ShowConfirmationDialogAsync(TrustDialogTitle, Arg.Any<string>(), Arg.Any<ConfirmationDialogOptions?>())
+            .Returns(_ =>
+            {
+                lockHeldWhenAsked = _projectLockService.HeldProjectFiles.Contains(ProjectFilePath);
+                currentProjectWhenAsked = _currentProject?.ProjectFilePath ?? string.Empty;
+                return Result<bool>.Ok(false);
+            });
+
+        await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        lockHeldWhenAsked.Should().BeTrue();
+        currentProjectWhenAsked.Should().Be(CurrentProjectFilePath);
+    }
+
+    [Test]
+    public async Task TrustProject_RecordsTheTrustAndOpensTheProjectFully()
+    {
+        _projectService.IsTrustedAsync(ProjectFilePath).Returns(false);
+        StubConfirmationAnswer(true);
+
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsSuccess.Should().BeTrue();
+        await _projectService.Received(1).TrustProjectAsync(ProjectFilePath);
+        await _projectService.Received(1).LoadProjectAsync(ProjectFilePath, Arg.Any<MigrationResult>(), true);
+    }
+
+    [Test]
+    public async Task OpenInSafeMode_RecordsNothingAndOpensTheProjectUntrusted()
+    {
+        _projectService.IsTrustedAsync(ProjectFilePath).Returns(false);
+        StubConfirmationAnswer(false);
+
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsSuccess.Should().BeTrue();
+        await _projectService.DidNotReceive().TrustProjectAsync(Arg.Any<string>());
+        await _projectService.Received(1).LoadProjectAsync(ProjectFilePath, Arg.Any<MigrationResult>(), false);
+    }
+
+    [Test]
+    public async Task AProjectOpenedInSafeMode_AsksAgainWhenItReloads()
+    {
+        _projectService.IsTrustedAsync(ProjectFilePath).Returns(false);
+        StubConfirmationAnswer(false);
+        await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        // A reload closes the project, then opens it again.
+        await _projectUnloader.UnloadProjectAsync();
+        await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        await _dialogService.Received(2).ShowConfirmationDialogAsync(
+            TrustDialogTitle,
+            Arg.Any<string>(),
+            Arg.Any<ConfirmationDialogOptions?>());
+    }
+
+    [Test]
+    public async Task ATrustDialogThatFailsToShow_OpensTheProjectInSafeMode()
+    {
+        _projectService.IsTrustedAsync(ProjectFilePath).Returns(false);
+        _dialogService.ShowConfirmationDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ConfirmationDialogOptions?>())
+            .Returns(Result<bool>.Fail("Another dialog is open"));
+
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsSuccess.Should().BeTrue();
+        await _projectService.DidNotReceive().TrustProjectAsync(Arg.Any<string>());
+        await _projectService.Received(1).LoadProjectAsync(ProjectFilePath, Arg.Any<MigrationResult>(), false);
+    }
+
+    [Test]
+    public async Task ATrustThatCantBeRecorded_StillOpensTheProjectFully()
+    {
+        _projectService.IsTrustedAsync(ProjectFilePath).Returns(false);
+        _projectService.TrustProjectAsync(ProjectFilePath).Returns(Result.Fail("The data folder is read-only"));
+        StubConfirmationAnswer(true);
+
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsSuccess.Should().BeTrue();
+        await _projectService.Received(1).LoadProjectAsync(ProjectFilePath, Arg.Any<MigrationResult>(), true);
+    }
+
+    [TestCase(MigrationStatus.NewerCelbridgeVersion, "1.4.0", "1.3.0")]
+    [TestCase(MigrationStatus.UnsupportedCelbridgeVersion, "0.9.0", "1.3.0")]
+    public async Task ARefusedVersion_NeverAsksAboutTrust(MigrationStatus status, string oldVersion, string newVersion)
+    {
+        _projectService.IsTrustedAsync(ProjectFilePath).Returns(false);
+        StubMigration(status, oldVersion, newVersion);
+
+        await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        await AssertTheTrustDialogNeverShows();
+    }
+
+    [Test]
+    public async Task ASecondProjectFile_NeverAsksAboutTrust()
+    {
+        _projectService.IsTrustedAsync(ProjectFilePath).Returns(false);
+        StubFolderProjectFiles(ProjectFilePath, OtherProjectFilePath);
+
+        await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        await AssertTheTrustDialogNeverShows();
+    }
+
+    [Test]
+    public async Task AProjectAlreadyOpenHere_NeverAsksAboutTrust()
+    {
+        _projectService.IsTrustedAsync(CurrentProjectFilePath).Returns(false);
+        StubFolderProjectFiles(CurrentProjectFilePath);
+
+        await _projectLoader.LoadProjectAsync(CurrentProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        await AssertTheTrustDialogNeverShows();
+    }
+
+    [TestCase(ProjectLoadOrigin.RunningWindow)]
+    [TestCase(ProjectLoadOrigin.LaunchFile)]
+    [TestCase(ProjectLoadOrigin.PreviousProject)]
+    public async Task AProjectOpenInAnotherInstance_NeverAsksAboutTrust(ProjectLoadOrigin origin)
+    {
+        _projectService.IsTrustedAsync(ProjectFilePath).Returns(false);
+        _projectLockService.TakeResult = false;
+
+        await _projectLoader.LoadProjectAsync(ProjectFilePath, origin);
+
+        await AssertTheTrustDialogNeverShows();
+    }
+
+    [Test]
+    public async Task TheTrustDialog_ComesBeforeTheUpgradePrompt()
+    {
+        _projectService.IsTrustedAsync(ProjectFilePath).Returns(false);
+        StubMigration(MigrationStatus.UpgradeRequired, "1.2.0", "1.3.0");
+        StubConfirmationAnswer(false);
+
+        await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        Received.InOrder(() =>
+        {
+            _dialogService.ShowConfirmationDialogAsync(
+                TrustDialogTitle,
+                Arg.Any<string>(),
+                Arg.Any<ConfirmationDialogOptions?>());
+            _dialogService.ShowConfirmationDialogAsync(
+                "Project Upgrade Required",
+                Arg.Any<string>(),
+                Arg.Any<ConfirmationDialogOptions?>());
+        });
+    }
+
+    private async Task AssertTheTrustDialogNeverShows()
+    {
+        await _dialogService.DidNotReceive().ShowConfirmationDialogAsync(
+            TrustDialogTitle,
+            Arg.Any<string>(),
+            Arg.Any<ConfirmationDialogOptions?>());
+    }
+
+    private static bool IsTrustDialog(ConfirmationDialogOptions? options)
+    {
+        return options is not null
+            && options.PrimaryButtonText == "Trust Project"
+            && options.SecondaryButtonText == "Open in Safe Mode"
+            && options.IsDestructive;
     }
 
     private static bool IsSafeModeAlert(ConfirmationDialogOptions? options)

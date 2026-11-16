@@ -20,6 +20,12 @@ public record class LayoutModeInfo(string Mode, bool IsFullScreen, bool IsMaximi
 public record class ProjectPackageSummary(string Name, string PackageVersion);
 
 /// <summary>
+/// The Safe Mode state reported as part of app_get_state: whether the loaded workspace is in Safe Mode, and the name
+/// of each cause. The causes are empty outside Safe Mode.
+/// </summary>
+public record class SafeModeInfo(bool IsActive, IReadOnlyList<string> Causes);
+
+/// <summary>
 /// Result returned by app_get_state, describing the current app and workspace state.
 /// </summary>
 public record class AppStateResult(
@@ -27,6 +33,7 @@ public record class AppStateResult(
     string Configuration,
     bool IsLoaded,
     string ProjectName,
+    SafeModeInfo SafeMode,
     IReadOnlyList<ProjectPackageSummary> Packages,
     int PackageLoadFailureCount,
     IReadOnlyDictionary<string, bool> FeatureFlags,
@@ -103,10 +110,17 @@ internal sealed class AppStateProvider : IAppStateProvider
 
         // The summary filters and orders the registry's packages and failures the way app_list_packages does,
         // so the two report the same packages.
+        var safeMode = new SafeModeInfo(false, Array.Empty<string>());
         var packages = new List<ProjectPackageSummary>();
         var packageLoadFailureCount = 0;
         if (_workspaceWrapper.IsWorkspaceLoaded)
         {
+            var safeModeService = _workspaceWrapper.WorkspaceService.SafeModeService;
+            var causes = safeModeService.Causes
+                .Select(cause => cause.ToString())
+                .ToList();
+            safeMode = new SafeModeInfo(safeModeService.IsActive, causes);
+
             var packageService = _workspaceWrapper.WorkspaceService.PackageService;
 
             var projectPackages = packageService.GetAllPackages()
@@ -154,6 +168,7 @@ internal sealed class AppStateProvider : IAppStateProvider
             Configuration: environmentInfo.Configuration,
             IsLoaded: isLoaded,
             ProjectName: projectName,
+            SafeMode: safeMode,
             Packages: packages,
             PackageLoadFailureCount: packageLoadFailureCount,
             FeatureFlags: featureFlags,

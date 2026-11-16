@@ -10,8 +10,8 @@ using Celbridge.Utilities;
 namespace Celbridge.Tests.Projects;
 
 /// <summary>
-/// Tests how the data folder's path is derived from the project folder, the project.json it contains, and
-/// clearing the folder.
+/// Tests how the data folder's path is derived from the project folder, the project.json it contains, the trust
+/// field in project.json, and clearing the folder.
 /// </summary>
 [TestFixture]
 public class ProjectDataFolderServiceTests
@@ -132,6 +132,115 @@ public class ProjectDataFolderServiceTests
     }
 
     [Test]
+    public async Task EnsureDataFolderAsync_ANewProjectJson_SaysUntrusted()
+    {
+        var projectFilePath = CreateProjectFile("Acme.celbridge");
+
+        await _service.EnsureDataFolderAsync(projectFilePath);
+
+        using var document = JsonDocument.Parse(await ReadProjectJsonAsync(projectFilePath));
+        document.RootElement.GetProperty("trusted").GetBoolean().Should().BeFalse();
+        (await _service.IsTrustedAsync(projectFilePath)).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task IsTrustedAsync_AProjectJsonWithNoTrustField_IsNotTrusted()
+    {
+        var projectFilePath = CreateProjectFile("Acme.celbridge");
+        WriteProjectJson(projectFilePath, $$"""{ "projectFolderPath": {{JsonSerializer.Serialize(_projectFolderPath)}} }""");
+
+        (await _service.IsTrustedAsync(projectFilePath)).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task IsTrustedAsync_ATrustFieldThatSaysTrusted_IsTrusted()
+    {
+        var projectFilePath = CreateProjectFile("Acme.celbridge");
+        WriteProjectJson(projectFilePath, """{ "projectFolderPath": "x", "trusted": true }""");
+
+        (await _service.IsTrustedAsync(projectFilePath)).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task IsTrustedAsync_ATrustFieldThatSaysUntrusted_IsNotTrusted()
+    {
+        var projectFilePath = CreateProjectFile("Acme.celbridge");
+        WriteProjectJson(projectFilePath, """{ "projectFolderPath": "x", "trusted": false }""");
+
+        (await _service.IsTrustedAsync(projectFilePath)).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task IsTrustedAsync_NoProjectJson_IsNotTrusted()
+    {
+        var projectFilePath = CreateProjectFile("Acme.celbridge");
+
+        (await _service.IsTrustedAsync(projectFilePath)).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task IsTrustedAsync_AProjectJsonThatCantBeRead_IsNotTrusted()
+    {
+        var projectFilePath = CreateProjectFile("Acme.celbridge");
+        WriteProjectJson(projectFilePath, "{ not json");
+
+        (await _service.IsTrustedAsync(projectFilePath)).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task MarkTrustedAsync_WritesTheTrustAndKeepsTheProjectFolder()
+    {
+        var projectFilePath = CreateProjectFile("Acme.celbridge");
+        await _service.EnsureDataFolderAsync(projectFilePath);
+
+        var markResult = await _service.MarkTrustedAsync(projectFilePath);
+
+        markResult.IsSuccess.Should().BeTrue(markResult.MessageChain);
+        (await _service.IsTrustedAsync(projectFilePath)).Should().BeTrue();
+        using var document = JsonDocument.Parse(await ReadProjectJsonAsync(projectFilePath));
+        document.RootElement.GetProperty("projectFolderPath").GetString().Should().Be(_projectFolderPath);
+    }
+
+    [Test]
+    public async Task MarkTrustedAsync_AProjectJsonThatCantBeRead_IsReplacedWithANewFile()
+    {
+        var projectFilePath = CreateProjectFile("Acme.celbridge");
+        WriteProjectJson(projectFilePath, "{ not json");
+
+        var markResult = await _service.MarkTrustedAsync(projectFilePath);
+
+        markResult.IsSuccess.Should().BeTrue(markResult.MessageChain);
+        (await _service.IsTrustedAsync(projectFilePath)).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task MarkTrustedAsync_NoDataFolder_CreatesItTrusted()
+    {
+        var projectFilePath = CreateProjectFile("Acme.celbridge");
+
+        var markResult = await _service.MarkTrustedAsync(projectFilePath);
+
+        markResult.IsSuccess.Should().BeTrue(markResult.MessageChain);
+        (await _service.IsTrustedAsync(projectFilePath)).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task IsTrustedAsync_AProjectMovedToAnotherFolder_IsNotTrusted()
+    {
+        var projectFilePath = CreateProjectFile("Acme.celbridge");
+        await _service.MarkTrustedAsync(projectFilePath);
+
+        // A data folder belongs to one folder path, so the moved project gets a new data folder.
+        var movedFolderPath = Path.Combine(_testFolderPath, "Moved");
+        Directory.CreateDirectory(movedFolderPath);
+        var movedProjectFilePath = Path.Combine(movedFolderPath, "Acme.celbridge");
+        File.Move(projectFilePath, movedProjectFilePath);
+        await _service.EnsureDataFolderAsync(movedProjectFilePath);
+
+        (await _service.IsTrustedAsync(movedProjectFilePath)).Should().BeFalse();
+    }
+
+    [Test]
     public async Task EnsureDataFolderAsync_ExistingFolder_KeepsItsContents()
     {
         var projectFilePath = CreateProjectFile("Acme.celbridge");
@@ -202,5 +311,18 @@ public class ProjectDataFolderServiceTests
         File.WriteAllText(projectFilePath, string.Empty);
 
         return projectFilePath;
+    }
+
+    private void WriteProjectJson(string projectFilePath, string json)
+    {
+        var dataFolderPath = _service.GetDataFolderPath(projectFilePath);
+        Directory.CreateDirectory(dataFolderPath);
+        File.WriteAllText(Path.Combine(dataFolderPath, "project.json"), json);
+    }
+
+    private async Task<string> ReadProjectJsonAsync(string projectFilePath)
+    {
+        var dataFolderPath = _service.GetDataFolderPath(projectFilePath);
+        return await File.ReadAllTextAsync(Path.Combine(dataFolderPath, "project.json"));
     }
 }

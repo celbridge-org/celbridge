@@ -274,6 +274,7 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
     {
         var causeTexts = _safeModeCauses.Select(cause => cause switch
         {
+            SafeModeCause.Untrusted => _localizerService.GetString("Report_ProjectLoad_SafeModeCause_Untrusted"),
             SafeModeCause.ConfigurationFailed => _localizerService.GetString("Report_ProjectLoad_SafeModeCause_ConfigurationFailed"),
             _ => throw new ArgumentOutOfRangeException(nameof(cause), cause, "Unhandled Safe Mode cause")
         });

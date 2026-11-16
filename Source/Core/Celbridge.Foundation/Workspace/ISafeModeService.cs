@@ -8,6 +8,11 @@ namespace Celbridge.Workspace;
 public enum SafeModeCause
 {
     /// <summary>
+    /// The user has not trusted the project on this machine. Every other cause is a failure.
+    /// </summary>
+    Untrusted,
+
+    /// <summary>
     /// The project file failed to load. A failed project upgrade, a configuration error and a project file that
     /// fails to parse each have this cause.
     /// </summary>

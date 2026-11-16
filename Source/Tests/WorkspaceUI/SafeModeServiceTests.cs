@@ -6,7 +6,8 @@ using Celbridge.WorkspaceUI.Services;
 namespace Celbridge.Tests.WorkspaceUI;
 
 /// <summary>
-/// Covers the Safe Mode state: the project's cause, the state staying fixed, and the allow list.
+/// Covers the Safe Mode state: each of the project's causes, two causes at once, the state staying fixed, and the
+/// allow list.
 /// </summary>
 [TestFixture]
 public class SafeModeServiceTests
@@ -22,7 +23,7 @@ public class SafeModeServiceTests
     [Test]
     public void AProjectThatLoadedCleanly_IsNotInSafeMode()
     {
-        SetCurrentProject(configIsHealthy: true);
+        SetCurrentProject(isTrusted: true, configIsHealthy: true);
 
         var safeModeService = new SafeModeService(_projectService);
 
@@ -33,7 +34,7 @@ public class SafeModeServiceTests
     [Test]
     public void AProjectFileThatFailedToLoad_OpensSafeMode()
     {
-        SetCurrentProject(configIsHealthy: false);
+        SetCurrentProject(isTrusted: true, configIsHealthy: false);
 
         var safeModeService = new SafeModeService(_projectService);
 
@@ -42,13 +43,35 @@ public class SafeModeServiceTests
     }
 
     [Test]
+    public void AnUntrustedProject_OpensSafeMode()
+    {
+        SetCurrentProject(isTrusted: false, configIsHealthy: true);
+
+        var safeModeService = new SafeModeService(_projectService);
+
+        safeModeService.IsActive.Should().BeTrue();
+        safeModeService.Causes.Should().Equal(SafeModeCause.Untrusted);
+    }
+
+    [Test]
+    public void AnUntrustedProjectWhoseFileFailedToLoad_KeepsBothCauses()
+    {
+        SetCurrentProject(isTrusted: false, configIsHealthy: false);
+
+        var safeModeService = new SafeModeService(_projectService);
+
+        safeModeService.IsActive.Should().BeTrue();
+        safeModeService.Causes.Should().Equal(SafeModeCause.Untrusted, SafeModeCause.ConfigurationFailed);
+    }
+
+    [Test]
     public void TheState_StaysFixedUntilTheWorkspaceIsCreatedAgain()
     {
-        SetCurrentProject(configIsHealthy: false);
+        SetCurrentProject(isTrusted: true, configIsHealthy: false);
         var safeModeService = new SafeModeService(_projectService);
 
         // A reload creates a new workspace, and so a new service.
-        SetCurrentProject(configIsHealthy: true);
+        SetCurrentProject(isTrusted: true, configIsHealthy: true);
 
         safeModeService.IsActive.Should().BeTrue();
         safeModeService.Causes.Should().Equal(SafeModeCause.ConfigurationFailed);
@@ -57,7 +80,7 @@ public class SafeModeServiceTests
     [Test]
     public void OutsideSafeMode_EveryIdIsAllowed()
     {
-        SetCurrentProject(configIsHealthy: true);
+        SetCurrentProject(isTrusted: true, configIsHealthy: true);
 
         var safeModeService = new SafeModeService(_projectService);
 
@@ -69,7 +92,7 @@ public class SafeModeServiceTests
     [Test]
     public void InSafeMode_TheIdsOnTheListAreAllowed()
     {
-        SetCurrentProject(configIsHealthy: false);
+        SetCurrentProject(isTrusted: true, configIsHealthy: false);
 
         var safeModeService = new SafeModeService(_projectService);
 
@@ -84,7 +107,7 @@ public class SafeModeServiceTests
     [Test]
     public void InSafeMode_TheEditorsThatAreOffAreNotAllowed()
     {
-        SetCurrentProject(configIsHealthy: false);
+        SetCurrentProject(isTrusted: true, configIsHealthy: false);
 
         var safeModeService = new SafeModeService(_projectService);
 
@@ -98,7 +121,7 @@ public class SafeModeServiceTests
     [Test]
     public void InSafeMode_ThePackagesAndRailButtonsThatAreOffAreNotAllowed()
     {
-        SetCurrentProject(configIsHealthy: false);
+        SetCurrentProject(isTrusted: true, configIsHealthy: false);
 
         var safeModeService = new SafeModeService(_projectService);
 
@@ -113,9 +136,10 @@ public class SafeModeServiceTests
         safeModeService.IsAllowed(new EditorId("celbridge.shortcut-1")).Should().BeFalse();
     }
 
-    private void SetCurrentProject(bool configIsHealthy)
+    private void SetCurrentProject(bool isTrusted, bool configIsHealthy)
     {
         var project = Substitute.For<IProject>();
+        project.IsTrusted.Returns(isTrusted);
         project.ConfigIsHealthy.Returns(configIsHealthy);
 
         _projectService.CurrentProject.Returns(project);

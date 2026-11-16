@@ -22,7 +22,6 @@ public class ResourcePickerItemTests
         var item = new ResourcePickerItem(new ResourceKey("docs/photo.png"), Icon, writableState);
 
         item.IsReadOnly.Should().BeFalse();
-        item.IsWritable.Should().BeTrue();
         item.TooltipText.Should().BeNull();
         item.ReadOnlyMessage.Should().BeEmpty();
     }
@@ -39,7 +38,6 @@ public class ResourcePickerItemTests
             readOnlyMessage: "File is read-only on disk.");
 
         item.IsReadOnly.Should().BeTrue();
-        item.IsWritable.Should().BeFalse();
         item.TooltipText.Should().Be("File is read-only on disk.");
         item.ReadOnlyMessage.Should().Be("File is read-only on disk.");
     }
@@ -56,7 +54,6 @@ public class ResourcePickerItemTests
             readOnlyMessage: "Bundled package — read-only by design.");
 
         item.IsReadOnly.Should().BeTrue();
-        item.IsWritable.Should().BeFalse();
         item.TooltipText.Should().Be("Bundled package — read-only by design.");
     }
 }
