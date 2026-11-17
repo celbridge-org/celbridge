@@ -347,6 +347,7 @@ public partial class App : Application
         Server.ServiceConfiguration.ConfigureServices(services);
         Automation.ServiceConfiguration.ConfigureServices(services);
         Commands.ServiceConfiguration.ConfigureServices(services);
+        Dependencies.ServiceConfiguration.ConfigureServices(services);
         FileSystem.ServiceConfiguration.ConfigureServices(services);
         Logging.ServiceConfiguration.ConfigureServices(services);
         Messaging.ServiceConfiguration.ConfigureServices(services);

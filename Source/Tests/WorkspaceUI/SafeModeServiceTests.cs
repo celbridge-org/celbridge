@@ -1,3 +1,5 @@
+using Celbridge.Settings;
+using Celbridge.Dependencies;
 using Celbridge.Packages;
 using Celbridge.Projects;
 using Celbridge.Workspace;
@@ -40,6 +42,19 @@ public class SafeModeServiceTests
 
         safeModeService.IsActive.Should().BeTrue();
         safeModeService.Causes.Should().Equal(SafeModeCause.ConfigurationFailed);
+    }
+
+    [Test]
+    public void AProjectWhoseDependencyFailedToInstall_OpensSafeMode()
+    {
+        var project = SetCurrentProject(isTrusted: true, configIsHealthy: true);
+        var failure = new DependencyInstallFailure(FeatureFlagCatalog.Python, "uv", Result.Fail("The network is down"));
+        project.DependencyInstallFailure.Returns(failure);
+
+        var safeModeService = new SafeModeService(_projectService);
+
+        safeModeService.IsActive.Should().BeTrue();
+        safeModeService.Causes.Should().Equal(SafeModeCause.DependencyInstallFailed);
     }
 
     [Test]
@@ -136,12 +151,14 @@ public class SafeModeServiceTests
         safeModeService.IsAllowed(new EditorId("celbridge.shortcut-1")).Should().BeFalse();
     }
 
-    private void SetCurrentProject(bool isTrusted, bool configIsHealthy)
+    private IProject SetCurrentProject(bool isTrusted, bool configIsHealthy)
     {
         var project = Substitute.For<IProject>();
         project.IsTrusted.Returns(isTrusted);
         project.ConfigIsHealthy.Returns(configIsHealthy);
 
         _projectService.CurrentProject.Returns(project);
+
+        return project;
     }
 }

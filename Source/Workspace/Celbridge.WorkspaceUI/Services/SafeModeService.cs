@@ -41,6 +41,11 @@ public class SafeModeService : ISafeModeService
         {
             _causes.Add(SafeModeCause.ConfigurationFailed);
         }
+
+        if (project.DependencyInstallFailure is not null)
+        {
+            _causes.Add(SafeModeCause.DependencyInstallFailed);
+        }
     }
 
     public bool IsAllowed(EditorId editorId)

@@ -23,6 +23,12 @@
                  TextWrapping="Wrap"
                  Visibility="{x:Bind ViewModel.IsTrusted, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverted}"/>
 
+      <TextBlock Text="{x:Bind ViewModel.DependencyInstallFailureText}"
+                 AutomationProperties.AutomationId="project-settings-safe-mode-install-failed"
+                 Style="{StaticResource SupportingTextStyle}"
+                 TextWrapping="Wrap"
+                 Visibility="{x:Bind ViewModel.HasDependencyInstallFailure, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
       <StackPanel Orientation="Horizontal" Spacing="8">
         <Button Content="{x:Bind TrustProjectText}"
                 AutomationProperties.AutomationId="project-settings-safe-mode-trust-button"

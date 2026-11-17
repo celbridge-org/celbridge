@@ -26,7 +26,7 @@ public sealed class DocumentEditorsBundledPackageProvider : IBundledPackageProvi
 
         // Bundled packages are discovered on every workspace load, after the project's feature flag overrides
         // are applied, so each project decides whether it has the Notes editor.
-        if (_featureFlags.IsEnabled(FeatureFlagConstants.NoteEditor))
+        if (_featureFlags.IsEnabled(FeatureFlagCatalog.NoteEditor))
         {
             packages.Add(new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "Notes") });
         }

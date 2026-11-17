@@ -16,12 +16,12 @@ public partial class WebViewTools
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagCatalog.WebViewDevTools);
         }
 
         if (!webViewService.IsDevToolsEvalFeatureEnabled())
         {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevToolsEval);
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagCatalog.WebViewDevToolsEval);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))

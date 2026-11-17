@@ -1,3 +1,4 @@
+using Celbridge.Dependencies;
 using Celbridge.Packages;
 
 namespace Celbridge.Projects;
@@ -43,6 +44,11 @@ public interface IProjectService
     /// whether the project opens trusted.
     /// </summary>
     Task<Result<IProject>> LoadProjectAsync(string projectFilePath, MigrationResult migrationResult, bool isTrusted);
+
+    /// <summary>
+    /// Records a failed install of a dependency on the current project. The project then opens in Safe Mode.
+    /// </summary>
+    void RecordDependencyInstallFailure(DependencyInstallFailure failure);
 
     /// <summary>
     /// Returns true when the user trusts the project at the given path on this machine. The project data folder

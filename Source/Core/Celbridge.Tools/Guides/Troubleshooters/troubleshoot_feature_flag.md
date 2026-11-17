@@ -8,7 +8,7 @@ Each flag has an application default, and a project can override it in the Featu
 
 The section groups flags by area and gives each one a title for the user, so the flag's name does not appear there. Name the group and the title when you ask, as listed below.
 
-To find which flags are currently on, call `app_get_state` and read the `featureFlags` map. Every public flag declared in `FeatureFlagConstants` appears as a `name -> bool` entry. If the relevant flag is `false` and the user has not consented to enabling it, choose a different approach instead — there is no programmatic bypass.
+To find which flags are currently on, call `app_get_state` and read the `featureFlags` map. Celbridge lists each of its flags there as a `name -> bool` entry. If the relevant flag is `false` and the user has not consented to enabling it, choose a different approach instead — there is no programmatic bypass.
 
 ## Common cases
 

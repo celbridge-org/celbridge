@@ -1,3 +1,4 @@
+using Celbridge.Dependencies;
 using Celbridge.FileSystem;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
@@ -11,7 +12,8 @@ namespace Celbridge.Tests.Projects;
 
 /// <summary>
 /// Covers the recent projects list: the order it comes back in, the entries it drops, and how the list
-/// excludes the open project by its path. Also covers creating a project, and the trust of a project.
+/// excludes the open project by its path. Also covers creating a project, the trust of a project, and a failed
+/// install of a dependency recorded on the project.
 /// </summary>
 [TestFixture]
 public class ProjectServiceTests
@@ -205,6 +207,33 @@ public class ProjectServiceTests
         current!.ProjectName.Should().Be("Renamed");
         current.ProjectFilePath.Should().Be(Path.Combine(project.ProjectFolderPath, "Renamed.celbridge"));
         current.ProjectFolderPath.Should().Be(project.ProjectFolderPath);
+    }
+
+    [Test]
+    public void RecordDependencyInstallFailure_PutsTheFailureOnTheCurrentProject()
+    {
+        LoadProjectNamed(NewestProject);
+        var failure = new DependencyInstallFailure(FeatureFlagCatalog.Python, "uv", Result.Fail("The network is down"));
+
+        _projectService.RecordDependencyInstallFailure(failure);
+
+        _projectService.CurrentProject!.DependencyInstallFailure.Should().Be(failure);
+    }
+
+    [Test]
+    public void RenamingTheProjectFile_KeepsTheDependencyInstallFailure()
+    {
+        LoadProjectNamed(NewestProject);
+        var failure = new DependencyInstallFailure(FeatureFlagCatalog.Python, "uv", Result.Fail("The network is down"));
+        _projectService.RecordDependencyInstallFailure(failure);
+
+        _messengerService.Send(new ResourceKeyChangedMessage(
+            new ResourceKey("Newest.celbridge"),
+            new ResourceKey("Renamed.celbridge")));
+
+        var current = _projectService.CurrentProject!;
+        current.ProjectName.Should().Be("Renamed");
+        current.DependencyInstallFailure.Should().Be(failure);
     }
 
     [Test]

@@ -1,3 +1,5 @@
+using Celbridge.Dependencies;
+
 namespace Celbridge.Workspace;
 
 /// <summary>
@@ -40,9 +42,13 @@ public record WorkspaceLoadedMessage();
 public record WorkspaceUnloadedMessage();
 
 /// <summary>
-/// Sent when a workspace in Safe Mode finishes loading. Carries the causes of Safe Mode and the project file.
+/// Sent when a workspace in Safe Mode finishes loading. Carries the causes of Safe Mode and the project file. A
+/// failed install also carries the dependency that failed.
 /// </summary>
-public record WorkspaceLoadedInSafeModeMessage(IReadOnlyList<SafeModeCause> Causes, ResourceKey ProjectFileResource);
+public record WorkspaceLoadedInSafeModeMessage(IReadOnlyList<SafeModeCause> Causes, ResourceKey ProjectFileResource)
+{
+    public DependencyInstallFailure? DependencyInstallFailure { get; init; }
+}
 
 /// <summary>
 /// Sent when the workspace state needs to be saved.

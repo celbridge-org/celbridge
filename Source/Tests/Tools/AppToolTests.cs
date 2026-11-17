@@ -185,7 +185,7 @@ public class AppToolTests
         var featureFlags = WireAppStateDependencies();
         // Mark just the eval flag enabled so the test verifies both true and false
         // values land in the returned payload.
-        featureFlags.IsEnabled(FeatureFlagConstants.WebViewDevToolsEval).Returns(true);
+        featureFlags.IsEnabled(FeatureFlagCatalog.WebViewDevToolsEval).Returns(true);
 
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns((IProject?)null);
@@ -197,14 +197,14 @@ public class AppToolTests
         var flagsElement = root.GetProperty("featureFlags");
         flagsElement.ValueKind.Should().Be(JsonValueKind.Object);
 
-        // Every public string constant on FeatureFlagConstants must be present.
-        flagsElement.TryGetProperty(FeatureFlagConstants.WebViewDevTools, out var webViewDevTools).Should().BeTrue();
+        // Every flag in FeatureFlagCatalog must be present.
+        flagsElement.TryGetProperty(FeatureFlagCatalog.WebViewDevTools.Name, out var webViewDevTools).Should().BeTrue();
         webViewDevTools.GetBoolean().Should().BeFalse();
-        flagsElement.TryGetProperty(FeatureFlagConstants.WebViewDevToolsEval, out var webViewDevToolsEval).Should().BeTrue();
+        flagsElement.TryGetProperty(FeatureFlagCatalog.WebViewDevToolsEval.Name, out var webViewDevToolsEval).Should().BeTrue();
         webViewDevToolsEval.GetBoolean().Should().BeTrue();
-        flagsElement.TryGetProperty(FeatureFlagConstants.WebViewLoadDiagnostics, out var webViewLoadDiagnostics).Should().BeTrue();
+        flagsElement.TryGetProperty(FeatureFlagCatalog.WebViewLoadDiagnostics.Name, out var webViewLoadDiagnostics).Should().BeTrue();
         webViewLoadDiagnostics.GetBoolean().Should().BeFalse();
-        flagsElement.TryGetProperty(FeatureFlagConstants.NoteEditor, out var noteEditor).Should().BeTrue();
+        flagsElement.TryGetProperty(FeatureFlagCatalog.NoteEditor.Name, out var noteEditor).Should().BeTrue();
         noteEditor.GetBoolean().Should().BeFalse();
     }
 
@@ -361,7 +361,7 @@ public class AppToolTests
         string configuration = "Debug")
     {
         var featureFlags = Substitute.For<IFeatureFlags>();
-        featureFlags.IsEnabled(Arg.Any<string>()).Returns(false);
+        featureFlags.IsEnabled(Arg.Any<FeatureFlagDescriptor>()).Returns(false);
 
         var environmentService = Substitute.For<IAppEnvironment>();
         var environmentInfo = new EnvironmentInfo(appVersion, "Windows", configuration);

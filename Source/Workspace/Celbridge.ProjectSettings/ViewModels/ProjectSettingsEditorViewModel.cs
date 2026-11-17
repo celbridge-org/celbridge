@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Dependencies;
 using Celbridge.Dialog;
 using Celbridge.FileSystem;
 using Celbridge.Logging;
@@ -96,6 +97,17 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     /// </summary>
     public bool IsTrusted { get; }
 
+    /// <summary>
+    /// Returns true when a dependency of a feature failed to install, which opened the project in Safe Mode.
+    /// </summary>
+    public bool HasDependencyInstallFailure { get; }
+
+    /// <summary>
+    /// Returns the Safe Mode section's text for a failed install. The text names the feature, and the Features
+    /// section as the place to turn the feature off. The text is empty when no install failed.
+    /// </summary>
+    public string DependencyInstallFailureText { get; } = string.Empty;
+
     [ObservableProperty]
     private IReadOnlyList<SettingsSection> _sections = Array.Empty<SettingsSection>();
 
@@ -165,6 +177,13 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         var safeModeService = workspaceWrapper.WorkspaceService.SafeModeService;
         IsSafeMode = safeModeService.IsActive;
         IsTrusted = !safeModeService.Causes.Contains(SafeModeCause.Untrusted);
+
+        var dependencyInstallFailure = project?.DependencyInstallFailure;
+        if (dependencyInstallFailure is not null)
+        {
+            HasDependencyInstallFailure = true;
+            DependencyInstallFailureText = ComposeDependencyInstallFailureText(dependencyInstallFailure);
+        }
 
         _context = new ProjectSettingsContext(workspaceWrapper, projectService, commandService, MarkPending);
         InformationSection = new InformationSectionViewModel(_context, projectLoadReporter);
@@ -530,6 +549,13 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         }
 
         _commandService.Execute<ITrustProjectCommand>();
+    }
+
+    private string ComposeDependencyInstallFailureText(DependencyInstallFailure failure)
+    {
+        var featureTitle = _stringLocalizer.GetString(failure.Feature.TitleKey);
+
+        return _stringLocalizer.GetString("ProjectSettings_SafeModeDependencyInstallFailed", featureTitle);
     }
 
     // Reopens the project file in the Code Editor, which is the only editor that can show a file the

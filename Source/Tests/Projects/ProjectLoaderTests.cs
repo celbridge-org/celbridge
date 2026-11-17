@@ -1,5 +1,6 @@
 using Celbridge.Automation;
 using Celbridge.Commands;
+using Celbridge.Dependencies;
 using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Messaging;
@@ -23,7 +24,8 @@ namespace Celbridge.Tests.Projects;
 /// project already open here, the lock, the version and the upgrade prompt. A lock that another instance has taken
 /// leads to a different outcome for each way a load can start. The tests also cover when the lock is kept and
 /// released, and the load report. They also cover a load that fails or throws, and the alerts a refused version
-/// raises. The trust dialog asks about an untrusted project after those checks and before the upgrade prompt.
+/// raises. The trust dialog asks about an untrusted project after those checks and before the upgrade prompt. A
+/// project that opens fully installs its features' dependencies before the workspace shows.
 /// </summary>
 [TestFixture]
 public class ProjectLoaderTests
@@ -45,6 +47,7 @@ public class ProjectLoaderTests
     private IAutomationService _automationService = null!;
     private IProjectLoadReporter _loadReporter = null!;
     private ICommandService _commandService = null!;
+    private IDependencyService _dependencyService = null!;
     private ProjectUnloader _projectUnloader = null!;
     private ProjectLoader _projectLoader = null!;
 
@@ -61,6 +64,7 @@ public class ProjectLoaderTests
         _automationService = Substitute.For<IAutomationService>();
         _loadReporter = Substitute.For<IProjectLoadReporter>();
         _commandService = Substitute.For<ICommandService>();
+        _dependencyService = Substitute.For<IDependencyService>();
 
         // Another project is open in this instance, and this instance has the project's lock. The project service
         // tracks the current project as the loader and the unloader change it.
@@ -112,8 +116,76 @@ public class ProjectLoaderTests
             Substitute.For<IMessengerService>(),
             _commandService,
             _automationService,
-            CreateStringLocalizer(),
-            _loadReporter);
+            TestStringLocalizer.Create(),
+            _loadReporter,
+            _dependencyService);
+    }
+
+    [Test]
+    public async Task AProjectThatOpensFully_InstallsItsDependenciesBeforeTheWorkspaceShows()
+    {
+        var features = new Dictionary<string, bool>
+        {
+            ["python"] = true,
+        };
+        _projectLoadResult = Result<IProject>.Ok(CreateFullyOpenedProject(ProjectFilePath, features));
+        var progressToken = Substitute.For<IProgressDialogToken>();
+        _dialogService.AcquireProgressDialog(Arg.Any<string>()).Returns(progressToken);
+
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsSuccess.Should().BeTrue();
+        Received.InOrder(() =>
+        {
+            _dialogService.AcquireProgressDialog("Loading Acme");
+            _dependencyService.InstallDependenciesAsync(features);
+            _applicationShell.ShowWorkspaceAsync(Arg.Any<CancellationTokenSource>());
+            progressToken.Dispose();
+        });
+        _projectService.DidNotReceive().RecordDependencyInstallFailure(Arg.Any<DependencyInstallFailure>());
+    }
+
+    [Test]
+    public async Task AFailedInstall_RecordsTheFailureAndStillShowsTheWorkspace()
+    {
+        _projectLoadResult = Result<IProject>.Ok(CreateFullyOpenedProject(ProjectFilePath, new Dictionary<string, bool>()));
+        var failure = new DependencyInstallFailure(FeatureFlagCatalog.Python, "uv", Result.Fail("The network is down"));
+        _dependencyService.InstallDependenciesAsync(Arg.Any<IReadOnlyDictionary<string, bool>>()).Returns(failure);
+
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsSuccess.Should().BeTrue();
+        Received.InOrder(() =>
+        {
+            _projectService.RecordDependencyInstallFailure(failure);
+            _applicationShell.ShowWorkspaceAsync(Arg.Any<CancellationTokenSource>());
+        });
+    }
+
+    [Test]
+    public async Task AnUntrustedProject_InstallsNothing()
+    {
+        var project = CreateFullyOpenedProject(ProjectFilePath, new Dictionary<string, bool>());
+        project.IsTrusted.Returns(false);
+        _projectLoadResult = Result<IProject>.Ok(project);
+
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsSuccess.Should().BeTrue();
+        await _dependencyService.DidNotReceive().InstallDependenciesAsync(Arg.Any<IReadOnlyDictionary<string, bool>>());
+    }
+
+    [Test]
+    public async Task AProjectFileThatFailsToLoad_InstallsNothing()
+    {
+        var project = CreateFullyOpenedProject(ProjectFilePath, new Dictionary<string, bool>());
+        project.ConfigIsHealthy.Returns(false);
+        _projectLoadResult = Result<IProject>.Ok(project);
+
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsSuccess.Should().BeTrue();
+        await _dependencyService.DidNotReceive().InstallDependenciesAsync(Arg.Any<IReadOnlyDictionary<string, bool>>());
     }
 
     [Test]
@@ -894,6 +966,21 @@ public class ProjectLoaderTests
         return project;
     }
 
+    // A trusted project with a project file that loaded cleanly. The project opens with none of the causes of Safe
+    // Mode.
+    private static IProject CreateFullyOpenedProject(string projectFilePath, IReadOnlyDictionary<string, bool> features)
+    {
+        var project = CreateProject(projectFilePath);
+        project.IsTrusted.Returns(true);
+        project.ConfigIsHealthy.Returns(true);
+        project.Config.Returns(new ProjectConfig
+        {
+            Features = features
+        });
+
+        return project;
+    }
+
     private void StubFolderProjectFiles(params string[] projectFilePaths)
     {
         IReadOnlyList<string> projectFiles = projectFilePaths.ToList();
@@ -916,26 +1003,4 @@ public class ProjectLoaderTests
     }
 
     // Backed by the application's own resources, so the assertions read the text a user sees.
-    private static IStringLocalizer CreateStringLocalizer()
-    {
-        var localizerService = new TestLocalizerService();
-        var stringLocalizer = Substitute.For<IStringLocalizer>();
-
-        stringLocalizer[Arg.Any<string>()].Returns(callInfo =>
-        {
-            var name = (string)callInfo[0];
-
-            return new LocalizedString(name, localizerService.GetString(name));
-        });
-
-        stringLocalizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(callInfo =>
-        {
-            var name = (string)callInfo[0];
-            var arguments = (object[])callInfo[1];
-
-            return new LocalizedString(name, localizerService.GetString(name, arguments));
-        });
-
-        return stringLocalizer;
-    }
 }

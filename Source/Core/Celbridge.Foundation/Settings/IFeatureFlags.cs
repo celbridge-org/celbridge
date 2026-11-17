@@ -7,20 +7,26 @@ namespace Celbridge.Settings;
 public interface IFeatureFlags
 {
     /// <summary>
-    /// Returns true if the specified feature is enabled.
-    /// Checks project overrides first, then falls back to application-level configuration.
+    /// Returns true if the flag is on. The applied project overrides come first, then the application's value.
     /// </summary>
-    bool IsEnabled(string featureName);
+    bool IsEnabled(FeatureFlagDescriptor flag);
 
     /// <summary>
-    /// Returns the application-level value for a feature (appsettings.json, or the default when unset),
+    /// Returns true if the flag is on for a project with the given overrides, by the same rule as IsEnabled. The
+    /// applied overrides and TurnOffAllFeatures play no part, so a project's values resolve before the workspace
+    /// applies them.
+    /// </summary>
+    bool IsEnabledForProject(FeatureFlagDescriptor flag, IReadOnlyDictionary<string, bool> projectOverrides);
+
+    /// <summary>
+    /// Returns the application-level value for a flag (appsettings.json, or the default when unset),
     /// ignoring any project override. Used to show what a project inheriting the default resolves to.
-    /// A feature that is unset, or whose value is not a boolean, is disabled.
+    /// A flag that is unset, or set to a value that is not a boolean, is off.
     /// </summary>
-    bool GetApplicationValue(string featureName);
+    bool GetApplicationValue(FeatureFlagDescriptor flag);
 
     /// <summary>
-    /// Applies project-level feature flag overrides.
+    /// Applies project-level feature flag overrides, keyed by flag name.
     /// These take precedence over application-level settings.
     /// </summary>
     void ApplyProjectOverrides(IReadOnlyDictionary<string, bool> overrides);

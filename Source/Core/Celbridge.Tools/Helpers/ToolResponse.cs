@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Celbridge.Settings;
 using ModelContextProtocol.Protocol;
 
 namespace Celbridge.Tools;
@@ -148,9 +149,9 @@ public static class ToolResponse
     /// <summary>
     /// Standardised response for tools whose feature flag is disabled.
     /// </summary>
-    public static CallToolResult FeatureFlagDisabled(string flagName) =>
+    public static CallToolResult FeatureFlagDisabled(FeatureFlagDescriptor flag) =>
         ErrorWithTroubleshooter(
-            $"The '{flagName}' feature flag is disabled. Ask the user to switch it on in the Features section of Project Settings, then reload the project.",
+            $"The '{flag.Name}' feature flag is disabled. Ask the user to switch it on in the Features section of Project Settings, then reload the project.",
             HelperTroubleshooters[nameof(FeatureFlagDisabled)]);
 
     /// <summary>

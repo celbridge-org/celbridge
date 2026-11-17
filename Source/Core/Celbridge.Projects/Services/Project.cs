@@ -1,3 +1,5 @@
+using Celbridge.Dependencies;
+
 namespace Celbridge.Projects.Services;
 
 /// <summary>
@@ -14,6 +16,8 @@ public record Project(
     Result? ConfigLoadFailure,
     bool IsTrusted) : IProject
 {
+    public DependencyInstallFailure? DependencyInstallFailure { get; init; }
+
     public bool IsProjectFile(ResourceKey resource)
     {
         // Path rather than ToString, which carries the "project:" root prefix.

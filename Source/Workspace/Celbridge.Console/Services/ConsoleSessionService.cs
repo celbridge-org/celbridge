@@ -28,7 +28,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IMessengerService _messengerService;
-    private readonly IPythonInstaller _pythonInstaller;
+    private readonly ITemporaryEnvironments _temporaryEnvironments;
     private readonly ILogger<ConsoleSessionService> _logger;
 
     private readonly Lock _sessionsLock = new();
@@ -60,7 +60,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         _messengerService = messengerService;
         _logger = logger;
         _webViewPlatform = ServiceLocator.AcquireService<IWebViewPlatform>();
-        _pythonInstaller = serviceProvider.GetRequiredService<IPythonInstaller>();
+        _temporaryEnvironments = serviceProvider.GetRequiredService<ITemporaryEnvironments>();
 
         _sessionProviders = ResolveSessionProviders(serviceProvider);
         _sessionTypes = _sessionProviders.Select(provider => provider.SessionType).ToList();
@@ -529,7 +529,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
             return;
         }
 
-        _ = Task.Run(() => _pythonInstaller.RemoveTemporaryEnvironmentAsync(folderPath));
+        _ = Task.Run(() => _temporaryEnvironments.RemoveAsync(folderPath));
     }
 
     private void OnDocumentOpened(object recipient, DocumentOpenedMessage message)

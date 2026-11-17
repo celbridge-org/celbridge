@@ -21,12 +21,12 @@ public class WebViewService : IWebViewService
 
     public bool IsDevToolsFeatureEnabled()
     {
-        return _featureFlags.IsEnabled(FeatureFlagConstants.WebViewDevTools);
+        return _featureFlags.IsEnabled(FeatureFlagCatalog.WebViewDevTools);
     }
 
     public bool IsDevToolsEvalFeatureEnabled()
     {
-        return _featureFlags.IsEnabled(FeatureFlagConstants.WebViewDevToolsEval);
+        return _featureFlags.IsEnabled(FeatureFlagCatalog.WebViewDevToolsEval);
     }
 
     // Clearing goes through the platform's own data store API, which the packaged Windows head and macOS

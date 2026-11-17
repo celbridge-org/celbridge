@@ -36,6 +36,9 @@ public static class ReportFindingCatalog
 
         public static readonly ReportFindingDescriptor ConfigParseFailed =
             new(new ReportCode("CEL_PROJECT_006"), "Report_Finding_Project_ConfigParseFailed", ReportSeverity.Error);
+
+        public static readonly ReportFindingDescriptor DependencyInstallFailed =
+            new(new ReportCode("CEL_PROJECT_007"), "Report_Finding_Project_DependencyInstallFailed", ReportSeverity.Error);
     }
 
     /// <summary>

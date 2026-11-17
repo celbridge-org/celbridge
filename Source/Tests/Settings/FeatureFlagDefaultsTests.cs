@@ -1,13 +1,12 @@
-using System.Reflection;
 using System.Text.Json;
-using Celbridge.Settings;
 using Celbridge.Tests.Architecture;
+using Celbridge.Tests.Helpers;
 
 namespace Celbridge.Tests.Settings;
 
 /// <summary>
 /// Keeps the FeatureFlags sections of appsettings.json and the local appsettings.development.json in step
-/// with FeatureFlagConstants.
+/// with FeatureFlagCatalog.
 /// </summary>
 [TestFixture]
 public class FeatureFlagDefaultsTests
@@ -78,10 +77,8 @@ public class FeatureFlagDefaultsTests
 
     private static IReadOnlyList<string> GetDeclaredFlagNames()
     {
-        return typeof(FeatureFlagConstants)
-            .GetFields(BindingFlags.Public | BindingFlags.Static)
-            .Where(field => field.IsLiteral && field.FieldType == typeof(string))
-            .Select(field => (string)field.GetRawConstantValue()!)
+        return DeclaredFeatureFlags.Read()
+            .Select(flag => flag.Name)
             .ToList();
     }
 

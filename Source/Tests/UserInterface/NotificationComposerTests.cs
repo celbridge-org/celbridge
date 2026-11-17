@@ -1,3 +1,5 @@
+using Celbridge.Settings;
+using Celbridge.Dependencies;
 using Celbridge.Messaging;
 using Celbridge.Notifications;
 using Celbridge.Projects;
@@ -127,6 +129,28 @@ public class NotificationComposerTests
         var notification = _centre.Notifications.Should().ContainSingle().Subject;
         notification.Content.Severity.Should().Be(ReportSeverity.Error);
         notification.Content.Message.Should().Be("Safe Mode is on. The project file could not be read");
+    }
+
+    [Test]
+    public void SafeModeForAFailedInstall_NamesTheFeatureAndSuggestsTheConnection()
+    {
+        var failure = new DependencyInstallFailure(FeatureFlagCatalog.Python, "uv", Result.Fail("The network is down"));
+        var causes = new List<SafeModeCause>
+        {
+            SafeModeCause.DependencyInstallFailed,
+        };
+        var message = new WorkspaceLoadedInSafeModeMessage(causes, new ResourceKey("Acme.celbridge"))
+        {
+            DependencyInstallFailure = failure
+        };
+
+        _safeModeHandler!.Invoke(this, message);
+
+        var notification = _centre.Notifications.Should().ContainSingle().Subject;
+        notification.Content.Severity.Should().Be(ReportSeverity.Error);
+        notification.Content.Message.Should().Be(
+            "Safe Mode is on. Celbridge could not install Python. Check your internet connection, then reload the project");
+        notification.Content.Action!.Resource.Should().Be(new ResourceKey("Acme.celbridge"));
     }
 
     // Each cause needs its own text. A cause without one fails here, not during a load.

@@ -13,6 +13,10 @@ namespace Celbridge.Tests.Settings;
 [TestFixture]
 public class FeatureFlagsTests
 {
+    // Flags the catalog does not declare, with names that the test configuration leaves out or sets to a non-boolean.
+    private static readonly FeatureFlagDescriptor UnknownFlag = new("unknown-feature", string.Empty, string.Empty);
+    private static readonly FeatureFlagDescriptor MisconfiguredFlag = new("misconfigured-feature", string.Empty, string.Empty);
+
     private IMessengerService _messengerService = null!;
     private FeatureFlags _featureFlags = null!;
 
@@ -51,7 +55,7 @@ public class FeatureFlagsTests
     [Test]
     public void IsEnabled_EnabledInConfig_ReturnsTrue()
     {
-        var result = _featureFlags.IsEnabled("webview-dev-tools");
+        var result = _featureFlags.IsEnabled(FeatureFlagCatalog.WebViewDevTools);
 
         result.Should().BeTrue();
     }
@@ -59,7 +63,7 @@ public class FeatureFlagsTests
     [Test]
     public void IsEnabled_DisabledInConfig_ReturnsFalse()
     {
-        var result = _featureFlags.IsEnabled("note-editor");
+        var result = _featureFlags.IsEnabled(FeatureFlagCatalog.NoteEditor);
 
         result.Should().BeFalse();
     }
@@ -67,7 +71,7 @@ public class FeatureFlagsTests
     [Test]
     public void IsEnabled_NotConfigured_DefaultsToDisabled()
     {
-        var result = _featureFlags.IsEnabled("unknown-feature");
+        var result = _featureFlags.IsEnabled(UnknownFlag);
 
         result.Should().BeFalse("a flag the build does not list is off");
     }
@@ -80,7 +84,7 @@ public class FeatureFlagsTests
             ["FeatureFlags:misconfigured-feature"] = "yes"
         });
 
-        featureFlags.IsEnabled("misconfigured-feature").Should().BeFalse("a value that is not a boolean resolves to off");
+        featureFlags.IsEnabled(MisconfiguredFlag).Should().BeFalse("a value that is not a boolean resolves to off");
     }
 
     #endregion
@@ -97,7 +101,7 @@ public class FeatureFlagsTests
 
         _featureFlags.ApplyProjectOverrides(overrides);
 
-        _featureFlags.IsEnabled("note-editor").Should().BeTrue("project override should take precedence");
+        _featureFlags.IsEnabled(FeatureFlagCatalog.NoteEditor).Should().BeTrue("project override should take precedence");
     }
 
     [Test]
@@ -110,7 +114,7 @@ public class FeatureFlagsTests
 
         _featureFlags.ApplyProjectOverrides(overrides);
 
-        _featureFlags.IsEnabled("webview-dev-tools").Should().BeFalse("project override should disable the feature");
+        _featureFlags.IsEnabled(FeatureFlagCatalog.WebViewDevTools).Should().BeFalse("project override should disable the feature");
     }
 
     [Test]
@@ -123,7 +127,7 @@ public class FeatureFlagsTests
 
         _featureFlags.ApplyProjectOverrides(overrides);
 
-        _featureFlags.IsEnabled("webview-dev-tools").Should().BeTrue("non-overridden features should use app-level config");
+        _featureFlags.IsEnabled(FeatureFlagCatalog.WebViewDevTools).Should().BeTrue("non-overridden features should use app-level config");
     }
 
     [Test]
@@ -138,8 +142,8 @@ public class FeatureFlagsTests
         _featureFlags.ApplyProjectOverrides(overrides);
         _featureFlags.ClearProjectOverrides();
 
-        _featureFlags.IsEnabled("note-editor").Should().BeFalse("should revert to app-level after clearing");
-        _featureFlags.IsEnabled("webview-dev-tools").Should().BeTrue("should revert to app-level after clearing");
+        _featureFlags.IsEnabled(FeatureFlagCatalog.NoteEditor).Should().BeFalse("should revert to app-level after clearing");
+        _featureFlags.IsEnabled(FeatureFlagCatalog.WebViewDevTools).Should().BeTrue("should revert to app-level after clearing");
     }
 
     #endregion
@@ -185,9 +189,9 @@ public class FeatureFlagsTests
 
         _featureFlags.ApplyProjectOverrides(overrides);
 
-        _featureFlags.IsEnabled("note-editor").Should().BeTrue("project enables note-editor");
-        _featureFlags.IsEnabled("webview-dev-tools").Should().BeFalse("project disables webview-dev-tools");
-        _featureFlags.IsEnabled("unknown-feature").Should().BeFalse("unconfigured features default to off");
+        _featureFlags.IsEnabled(FeatureFlagCatalog.NoteEditor).Should().BeTrue("project enables note-editor");
+        _featureFlags.IsEnabled(FeatureFlagCatalog.WebViewDevTools).Should().BeFalse("project disables webview-dev-tools");
+        _featureFlags.IsEnabled(UnknownFlag).Should().BeFalse("unconfigured features default to off");
     }
 
     #endregion
@@ -203,8 +207,8 @@ public class FeatureFlagsTests
 
         _featureFlags.TurnOffAllFeatures();
 
-        _featureFlags.IsEnabled("webview-dev-tools").Should().BeFalse("the application turns the flag on by default");
-        _featureFlags.IsEnabled("note-editor").Should().BeFalse("the project turns the flag on");
+        _featureFlags.IsEnabled(FeatureFlagCatalog.WebViewDevTools).Should().BeFalse("the application turns the flag on by default");
+        _featureFlags.IsEnabled(FeatureFlagCatalog.NoteEditor).Should().BeFalse("the project turns the flag on");
     }
 
     [Test]
@@ -212,7 +216,7 @@ public class FeatureFlagsTests
     {
         _featureFlags.TurnOffAllFeatures();
 
-        _featureFlags.GetApplicationValue("webview-dev-tools").Should().BeTrue();
+        _featureFlags.GetApplicationValue(FeatureFlagCatalog.WebViewDevTools).Should().BeTrue();
     }
 
     [Test]
@@ -222,7 +226,35 @@ public class FeatureFlagsTests
 
         _featureFlags.ClearProjectOverrides();
 
-        _featureFlags.IsEnabled("webview-dev-tools").Should().BeTrue();
+        _featureFlags.IsEnabled(FeatureFlagCatalog.WebViewDevTools).Should().BeTrue();
+    }
+
+    [Test]
+    public void IsEnabledForProject_TheProjectsValueWins_AndAnyOtherFlagTakesTheApplicationValue()
+    {
+        var projectOverrides = new Dictionary<string, bool>
+        {
+            ["note-editor"] = true
+        };
+
+        _featureFlags.IsEnabledForProject(FeatureFlagCatalog.NoteEditor, projectOverrides).Should().BeTrue();
+        _featureFlags.IsEnabledForProject(FeatureFlagCatalog.WebViewDevTools, projectOverrides).Should().BeTrue();
+        _featureFlags.IsEnabledForProject(UnknownFlag, projectOverrides).Should().BeFalse();
+    }
+
+    [Test]
+    public void IsEnabledForProject_IgnoresTheAppliedOverridesAndTurnOffAllFeatures()
+    {
+        var appliedOverrides = new Dictionary<string, bool>
+        {
+            ["webview-dev-tools"] = false
+        };
+        _featureFlags.ApplyProjectOverrides(appliedOverrides);
+        _featureFlags.TurnOffAllFeatures();
+
+        var isEnabled = _featureFlags.IsEnabledForProject(FeatureFlagCatalog.WebViewDevTools, new Dictionary<string, bool>());
+
+        isEnabled.Should().BeTrue("the application turns the flag on, and the project being loaded leaves it alone");
     }
 
     [Test]

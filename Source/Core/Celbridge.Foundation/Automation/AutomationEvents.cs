@@ -100,13 +100,30 @@ public record WebViewNavigationFailedEvent(string Resource, string Url, string S
 public record WebViewProcessFailedEvent(string Resource, string Detail) : AutomationEvent;
 
 /// <summary>
-/// The Python install found the support files current, so it installed nothing.
+/// The project load started installing a dependency, because the dependency's check found it missing. DependencyId is
+/// the dependency's id.
 /// </summary>
-public record PythonSupportFilesCurrentEvent : AutomationEvent;
+public record DependencyInstallingEvent(string DependencyId) : AutomationEvent;
 
 /// <summary>
-/// The Python install started republishing the celbridge tool, because the support files are current but the
-/// tool is missing.
+/// A dependency finished installing during the project load. DurationMs is how long the install took, in
+/// milliseconds.
+/// </summary>
+public record DependencyInstalledEvent(string DependencyId, long DurationMs) : AutomationEvent;
+
+/// <summary>
+/// A dependency failed to install during the project load, so the project opens in Safe Mode.
+/// </summary>
+public record DependencyInstallFailedEvent(string DependencyId) : AutomationEvent;
+
+/// <summary>
+/// The celbridge wheel was installed and current, so the install did nothing.
+/// </summary>
+public record CelbridgeWheelCurrentEvent : AutomationEvent;
+
+/// <summary>
+/// The install started republishing the celbridge tool, because the celbridge wheel is current but the tool is
+/// missing.
 /// </summary>
 public record PythonToolRepublishingEvent : AutomationEvent;
 
@@ -116,12 +133,12 @@ public record PythonToolRepublishingEvent : AutomationEvent;
 public record PythonToolInstalledEvent(long DurationMs) : AutomationEvent;
 
 /// <summary>
-/// A full reinstall of the Python support files started.
+/// A full reinstall of the celbridge wheel started.
 /// </summary>
 public record PythonReinstallStartedEvent : AutomationEvent;
 
 /// <summary>
-/// A full reinstall of the Python support files completed.
+/// A full reinstall of the celbridge wheel completed.
 /// </summary>
 public record PythonReinstallCompletedEvent : AutomationEvent;
 

@@ -55,11 +55,11 @@ public partial class FeatureFlagsSectionViewModel : ProjectSettingsSectionViewMo
             {
                 var info = new FeatureFlagItemInfo
                 {
-                    FlagName = descriptor.FlagName,
+                    FlagName = descriptor.Name,
                     Title = _stringLocalizer.GetString(descriptor.TitleKey),
                     Description = _stringLocalizer.GetString(descriptor.DescriptionKey),
-                    ApplicationValue = _featureFlags.GetApplicationValue(descriptor.FlagName),
-                    ProjectValue = ResolveProjectValue(config, descriptor.FlagName),
+                    ApplicationValue = _featureFlags.GetApplicationValue(descriptor),
+                    ProjectValue = ResolveProjectValue(config, descriptor.Name),
                 };
 
                 var flag = new FeatureFlagItemViewModel(info, SetProjectValue);
@@ -84,7 +84,7 @@ public partial class FeatureFlagsSectionViewModel : ProjectSettingsSectionViewMo
             {
                 foreach (var descriptor in groupDescriptor.Flags)
                 {
-                    draft.RemoveFeatureFlag(descriptor.FlagName);
+                    draft.RemoveFeatureFlag(descriptor.Name);
                 }
             }
         });

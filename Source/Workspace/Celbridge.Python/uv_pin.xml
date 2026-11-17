@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The uv release that Celbridge downloads when a project needs Python, and that the build runs to build the
+  celbridge wheel. Each Archive names the release asset for one platform and its SHA-256 hash, from the .sha256
+  file that uv publishes beside the asset. Folder names the folder inside a .tar.gz archive that contains the
+  binaries. A .zip archive contains the binaries at its root.
+  Example: <Archive Platform="aarch64-apple-darwin" Name="uv-aarch64-apple-darwin.tar.gz" Sha256="..." Folder="uv-aarch64-apple-darwin" />
+-->
+<UvPin Version="0.10.11" ReleasesUrl="https://github.com/astral-sh/uv/releases/download">
+  <Archive Platform="aarch64-apple-darwin" Name="uv-aarch64-apple-darwin.tar.gz" Sha256="437a7d498dd6564d5bf986074249ba1fc600e73da55ae04d7bd4c24d5f149b95" Folder="uv-aarch64-apple-darwin" />
+  <Archive Platform="x86_64-apple-darwin" Name="uv-x86_64-apple-darwin.tar.gz" Sha256="ff90020b554cf02ef8008535c9aab6ef27bb7be6b075359300dec79c361df897" Folder="uv-x86_64-apple-darwin" />
+  <Archive Platform="x86_64-pc-windows-msvc" Name="uv-x86_64-pc-windows-msvc.zip" Sha256="9ee74df98582f37fdd6069e1caac80d2616f9a489f5dbb2b1c152f30be69c58e" />
+  <Archive Platform="aarch64-pc-windows-msvc" Name="uv-aarch64-pc-windows-msvc.zip" Sha256="6a3eec4105c775dd87c11ef8ec41564648273751ff807c8955c24ddbcc636d03" />
+  <Archive Platform="x86_64-unknown-linux-gnu" Name="uv-x86_64-unknown-linux-gnu.tar.gz" Sha256="5a360b0de092ddf4131f5313d0411b48c4e95e8107e40c3f8f2e9fcb636b3583" Folder="uv-x86_64-unknown-linux-gnu" />
+  <Archive Platform="aarch64-unknown-linux-gnu" Name="uv-aarch64-unknown-linux-gnu.tar.gz" Sha256="23003df007937dd607409c8ddf010baa82bad2673e60e254632ca5b04edcce13" Folder="uv-aarch64-unknown-linux-gnu" />
+</UvPin>

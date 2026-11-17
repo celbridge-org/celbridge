@@ -26,25 +26,30 @@ public class FeatureFlags : IFeatureFlags
         _messengerService = messengerService;
     }
 
-    public bool IsEnabled(string featureName)
+    public bool IsEnabled(FeatureFlagDescriptor flag)
     {
         if (_allFeaturesOff)
         {
             return false;
         }
 
-        if (_projectOverrides.TryGetValue(featureName, out var overrideValue))
+        return IsEnabledForProject(flag, _projectOverrides);
+    }
+
+    public bool IsEnabledForProject(FeatureFlagDescriptor flag, IReadOnlyDictionary<string, bool> projectOverrides)
+    {
+        if (projectOverrides.TryGetValue(flag.Name, out var overrideValue))
         {
             return overrideValue;
         }
 
-        return GetApplicationValue(featureName);
+        return GetApplicationValue(flag);
     }
 
-    public bool GetApplicationValue(string featureName)
+    public bool GetApplicationValue(FeatureFlagDescriptor flag)
     {
         var section = _configuration.GetSection(FeatureFlagKey);
-        var value = section[featureName];
+        var value = section[flag.Name];
 
         return bool.TryParse(value, out var isEnabled) && isEnabled;
     }

@@ -53,7 +53,7 @@ public class ProjectSettingsContextTests
         config.Should().NotBeNull();
         config!.Celbridge.Description.Should().Be("From the file");
         config.Explorer.Exclude.Should().Equal("*.tmp");
-        config.Features[FeatureFlagConstants.NoteEditor].Should().BeTrue();
+        config.Features[FeatureFlagCatalog.NoteEditor.Name].Should().BeTrue();
     }
 
     private static ProjectConfig CreateLoadedConfig()
@@ -81,7 +81,7 @@ public class ProjectSettingsContextTests
             },
             Features = new Dictionary<string, bool>
             {
-                [FeatureFlagConstants.NoteEditor] = true
+                [FeatureFlagCatalog.NoteEditor.Name] = true
             }
         };
     }

@@ -1,3 +1,4 @@
+using Celbridge.Dependencies;
 using Celbridge.Reports;
 using Celbridge.Workspace;
 
@@ -54,6 +55,11 @@ public interface IProjectLoadReporter
     /// Records the causes of Safe Mode for a load that opens the project in Safe Mode.
     /// </summary>
     void RecordSafeModeCauses(IReadOnlyList<SafeModeCause> causes);
+
+    /// <summary>
+    /// Records a dependency that failed to install. The failure opens the project in Safe Mode.
+    /// </summary>
+    void RecordDependencyInstallFailure(DependencyInstallFailure failure);
 
     /// <summary>
     /// Records the package discovery outcome, including any load failures.

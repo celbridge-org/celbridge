@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Dependencies;
 using Celbridge.Dialog;
 using Celbridge.Packages;
 using Celbridge.Projects;
@@ -6,9 +7,11 @@ using Celbridge.ProjectSettings.ViewModels;
 using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Tests.Helpers;
+using Celbridge.Tests.Localization;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Views.Controls;
 using Celbridge.Workspace;
+using Celbridge.WorkspaceUI.Services;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -19,7 +22,7 @@ namespace Celbridge.Tests.ProjectSettings;
 /// Covers Project Settings in Safe Mode. The error panel shows when the project file failed to load, and says that
 /// most features are off. The error panel offers Trust Project while the project is untrusted, and Reload Project
 /// otherwise. The Safe Mode section shows only in Safe Mode, comes first, and opens first. The section offers Trust
-/// Project.
+/// Project. After a failed install, the section points to the Features section.
 /// </summary>
 [TestFixture]
 public class ProjectSettingsEditorViewModelTests
@@ -86,6 +89,23 @@ public class ProjectSettingsEditorViewModelTests
         viewModel.HasConfigError.Should().BeFalse();
         viewModel.HasSections.Should().BeTrue();
         viewModel.IsSafeMode.Should().BeFalse();
+    }
+
+    [Test]
+    public void AFailedInstall_KeepsTheSections_AndTheSafeModeSectionPointsToTheFeaturesSection()
+    {
+        var project = CreateProject(isTrusted: true, configIsHealthy: true);
+        var failure = new DependencyInstallFailure(FeatureFlagCatalog.Python, "uv", Result.Fail("The network is down"));
+        project.DependencyInstallFailure.Returns(failure);
+
+        var viewModel = CreateViewModel(project, TestStringLocalizer.Create());
+
+        viewModel.HasSections.Should().BeTrue();
+        viewModel.IsSafeMode.Should().BeTrue();
+        viewModel.HasDependencyInstallFailure.Should().BeTrue();
+        viewModel.DependencyInstallFailureText.Should().Be(
+            "Celbridge could not install Python. Check your internet connection, then reload the project. " +
+            "You can configure this project's features in the Features section.");
     }
 
     [Test]
@@ -171,17 +191,29 @@ public class ProjectSettingsEditorViewModelTests
 
     private ProjectSettingsEditorViewModel CreateViewModel(bool isTrusted, bool configIsHealthy)
     {
+        var project = CreateProject(isTrusted, configIsHealthy);
+
+        return CreateViewModel(project, Substitute.For<IStringLocalizer>());
+    }
+
+    private static IProject CreateProject(bool isTrusted, bool configIsHealthy)
+    {
         var project = Substitute.For<IProject>();
         project.IsTrusted.Returns(isTrusted);
         project.ConfigIsHealthy.Returns(configIsHealthy);
         project.Config.Returns(new ProjectConfig());
 
+        return project;
+    }
+
+    private ProjectSettingsEditorViewModel CreateViewModel(IProject project, IStringLocalizer stringLocalizer)
+    {
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns(project);
 
         // The Safe Mode service and the view model read the same project.
         var workspaceService = Substitute.For<IWorkspaceService>();
-        var safeModeService = TestSafeMode.Create(isTrusted, configIsHealthy);
+        var safeModeService = new SafeModeService(projectService);
         workspaceService.SafeModeService.Returns(safeModeService);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
@@ -193,7 +225,7 @@ public class ProjectSettingsEditorViewModelTests
             _commandService,
             workspaceWrapper,
             Substitute.For<ILocalFileSystem>(),
-            Substitute.For<IStringLocalizer>(),
+            stringLocalizer,
             _settingsService,
             Substitute.For<IPackageLocalizationService>(),
             Substitute.For<IFileTypeCatalog>(),

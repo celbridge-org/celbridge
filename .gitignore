@@ -447,11 +447,6 @@ Source/Core/Celbridge.Projects/Assets/Templates/*.zip
 Source/Core/Celbridge.UserInterface/Resources/ColorTokens.xaml
 Source/Core/Celbridge.WebHost/Web/celbridge-client/celbridge-tokens.css
 
-# UV binary (downloaded during build from GitHub releases, and extracted to obj/ to build the wheel)
-Source/Workspace/Celbridge.Python/Assets/UV/*.zip
-Source/Workspace/Celbridge.Python/Assets/UV/*.tar.gz
-Source/Workspace/Celbridge.Python/Assets/UV/uv_version.txt
-
 # Celbridge Python wheel (built during the build from packages/celbridge)
 Source/Workspace/Celbridge.Python/Assets/Python/*.whl
 

@@ -1,3 +1,4 @@
+using Celbridge.Dependencies;
 using Celbridge.Localization;
 using Celbridge.Logging;
 using Celbridge.Packages;
@@ -35,6 +36,7 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
     private readonly List<ProjectConfigEntryError> _configEntryErrors = new();
     private Result? _configLoadFailure;
     private readonly List<SafeModeCause> _safeModeCauses = new();
+    private DependencyInstallFailure? _dependencyInstallFailure;
     private PackageDiscoveryReport? _packageReport;
 
     public ProjectLoadReportSummary? WrittenReport { get; private set; }
@@ -64,6 +66,7 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
         _configEntryErrors.Clear();
         _configLoadFailure = null;
         _safeModeCauses.Clear();
+        _dependencyInstallFailure = null;
         _packageReport = null;
         WrittenReport = null;
     }
@@ -96,6 +99,11 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
     {
         _safeModeCauses.Clear();
         _safeModeCauses.AddRange(causes);
+    }
+
+    public void RecordDependencyInstallFailure(DependencyInstallFailure failure)
+    {
+        _dependencyInstallFailure = failure;
     }
 
     public void RecordPackageReport(PackageDiscoveryReport report)
@@ -276,6 +284,7 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
         {
             SafeModeCause.Untrusted => _localizerService.GetString("Report_ProjectLoad_SafeModeCause_Untrusted"),
             SafeModeCause.ConfigurationFailed => _localizerService.GetString("Report_ProjectLoad_SafeModeCause_ConfigurationFailed"),
+            SafeModeCause.DependencyInstallFailed => _localizerService.GetString("Report_ProjectLoad_SafeModeCause_DependencyInstallFailed"),
             _ => throw new ArgumentOutOfRangeException(nameof(cause), cause, "Unhandled Safe Mode cause")
         });
 
@@ -317,6 +326,11 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
             // The project file passed the migration check and failed to parse. A failed migration also fails the
             // configuration, and the finding above records it.
             items.Add(CreateResultItem(ReportFindingCatalog.Project.ConfigParseFailed, _configLoadFailure));
+        }
+
+        if (_dependencyInstallFailure is not null)
+        {
+            items.Add(CreateDependencyInstallItem(_dependencyInstallFailure));
         }
 
         if (_loadResult is { IsFailure: true } loadResult)
@@ -424,15 +438,30 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
 
     private ReportItem CreateResultItem(ReportFindingDescriptor descriptor, Result result)
     {
+        return ReportFinding.Create(_localizerService, descriptor) with
+        {
+            Detail = ComposeResultDetail(result)
+        };
+    }
+
+    private static string? ComposeResultDetail(Result result)
+    {
         var detail = result.MessageChain;
         if (string.IsNullOrEmpty(detail))
         {
             detail = result.DiagnosticReport;
         }
 
-        return ReportFinding.Create(_localizerService, descriptor) with
+        return NormaliseDetail(detail);
+    }
+
+    private ReportItem CreateDependencyInstallItem(DependencyInstallFailure failure)
+    {
+        var item = ReportFinding.Create(_localizerService, ReportFindingCatalog.Project.DependencyInstallFailed, failure.DependencyName);
+
+        return item with
         {
-            Detail = NormaliseDetail(detail)
+            Detail = ComposeResultDetail(failure.Error)
         };
     }
 
