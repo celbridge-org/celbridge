@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Celbridge.Console;
 using Celbridge.Console.Helpers;
+using Celbridge.Tests.Localization;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests.Console;
@@ -72,6 +73,22 @@ public class ConsoleSessionTypeCoverageTests
     }
 
     [Test]
+    public void EverySessionTypeThatNeedsAFeature_HasANoticeInTheApplicationStrings()
+    {
+        // A console of a disabled type shows a notice in its terminal. The notice is looked up by a key built from
+        // the type id.
+        var applicationKeys = TestLocalizerService.LoadStrings().Keys;
+
+        foreach (var provider in RegisteredProviders().Where(provider => provider.Feature is not null))
+        {
+            var typeId = provider.SessionType.TypeId;
+            var suffix = char.ToUpperInvariant(typeId[0]) + typeId.Substring(1);
+
+            applicationKeys.Should().Contain($"Console_Disabled_{suffix}");
+        }
+    }
+
+    [Test]
     public void TheSessionTypeDropdown_DeclaresNoOptionsOfItsOwn()
     {
         var html = File.ReadAllText(FindConsoleIndexHtml());
@@ -80,8 +97,15 @@ public class ConsoleSessionTypeCoverageTests
             "the Type options are built from the host's registered types, not authored in the markup");
     }
 
-    // The session types the console registers, read from its DI registrations.
     private static IReadOnlyList<ConsoleSessionType> RegisteredSessionTypes()
+    {
+        return RegisteredProviders()
+            .Select(provider => provider.SessionType)
+            .ToList();
+    }
+
+    // The session type providers the console registers, read from its DI registrations.
+    private static IReadOnlyList<IConsoleSessionProvider> RegisteredProviders()
     {
         var services = new ServiceCollection();
         Celbridge.Console.ServiceConfiguration.ConfigureServices(services);
@@ -96,7 +120,6 @@ public class ConsoleSessionTypeCoverageTests
 
         return providerTypes
             .Select(providerType => CreateProvider(providerType!))
-            .Select(provider => provider.SessionType)
             .ToList();
     }
 

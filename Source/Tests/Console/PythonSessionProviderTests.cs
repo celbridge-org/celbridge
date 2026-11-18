@@ -2,6 +2,7 @@ using Celbridge.Console;
 using Celbridge.Console.Services;
 using Celbridge.Python;
 using Celbridge.Python.Services;
+using Celbridge.Settings;
 
 namespace Celbridge.Tests.Console;
 
@@ -35,8 +36,7 @@ public class PythonSessionProviderTests
 
         _provider = new PythonSessionProvider(
             pythonConfigService,
-            _launchService,
-            Substitute.For<ILogger<PythonSessionProvider>>());
+            _launchService);
     }
 
     private static ConsoleSessionContext MakeContext(
@@ -136,6 +136,12 @@ public class PythonSessionProviderTests
         _provider.SessionType.TypeId.Should().Be("python");
         _provider.SessionType.OptionKeys.Should().Equal("python_version", "dependencies");
         _provider.SessionType.BuiltInRunners.Should().HaveCount(1);
+    }
+
+    [Test]
+    public void PythonProvider_NeedsThePythonFeature()
+    {
+        _provider.Feature.Should().Be(FeatureFlagCatalog.Python);
     }
 
     [Test]

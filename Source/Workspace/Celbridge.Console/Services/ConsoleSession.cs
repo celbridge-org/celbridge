@@ -1,7 +1,9 @@
 ﻿using Celbridge.Console.Helpers;
+using Celbridge.Localization;
 using Celbridge.Logging;
 using Celbridge.Patterns;
 using Celbridge.Projects;
+using Celbridge.Settings;
 using Celbridge.Utilities;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
@@ -209,6 +211,19 @@ internal sealed class ConsoleSession : IDisposable
         if (provider is null)
         {
             Fail($"Unknown console session type '{config.SessionType}'.");
+            return;
+        }
+
+        // The project chose to disable the feature, so the session is working as expected. The session's error is
+        // the notice. The page shows it over the terminal.
+        var featureFlags = _serviceProvider.GetRequiredService<IFeatureFlags>();
+        if (!ConsoleSessionFeature.IsEnabled(provider, featureFlags))
+        {
+            var localizerService = _serviceProvider.GetRequiredService<ILocalizerService>();
+            var noticeKey = ConsoleSessionFeature.NoticeKey(config.SessionType);
+            var notice = localizerService.GetString(noticeKey);
+
+            Fail(notice, isExpected: true);
             return;
         }
 
@@ -864,10 +879,17 @@ internal sealed class ConsoleSession : IDisposable
         attachedView?.OnSessionEnded();
     }
 
-    private void Fail(string? message)
+    // An expected failure is one the project chose, for example by disabling a feature. It logs at Debug.
+    private void Fail(string? message, bool isExpected = false)
     {
         Error = message;
         State = ConsoleSessionRunState.Failed;
+
+        if (isExpected)
+        {
+            _logger.LogDebug("Console session '{Resource}' does not start: {Reason}", Resource, message);
+            return;
+        }
 
         // A session starts when its document opens, which may be long before anyone looks at the tab, so
         // the log is the only place the failure surfaces until then.

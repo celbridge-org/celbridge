@@ -1,9 +1,7 @@
 using System.Diagnostics;
 using Celbridge.FileSystem;
 using Celbridge.Logging;
-using Celbridge.Platform;
 using Celbridge.Projects;
-using Celbridge.Server;
 using Celbridge.Utilities;
 
 namespace Celbridge.Python.Services;
@@ -52,8 +50,8 @@ public interface IPythonLaunchService
     string BuildConsolePath(string basePath);
 
     /// <summary>
-    /// Returns the host-integration environment every console shares. A celbridge-py launched from any console
-    /// then behaves like a python console session.
+    /// Returns the shared Python environment. A celbridge-py launched from a console that has this environment
+    /// behaves like a python console session.
     /// </summary>
     Task<IReadOnlyDictionary<string, string>> BuildConsoleEnvironmentAsync();
 }
@@ -64,8 +62,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
     private const string ProjectUvBinFolderName = "uv_bin";
     private const string IPythonProfileFolderName = "ipython";
 
-    private readonly IAppEnvironment _environmentService;
-    private readonly IServerService _serverService;
     private readonly CelbridgeWheelDependency _celbridgeWheelDependency;
     private readonly CelbridgeWheelFolders _folders;
     private readonly UvDependency _uvDependency;
@@ -74,8 +70,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
     private readonly ILogger<PythonLaunchService> _logger;
 
     public PythonLaunchService(
-        IAppEnvironment environmentService,
-        IServerService serverService,
         CelbridgeWheelDependency celbridgeWheelDependency,
         CelbridgeWheelFolders folders,
         UvDependency uvDependency,
@@ -83,8 +77,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
         IProjectService projectService,
         ILogger<PythonLaunchService> logger)
     {
-        _environmentService = environmentService;
-        _serverService = serverService;
         _celbridgeWheelDependency = celbridgeWheelDependency;
         _folders = folders;
         _uvDependency = uvDependency;
@@ -98,16 +90,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
     private string ProjectPythonFolder => Path.Combine(
         _projectService.CurrentProject!.ProjectDataFolderPath,
         ProjectConstants.PythonFolder);
-
-    // The folders behind the temp: and logs: roots. Scripts get their paths so they can read and write files
-    // there directly, or pass a file to another program.
-    private string ProjectTempFolder => Path.Combine(
-        _projectService.CurrentProject!.ProjectDataFolderPath,
-        ProjectConstants.TempFolder);
-
-    private string ProjectLogsFolder => Path.Combine(
-        _projectService.CurrentProject!.ProjectDataFolderPath,
-        ProjectConstants.LogsFolder);
 
     private string ProjectUvBinFolder => Path.Combine(ProjectPythonFolder, ProjectUvBinFolderName);
 
@@ -197,14 +179,8 @@ public sealed class PythonLaunchService : IPythonLaunchService
 
     public async Task<IReadOnlyDictionary<string, string>> BuildConsoleEnvironmentAsync()
     {
-        var environmentInfo = _environmentService.GetEnvironmentInfo();
-
         var ipythonDir = Path.Combine(ProjectPythonFolder, IPythonProfileFolderName);
         await _fileSystem.CreateFolderAsync(ipythonDir);
-
-        var celbridgeVersion = environmentInfo.Configuration == "Debug"
-            ? $"{environmentInfo.AppVersion} (Debug)"
-            : $"{environmentInfo.AppVersion}";
 
         var uvCacheDir = _folders.UvCacheFolderPath;
 
@@ -227,11 +203,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
             // the variable behind --managed-python, which the REPL's own launch passes: the older
             // UV_PYTHON_PREFERENCE names a different argument, and uv rejects the pair.
             ["UV_MANAGED_PYTHON"] = "1",
-            ["CELBRIDGE_MCP_PORT"] = _serverService.Port.ToString(),
-            ["CELBRIDGE_PROJECT_FOLDER"] = _projectService.CurrentProject!.ProjectFolderPath,
-            ["CELBRIDGE_TEMP_FOLDER"] = ProjectTempFolder,
-            ["CELBRIDGE_LOGS_FOLDER"] = ProjectLogsFolder,
-            ["CELBRIDGE_VERSION"] = celbridgeVersion,
             ["CELBRIDGE_IPYTHON_DIR"] = ipythonDir,
 
             // Read by celbridge-py, which passes it as an explicit --cache-dir. That outranks any

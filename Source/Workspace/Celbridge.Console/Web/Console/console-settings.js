@@ -59,8 +59,8 @@ export function createConsoleSettings({ client }) {
     // What the terminal's failure overlay is saying, so the settings surface can say it too while the
     // terminal is the hidden half of the row. Null while a session is running.
     let sessionFailure = null;
-    // The registered session types, in the order the form offers them, each carrying the keys it accepts and
-    // the runners it contributes. Null until an attach reports them.
+    // The session types that can start in the loaded project, in the order the form offers them. Each entry
+    // carries the keys the type accepts and the runners the type contributes. Null until an attach reports them.
     let hostSessionTypes = null;
     // The ids of the built-in runners switched off for this console.
     let disabledBuiltInRunners = [];
@@ -143,6 +143,19 @@ export function createConsoleSettings({ client }) {
     // True when the document names a type this client has no fields for, which makes the form read-only.
     function isUnknownSessionType() {
         return !clientTypeIds.includes(currentConfig.type || 'shell');
+    }
+
+    // True when the document names a type this client has fields for, but the host does not list. The host lists
+    // only the types that can start in the loaded project, so the project disables this type. The Type options
+    // leave the type out, and an edit could then rewrite the type, so the form is read-only. The session's
+    // failure gives the notice.
+    function isUnavailableSessionType() {
+        if (hostSessionTypes === null) {
+            return false;
+        }
+
+        const type = currentConfig.type || 'shell';
+        return clientTypeIds.includes(type) && findSessionType(type) === null;
     }
 
     // A stored option value as its control shows it. A value is typed by the TOML it was written as, not by
@@ -477,9 +490,9 @@ export function createConsoleSettings({ client }) {
     }
 
     // Whether an edit is allowed to reach the document. A type this client has no fields for is read-only
-    // too.
+    // too, and so is a type the loaded project disables.
     function isFormEditable() {
-        return isDocumentWritable() && !isUnknownSessionType();
+        return isDocumentWritable() && !isUnknownSessionType() && !isUnavailableSessionType();
     }
 
     // A read-only document disables the settings form so no edit marks the document dirty. The switcher's
@@ -540,9 +553,9 @@ export function createConsoleSettings({ client }) {
             return client.document.save(serializeConsoleToml(currentConfig));
         },
 
-        // The registered session types an attach reports: static host knowledge the form needs to offer the
-        // Type options and list each type's built-in runners. The first attach lands after the form is
-        // populated, hence the re-render.
+        // Takes the session types an attach reports, which are the ones that can start in the loaded project. The
+        // Type options list them, and the form lists each type's built-in runners. The first attach lands after
+        // the form is populated, hence the re-render.
         setSessionTypes(sessionTypes) {
             hostSessionTypes = sessionTypes;
             renderSessionTypeOptions();

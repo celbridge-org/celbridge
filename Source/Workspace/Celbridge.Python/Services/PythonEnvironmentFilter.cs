@@ -3,9 +3,9 @@ using Celbridge.Utilities;
 namespace Celbridge.Python.Services;
 
 /// <summary>
-/// Removes the uv and Python settings Celbridge did not choose from the processes it starts. It matches every
-/// variable that controls uv or the interpreter, except uv's index and network settings. The console start-up
-/// files are generated from these lists, and apply the same rule after the user's profile runs.
+/// Removes the uv and Python settings Celbridge did not choose. It matches every variable that controls uv or the
+/// interpreter, except uv's index and network settings. The console start-up files are generated from these lists,
+/// and apply the same rule after the user's profile runs.
 /// </summary>
 public static class PythonEnvironmentFilter
 {
@@ -45,8 +45,8 @@ public static class PythonEnvironmentFilter
     };
 
     /// <summary>
-    /// The commands Celbridge provides in every console. A profile's alias or function with one of these names
-    /// is removed.
+    /// The commands Celbridge's Python environment provides. The console start-up removes any alias or function a
+    /// profile defines with one of these names.
     /// </summary>
     public static IReadOnlyList<string> CommandNames { get; } = new[]
     {

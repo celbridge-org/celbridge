@@ -84,6 +84,9 @@ public class ProjectTemplateServiceTests
         parseResult.IsSuccess.Should().BeTrue();
         parseResult.Value.Celbridge.CelbridgeVersion.Should().Be(_expectedAppVersion);
         parseResult.Value.Celbridge.ProjectVersion.Should().BeNull();
+
+        // The python feature keeps its default, which is off.
+        parseResult.Value.Features.Should().NotContainKey("python");
     }
 
     [Test]
@@ -107,12 +110,13 @@ public class ProjectTemplateServiceTests
         var projectContents = await File.ReadAllTextAsync(projectFilePath);
         projectContents.Should().NotContain("<application-version>");
 
-        // The project file parses cleanly under the current schema, sets no project version, and declares
-        // the console shortcut.
+        // The project file parses cleanly under the current schema, sets no project version, turns on the
+        // python feature, and declares the console shortcut.
         var parseResult = ProjectConfigParser.ParseFromText(projectContents);
         parseResult.IsSuccess.Should().BeTrue();
         parseResult.Value.EntryErrors.Should().BeEmpty();
         parseResult.Value.Celbridge.ProjectVersion.Should().BeNull();
+        parseResult.Value.Features.Should().Contain("python", true);
         parseResult.Value.DocumentShortcuts.Should().ContainSingle(s => s.Resource == "python.console");
     }
 

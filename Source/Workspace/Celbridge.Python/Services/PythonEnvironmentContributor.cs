@@ -1,29 +1,42 @@
 using Celbridge.Console;
 using Celbridge.Logging;
+using Celbridge.Settings;
 using Celbridge.Utilities;
 
 namespace Celbridge.Python.Services;
 
 /// <summary>
-/// Adds the shared Python environment to every console, and puts the uv bin folders on its PATH. The installed
-/// celbridge-py command can then start a connected REPL from any console, or from a terminal a console starts.
-/// Also removes the uv and Python settings Celbridge inherited.
+/// Adds the shared Python environment to every console while the python feature is on, and puts the uv bin
+/// folders on its PATH. The installed celbridge-py command can then start a connected REPL from any console, or
+/// from a terminal a console starts. Also removes the uv and Python settings Celbridge inherited, so they cannot
+/// change Celbridge's uv. With the feature off, a console has none of Celbridge's uv, and keeps the user's own
+/// settings.
 /// </summary>
 public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributor
 {
     private readonly IPythonLaunchService _launchService;
+    private readonly IFeatureFlags _featureFlags;
     private readonly ILogger<PythonEnvironmentContributor> _logger;
 
     public PythonEnvironmentContributor(
         IPythonLaunchService launchService,
+        IFeatureFlags featureFlags,
         ILogger<PythonEnvironmentContributor> logger)
     {
         _launchService = launchService;
+        _featureFlags = featureFlags;
         _logger = logger;
     }
 
+    private bool IsPythonEnabled => _featureFlags.IsEnabled(FeatureFlagCatalog.Python);
+
     public void FilterInheritedEnvironment(IDictionary<string, string> inheritedEnvironment)
     {
+        if (!IsPythonEnabled)
+        {
+            return;
+        }
+
         var removedNames = PythonEnvironmentFilter.Apply(inheritedEnvironment);
         if (removedNames.Count > 0)
         {
@@ -35,6 +48,11 @@ public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributo
 
     public async Task ContributeAsync(ConsoleSessionContext context, IDictionary<string, string> environment)
     {
+        if (!IsPythonEnabled)
+        {
+            return;
+        }
+
         var hostEnvironment = await _launchService.BuildConsoleEnvironmentAsync();
 
         foreach (var pair in hostEnvironment)
@@ -54,6 +72,8 @@ public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributo
         environment[ConsoleEnvironmentVariables.PathFolders] = string.Join(
             Path.PathSeparator,
             _launchService.GetConsolePathFolders());
+
+        environment[ConsoleEnvironmentVariables.PythonFeature] = "1";
     }
 
     // Windows environment names are case-insensitive and its canonical spelling is Path, so a console that

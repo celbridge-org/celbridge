@@ -6,6 +6,7 @@ using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Python;
 using Celbridge.Server;
+using Celbridge.Settings;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 
@@ -359,9 +360,18 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         }
     }
 
+    // A console file still parses against every registered type. A console of a disabled type then fails with the
+    // type's notice.
     public IReadOnlyList<ConsoleSessionType> GetSessionTypes()
     {
-        return _sessionTypes;
+        var featureFlags = _serviceProvider.GetRequiredService<IFeatureFlags>();
+
+        var enabledTypes = _sessionProviders
+            .Where(provider => ConsoleSessionFeature.IsEnabled(provider, featureFlags))
+            .Select(provider => provider.SessionType)
+            .ToList();
+
+        return enabledTypes;
     }
 
     private static IReadOnlyList<IConsoleSessionProvider> ResolveSessionProviders(IServiceProvider serviceProvider)

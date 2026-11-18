@@ -16,9 +16,10 @@ public sealed record ConsoleStartupFile(string RelativePath, string Content);
 /// restore Celbridge's settings. When the profile is off, only the system's start-up files run. When the compact
 /// prompt is on, the files also set a short prompt before every prompt.
 /// The scripts are embedded from the StartupScripts folder. The only values filled into them are the uv and
-/// Python filter's lists. Every other value, including both settings, comes from variables Celbridge sets when it
-/// starts the shell. This keeps the user's environment off disk, and lets every console share the same files. The
-/// scripts name those variables directly, so each name here must match the scripts.
+/// Python filter's lists. Every other value comes from a variable Celbridge sets when it starts the shell. Passing
+/// values in variables keeps the user's environment off disk, and lets every console share the same files. Each of
+/// those variables has a name that starts with VariablePrefix, and is declared here or in
+/// ConsoleEnvironmentVariables. The scripts name the variables directly, so each name must match the scripts.
 /// </summary>
 public static class ConsoleStartupFiles
 {

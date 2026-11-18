@@ -130,6 +130,21 @@ public class ConsoleStartupShellTests
         results["INHERITED"].Should().Be("<unset>", "the command starts without the start-up's variables");
     }
 
+    // With the python feature off, a console has none of Celbridge's uv to guard, so the profile's settings stay.
+    [TestCase("zsh")]
+    [TestCase("bash")]
+    public void PythonFeatureOff_KeepsTheProfilesUvAndPythonSettings(string shellName)
+    {
+        var results = RunShell(shellName, useShellProfile: true, pythonFeature: false);
+
+        results["VIRTUAL_ENV"].Should().Be("/decoy/venv");
+        results["UV_PYTHON"].Should().Be("/decoy/python");
+        results["PYTHONPATH"].Should().Be("/decoy/pythonpath");
+        results["UV_COMMAND"].Should().Contain("/decoy/bin/uv", "the profile's uv alias stays");
+        results["CELBRIDGE_PY_COMMAND"].Should().Be("celbridge-py", "the profile's celbridge-py function stays");
+        results["MY_TABLE"].Should().Be("table", "the console's own value is still restored");
+    }
+
     [TestCase("zsh")]
     [TestCase("bash")]
     public void Clean_ProfileDoesNotRun(string shellName)
@@ -296,7 +311,7 @@ public class ConsoleStartupShellTests
             Assert.Ignore("PowerShell consoles run on Windows only.");
         }
 
-        // Acts like a profile, then draws the prompt PowerShell shows before the first command.
+        // Acts like a profile, then draws PowerShell's prompt for the first command.
         var script = ConsoleStartupFiles.BuildPowerShellStartup() + """
 
             $env:VIRTUAL_ENV = 'C:\decoy\venv'
@@ -326,6 +341,7 @@ public class ConsoleStartupShellTests
             ["MY_TABLE"] = "table",
             [ConsoleStartupFiles.RestoreVariable] = "MY_TABLE UV_CACHE_DIR",
             [ConsoleEnvironmentVariables.PathFolders] = @"C:\celbridge\bin;C:\celbridge\uv_bin",
+            [ConsoleEnvironmentVariables.PythonFeature] = "1",
         });
 
         results["VIRTUAL_ENV"].Should().BeEmpty();
@@ -338,6 +354,39 @@ public class ConsoleStartupShellTests
         results["RESTORE"].Should().BeEmpty();
         results["USER_GLOBAL"].Should().Be("mine", "the start-up removes only its own variables");
         results["LEFT_BEHIND"].Should().BeEmpty("the first prompt removes everything the start-up defined");
+    }
+
+    [Test]
+    public void PowerShell_PythonFeatureOff_KeepsTheProfilesUvAndPythonSettings()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Ignore("PowerShell consoles run on Windows only.");
+        }
+
+        // Acts like a profile, then draws PowerShell's prompt for the first command.
+        var script = ConsoleStartupFiles.BuildPowerShellStartup() + """
+
+            $env:VIRTUAL_ENV = 'C:\decoy\venv'
+            $env:MY_TABLE = 'profile'
+            Set-Alias -Name uv -Value 'C:\decoy\bin\uv.exe' -Scope Global
+            function global:celbridge-py { 'decoy' }
+            prompt | Out-Null
+            "CELTEST VIRTUAL_ENV=$env:VIRTUAL_ENV"
+            "CELTEST MY_TABLE=$env:MY_TABLE"
+            "CELTEST UV_ALIAS=$(Test-Path Alias:uv)"
+            "CELTEST CELBRIDGE_PY_FUNCTION=$(Test-Path Function:celbridge-py)"
+            """;
+        var results = RunPowerShell(script, new Dictionary<string, string>
+        {
+            ["MY_TABLE"] = "table",
+            [ConsoleStartupFiles.RestoreVariable] = "MY_TABLE",
+        });
+
+        results["VIRTUAL_ENV"].Should().Be(@"C:\decoy\venv");
+        results["MY_TABLE"].Should().Be("table", "the console's own value is still restored");
+        results["UV_ALIAS"].Should().Be("True");
+        results["CELBRIDGE_PY_FUNCTION"].Should().Be("True");
     }
 
     [TestCase(true, "PS work> ")]
@@ -393,7 +442,8 @@ public class ConsoleStartupShellTests
         string? userZdotdir = null,
         bool compactPrompt = true,
         IReadOnlyList<string>? command = null,
-        string? workingFolder = null)
+        string? workingFolder = null,
+        bool pythonFeature = true)
     {
         if (OperatingSystem.IsWindows())
         {
@@ -448,6 +498,10 @@ public class ConsoleStartupShellTests
         startInfo.Environment["BASH_SILENCE_DEPRECATION_WARNING"] = "1";
         startInfo.Environment[ConsoleStartupFiles.RestoreVariable] = "MY_TABLE UV_CACHE_DIR";
         startInfo.Environment[ConsoleEnvironmentVariables.PathFolders] = $"{CelbridgeBin}:{CelbridgeToolBin}";
+        if (pythonFeature)
+        {
+            startInfo.Environment[ConsoleEnvironmentVariables.PythonFeature] = "1";
+        }
         foreach (var pair in launch.Environment)
         {
             startInfo.Environment[pair.Key] = pair.Value;
@@ -575,7 +629,10 @@ public class ConsoleStartupShellTests
             "CELTEST DECOY_PROFILE=$env:DECOY_PROFILE"
             """;
 
-        var environment = new Dictionary<string, string>();
+        var environment = new Dictionary<string, string>
+        {
+            [ConsoleEnvironmentVariables.PythonFeature] = "1",
+        };
         if (useShellProfile)
         {
             environment[ConsoleStartupFiles.UseShellProfileVariable] = "1";

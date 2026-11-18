@@ -1,5 +1,6 @@
 [celbridge]
 celbridge-version = "1.7.0"
+features = { python = true }
 
 [celbridge.explorer]
 exclude = [".gitignore", ".DS_Store", "Thumbs.db", "desktop.ini"]

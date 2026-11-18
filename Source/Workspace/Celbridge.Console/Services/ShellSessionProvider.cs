@@ -1,3 +1,4 @@
+using Celbridge.Settings;
 using Celbridge.Utilities;
 
 namespace Celbridge.Console.Services;
@@ -15,6 +16,8 @@ public sealed class ShellSessionProvider : IConsoleSessionProvider
         "shell",
         OptionKeys: new[] { ExecutableKey, ArgumentsKey },
         BuiltInRunners: Array.Empty<ConsoleRunner>());
+
+    public FeatureFlagDescriptor? Feature => null;
 
     public async Task<Result<ConsoleStartupInvocation>> BuildStartupInvocationAsync(ConsoleSessionContext context)
     {

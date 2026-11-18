@@ -1,3 +1,5 @@
+using Celbridge.Settings;
+
 namespace Celbridge.Console;
 
 /// <summary>
@@ -74,8 +76,15 @@ public interface IConsoleSessionProvider
     ConsoleSessionType SessionType { get; }
 
     /// <summary>
+    /// The project feature a console of this type needs, or null when the type needs none. A console of the type
+    /// does not start while the loaded project has the feature disabled. It shows a notice instead, and a console's
+    /// settings do not offer the type.
+    /// </summary>
+    FeatureFlagDescriptor? Feature { get; }
+
+    /// <summary>
     /// Builds the startup command for a session from its resolved config, or a failure if the config
-    /// cannot produce a runnable command. May perform launch prerequisites (e.g. installing a toolchain).
+    /// cannot produce a runnable command.
     /// </summary>
     Task<Result<ConsoleStartupInvocation>> BuildStartupInvocationAsync(ConsoleSessionContext context);
 }

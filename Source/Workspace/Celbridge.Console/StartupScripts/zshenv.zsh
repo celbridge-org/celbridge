@@ -16,8 +16,9 @@ if [[ -n ${CELBRIDGE_CONSOLE_USE_SHELL_PROFILE-} ]]; then
     ZDOTDIR=$_celbridge_zdotdir
 fi
 
-# Runs once, just before the first prompt. Removes the uv and Python settings the user's files added,
-# and restores Celbridge's. Then shows the console and runs its command.
+# Runs once, just before the first prompt. Restores Celbridge's settings, then shows the console and runs
+# its command. With the python feature on, the hook also removes the uv and Python settings the user's
+# files added.
 _celbridge_first_prompt() {
     emulate -L zsh
     precmd_functions=(${precmd_functions:#_celbridge_first_prompt})
@@ -33,12 +34,14 @@ _celbridge_first_prompt() {
     fi
 
     local _celbridge_name
-    for _celbridge_name in ${(k)parameters}; do
-        case $_celbridge_name in
-            ({{KEPT_PATTERNS}}) ;;
-            ({{REMOVED_PATTERNS}}) unset $_celbridge_name ;;
-        esac
-    done
+    if [[ -n $CELBRIDGE_CONSOLE_PYTHON_FEATURE ]]; then
+        for _celbridge_name in ${(k)parameters}; do
+            case $_celbridge_name in
+                ({{KEPT_PATTERNS}}) ;;
+                ({{REMOVED_PATTERNS}}) unset $_celbridge_name ;;
+            esac
+        done
+    fi
 
     for _celbridge_name in ${(k)_celbridge_snapshot}; do
         export "$_celbridge_name=${_celbridge_snapshot[$_celbridge_name]}"
@@ -48,10 +51,12 @@ _celbridge_first_prompt() {
     _celbridge_folders=(${(s.:.)CELBRIDGE_CONSOLE_PATH_FOLDERS})
     path=($_celbridge_folders ${path:|_celbridge_folders})
 
-    for _celbridge_name in {{COMMAND_NAMES}}; do
-        unalias $_celbridge_name 2>/dev/null
-        unfunction $_celbridge_name 2>/dev/null
-    done
+    if [[ -n $CELBRIDGE_CONSOLE_PYTHON_FEATURE ]]; then
+        for _celbridge_name in {{COMMAND_NAMES}}; do
+            unalias $_celbridge_name 2>/dev/null
+            unfunction $_celbridge_name 2>/dev/null
+        done
+    fi
     rehash
 
     # Point ZDOTDIR back at the user's folder, so a shell started from the console reads their files.
