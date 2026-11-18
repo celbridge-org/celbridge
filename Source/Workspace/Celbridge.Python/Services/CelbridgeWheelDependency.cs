@@ -19,7 +19,7 @@ public sealed class CelbridgeWheelDependency : IDependency
     private const string WheelFilePattern = "celbridge-*.whl";
     private const string PythonModuleFolder = "Celbridge.Python";
     private const string PythonExecutableNameWindows = "python.exe";
-    private const string PyvenvHomeKey = "home";
+    private const string PyVenvHomeKey = "home";
 
     // The timeout is generous. The first install on a machine downloads an interpreter and the tool's packages
     // before publishing anything.
@@ -152,7 +152,7 @@ public sealed class CelbridgeWheelDependency : IDependency
     }
 
     /// <summary>
-    /// The absolute path of the installed celbridge wheel. Fails if no install has completed.
+    /// Returns the absolute path of the installed celbridge wheel. Fails until an install completes.
     /// </summary>
     public async Task<Result<string>> GetInstalledWheelPathAsync()
     {
@@ -218,14 +218,14 @@ public sealed class CelbridgeWheelDependency : IDependency
     private async Task<bool> IsInstallCurrentAsync(string versionContent)
     {
         var pythonFolderPath = _folders.PythonFolderPath;
-        if (!await IsItemAsync(pythonFolderPath, StorageItemKind.Folder))
+        if (await _fileSystem.GetKindAsync(pythonFolderPath) != StorageItemKind.Folder)
         {
             _logger.LogDebug("Python reinstall required: pythonFolder does not exist at {Path}", pythonFolderPath);
             return false;
         }
 
         var installedVersionPath = _folders.InstalledVersionFilePath;
-        if (!await IsItemAsync(installedVersionPath, StorageItemKind.File))
+        if (await _fileSystem.GetKindAsync(installedVersionPath) != StorageItemKind.File)
         {
             _logger.LogDebug("Python reinstall required: installed_version.txt missing at {Path}", installedVersionPath);
             return false;
@@ -285,7 +285,7 @@ public sealed class CelbridgeWheelDependency : IDependency
 
         foreach (var (path, kind) in requiredItems)
         {
-            if (!await IsItemAsync(path, kind))
+            if (await _fileSystem.GetKindAsync(path) != kind)
             {
                 _logger.LogDebug("The celbridge tool is not installed: '{Path}' is missing", path);
                 return false;
@@ -305,11 +305,11 @@ public sealed class CelbridgeWheelDependency : IDependency
         }
         var configText = readResult.Value;
 
-        return ReadPyvenvHome(configText);
+        return ReadPyVenvHome(configText);
     }
 
-    // The value of the home key in the text of a pyvenv.cfg, or null when the text has no home key.
-    internal static string? ReadPyvenvHome(string configText)
+    // Returns the value of the home key in the text of a pyvenv.cfg, or null when the text has no home key.
+    internal static string? ReadPyVenvHome(string configText)
     {
         foreach (var line in configText.Split('\n'))
         {
@@ -320,7 +320,7 @@ public sealed class CelbridgeWheelDependency : IDependency
             }
 
             var key = line[..separatorIndex].Trim();
-            if (!key.Equals(PyvenvHomeKey, StringComparison.OrdinalIgnoreCase))
+            if (!key.Equals(PyVenvHomeKey, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
@@ -331,9 +331,9 @@ public sealed class CelbridgeWheelDependency : IDependency
         return null;
     }
 
-    // Everything the installed folder is built from: the application version, the wheel, the interpreter
-    // version the tool is pinned to, and uv's pinned version. A build that changes an input the marker leaves out
-    // would never reinstall.
+    // Returns the content of the installed folder's version marker. The content lists every input of the install:
+    // the application version, the wheel's hash, the tool's pinned interpreter version and uv's pinned version. The
+    // install reruns only when the content changes, so the content must list every input.
     private async Task<Result<string>> GetVersionContentAsync(string appVersion)
     {
         var findWheelResult = await FindWheelFileAsync(BundledAssetsFolderPath);
@@ -369,13 +369,13 @@ public sealed class CelbridgeWheelDependency : IDependency
         }
 
         var uvPath = _uvDependency.ExecutablePath;
-        if (!await IsItemAsync(uvPath, StorageItemKind.File))
+        if (await _fileSystem.GetKindAsync(uvPath) != StorageItemKind.File)
         {
             return Result.Fail($"uv is missing from '{uvPath}'");
         }
 
         var pythonFolderPath = _folders.PythonFolderPath;
-        if (await IsItemAsync(pythonFolderPath, StorageItemKind.Folder))
+        if (await _fileSystem.GetKindAsync(pythonFolderPath) == StorageItemKind.Folder)
         {
             var deleteResult = await _fileSystem.DeleteFolderAsync(pythonFolderPath, recursive: true);
             if (deleteResult.IsFailure)
@@ -508,14 +508,6 @@ public sealed class CelbridgeWheelDependency : IDependency
         _logger.LogInformation("The uv tool install succeeded in {DurationMs}ms", runTimer.ElapsedMilliseconds);
 
         return Result.Ok();
-    }
-
-    private async Task<bool> IsItemAsync(string path, StorageItemKind kind)
-    {
-        var infoResult = await _fileSystem.GetInfoAsync(path);
-
-        return infoResult.IsSuccess
-            && infoResult.Value.Kind == kind;
     }
 
     private async Task<Result<string>> FindWheelFileAsync(string folderPath)

@@ -103,8 +103,8 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     public bool HasDependencyInstallFailure { get; }
 
     /// <summary>
-    /// Returns the Safe Mode section's text for a failed install. The text names the feature, and the Features
-    /// section as the place to turn the feature off. The text is empty when no install failed.
+    /// Returns the Safe Mode section's text when a feature failed to install. The text names the feature, and points
+    /// the user to the Features section. The text is empty when no feature failed to install.
     /// </summary>
     public string DependencyInstallFailureText { get; } = string.Empty;
 

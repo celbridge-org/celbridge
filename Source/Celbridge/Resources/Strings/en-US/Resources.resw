@@ -2181,7 +2181,7 @@ Open with default application instead?</value>
     <value>The project is not trusted on this computer.</value>
   </data>
   <data name="Report_ProjectLoad_SafeModeCause_DependencyInstallFailed" xml:space="preserve">
-    <value>A dependency of a feature could not be installed.</value>
+    <value>A feature could not be installed.</value>
   </data>
   <data name="Report_ProjectLoad_Fact_LoadDuration" xml:space="preserve">
     <value>Load duration</value>

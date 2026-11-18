@@ -1,14 +1,15 @@
 namespace Celbridge.Settings;
 
 /// <summary>
-/// A feature flag. Name is the name in appsettings.json and project files, which agents use too. TitleKey and
-/// DescriptionKey are the resource keys of the title and description in the Features section of Project Settings.
+/// A feature flag. Name is the name in appsettings.json and project files. Agent tools report the flag by the same
+/// name. TitleKey and DescriptionKey are the resource keys of the title and description in the Features section of
+/// Project Settings.
 /// </summary>
 public sealed record FeatureFlagDescriptor(string Name, string TitleKey, string DescriptionKey);
 
 /// <summary>
 /// A group of related feature flags, shown as one card in the Features section. TitleKey is the resource key of the
-/// area's localized title, and Flags lists the group's flags in display order.
+/// group's localized title, and Flags lists the group's flags in display order.
 /// </summary>
 public sealed record FeatureFlagGroupDescriptor(string TitleKey, IReadOnlyList<FeatureFlagDescriptor> Flags);
 

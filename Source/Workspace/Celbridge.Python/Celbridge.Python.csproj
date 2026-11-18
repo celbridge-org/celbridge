@@ -36,8 +36,7 @@
   <!-- The wheel is produced by Celbridge.Python.Assets, a single target framework project so that it runs
        once however many of this project's frameworks are building. This target includes it whenever the
        default Assets glob does not: on every head from a clean checkout, and always on the Skia heads, where
-       the property group above excludes it. A missing wheel is reported here rather than at the first
-       project load that installs Python, which is where it would otherwise surface. -->
+       the property group above excludes it. A missing wheel fails the build here. -->
   <Target Name="IncludeGeneratedPythonAssets" BeforeTargets="AssignTargetPaths">
     <ItemGroup>
       <PythonWheelAsset Include="Assets\Python\*.whl" />

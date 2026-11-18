@@ -29,6 +29,12 @@ public interface IDialogService
     bool IsDialogOpen { get; }
 
     /// <summary>
+    /// Returns true while any progress dialog token is acquired and not yet released. An operation acquires a token
+    /// when the operation expects to run long, and the progress dialog tells the user that the operation is working.
+    /// </summary>
+    bool IsProgressDialogActive { get; }
+
+    /// <summary>
     /// Display an Alert Dialog with configurable title and message text.
     /// </summary>
     Task ShowAlertDialogAsync(string titleText, string messageText);

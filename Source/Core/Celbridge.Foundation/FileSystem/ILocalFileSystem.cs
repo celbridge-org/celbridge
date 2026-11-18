@@ -103,6 +103,22 @@ public record FileSystemEntry(
 }
 
 /// <summary>
+/// Returned by a visitor to tell the walk of a folder whether to read the next entry.
+/// </summary>
+public enum VisitStep
+{
+    /// <summary>
+    /// Read the next entry.
+    /// </summary>
+    Continue,
+
+    /// <summary>
+    /// End the walk, and leave the rest of the folder unread.
+    /// </summary>
+    Stop,
+}
+
+/// <summary>
 /// Path-based gateway for local-substrate filesystem reads and writes. The
 /// resource layer composes it for raw IO against project: and other on-disk
 /// roots. Remote-substrate backends bypass this interface and implement
@@ -151,6 +167,12 @@ public interface ILocalFileSystem
     Task<Result<StorageItemInfo>> GetInfoAsync(string path);
 
     /// <summary>
+    /// Returns the kind of the item at the path. Links are followed, so a link reports the kind of its target. A link
+    /// to a target that has gone reports BrokenLink. An empty path, or a path that cannot be read, reports NotFound.
+    /// </summary>
+    Task<StorageItemKind> GetKindAsync(string path);
+
+    /// <summary>
     /// Enumerates the files and folders matching the pattern under the given folder,
     /// either the immediate level or the full subtree. A walk of the subtree lists a
     /// linked folder but never descends into it. Results are deterministic across
@@ -159,10 +181,11 @@ public interface ILocalFileSystem
     Task<Result<IReadOnlyList<FileSystemEntry>>> EnumerateAsync(string path, string pattern, bool recursive);
 
     /// <summary>
-    /// Returns true when the predicate accepts an entry directly inside the folder. The folder is read in the
-    /// platform's own order, and reading stops at the first entry the predicate accepts.
+    /// Calls the visitor for each entry directly inside the folder, until the visitor returns Stop. The folder is read
+    /// in the platform's own order, and only as far as the walk goes. Fails for a missing folder, and for a folder
+    /// that the walk fails to read.
     /// </summary>
-    Task<Result<bool>> HasEntryAsync(string path, Func<FileSystemEntry, bool> predicate);
+    Task<Result> VisitAsync(string path, Func<FileSystemEntry, VisitStep> visit);
 
     /// <summary>
     /// Moves a file from source to destination. The destination's parent folder

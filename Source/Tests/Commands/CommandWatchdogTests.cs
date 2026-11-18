@@ -30,7 +30,8 @@ public class BlockingTestCommand : CommandBase
 
 /// <summary>
 /// Covers the command queue's watchdog, which warns about a command that runs long. A command that waits on a
-/// dialog is waiting for the user, so the watchdog counts only the time after the dialog closes.
+/// dialog is waiting for the user, so the watchdog counts only the time after the dialog closes. A command that shows
+/// the progress dialog is expected to run long, so the watchdog counts only the time after the progress ends.
 /// </summary>
 [TestFixture]
 public class CommandWatchdogTests
@@ -121,6 +122,35 @@ public class CommandWatchdogTests
         _logger.Received().LogWarning(Arg.Is<string?>(message => IsBlockedWarning(message)), Arg.Any<object?[]>());
     }
 
+    [Test]
+    public async Task ACommandShowingProgress_IsNotReported()
+    {
+        var command = await StartBlockingCommandAsync();
+
+        // The command shows the progress dialog for several warning intervals. The command finishes as soon as the
+        // progress ends.
+        _dialogService.IsProgressDialogActive.Returns(true);
+        await Task.Delay(WarningInterval * 3);
+        EndTheProgress();
+        command.Released.SetResult();
+
+        _logger.DidNotReceive().LogWarning(Arg.Is<string?>(message => IsBlockedWarning(message)), Arg.Any<object?[]>());
+    }
+
+    [Test]
+    public async Task ACommandStillRunningAfterItsProgressEnds_IsReported()
+    {
+        var command = await StartBlockingCommandAsync();
+
+        _dialogService.IsProgressDialogActive.Returns(true);
+        await Task.Delay(WarningInterval * 3);
+        EndTheProgress();
+        await Task.Delay(WarningInterval * 3);
+        command.Released.SetResult();
+
+        _logger.Received().LogWarning(Arg.Is<string?>(message => IsBlockedWarning(message)), Arg.Any<object?[]>());
+    }
+
     private async Task<BlockingTestCommand> StartBlockingCommandAsync()
     {
         BlockingTestCommand? blockingCommand = null;
@@ -138,6 +168,13 @@ public class CommandWatchdogTests
     {
         _messengerService.Send(new ModalDialogClosedMessage());
         _dialogService.IsDialogOpen.Returns(false);
+    }
+
+    // Mirrors DialogService's release of a token: the message first, then the token stops counting.
+    private void EndTheProgress()
+    {
+        _messengerService.Send(new ProgressDialogReleasedMessage());
+        _dialogService.IsProgressDialogActive.Returns(false);
     }
 
     private static bool IsBlockedWarning(string? message)

@@ -1,8 +1,9 @@
 namespace Celbridge.Dependencies;
 
 /// <summary>
-/// A tool that a feature needs on this machine. Celbridge installs the tool before the feature works. Every project
-/// on the machine shares the installed tool, and each release of Celbridge pins the tool's version.
+/// Software that must be on this machine for a feature to work. Celbridge installs the software when a project with
+/// the feature loads. Every project on the machine shares the installed software, and each release of Celbridge pins
+/// the software's version.
 /// </summary>
 public interface IDependency
 {
@@ -12,7 +13,7 @@ public interface IDependency
     string Id { get; }
 
     /// <summary>
-    /// Returns the tool's version, as this release of Celbridge pins it.
+    /// Returns the software's pinned version.
     /// </summary>
     string Version { get; }
 

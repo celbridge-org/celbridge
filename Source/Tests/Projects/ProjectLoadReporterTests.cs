@@ -276,7 +276,7 @@ public class ProjectLoadReporterTests
         var item = GetSectionItems(report, "Load").Single();
         item.GetProperty("message").GetString().Should().Be("Failed to install uv.");
         item.GetProperty("detail").GetString().Should().Contain("status 503");
-        GetSectionFacts(report, "Summary")["Safe Mode"].Should().Be("On. A dependency of a feature could not be installed.");
+        GetSectionFacts(report, "Summary")["Safe Mode"].Should().Be("On. A feature could not be installed.");
     }
 
     [Test]

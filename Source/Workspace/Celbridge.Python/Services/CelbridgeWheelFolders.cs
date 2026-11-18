@@ -18,7 +18,7 @@ public sealed class CelbridgeWheelFolders
     private const string InstallLockFileName = "install.lock";
     private const string CelbridgeToolName = "celbridge";
     private const string CelbridgeToolCommand = "celbridge-py";
-    private const string PyvenvConfigFileName = "pyvenv.cfg";
+    private const string PyVenvConfigFileName = "pyvenv.cfg";
 
     // uv builds the temporary environments in this bucket of uv's cache. Each REPL runs in one of the environments.
     private const string TemporaryEnvironmentsFolderName = "builds-v0";
@@ -75,7 +75,7 @@ public sealed class CelbridgeWheelFolders
     /// <summary>
     /// The celbridge tool environment's pyvenv.cfg. Its home key names the folder of the environment's interpreter.
     /// </summary>
-    public string CelbridgeToolConfigPath => Path.Combine(UvToolsFolderPath, CelbridgeToolName, PyvenvConfigFileName);
+    public string CelbridgeToolConfigPath => Path.Combine(UvToolsFolderPath, CelbridgeToolName, PyVenvConfigFileName);
 
     /// <summary>
     /// uv's package cache, shared by the installed tool and by every project.

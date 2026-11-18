@@ -121,9 +121,7 @@ internal sealed class DependencyDownloader : IDependencyDownloader
             extractedFolderPath = Path.Combine(contentFolderPath, download.ArchiveFolder);
         }
 
-        var extractedInfoResult = await _fileSystem.GetInfoAsync(extractedFolderPath);
-        if (extractedInfoResult.IsFailure
-            || extractedInfoResult.Value.Kind != StorageItemKind.Folder)
+        if (await _fileSystem.GetKindAsync(extractedFolderPath) != StorageItemKind.Folder)
         {
             return Result.Fail($"The archive contains no folder named '{download.ArchiveFolder}'");
         }
@@ -137,7 +135,7 @@ internal sealed class DependencyDownloader : IDependencyDownloader
 
         // Another copy of Celbridge that downloads the same dependency at the same time may rename its folder first.
         // Its folder is complete, so this download has nothing left to do.
-        if (await IsFolderAsync(folderPath))
+        if (await _fileSystem.GetKindAsync(folderPath) == StorageItemKind.Folder)
         {
             _logger.LogInformation("Found '{Folder}' in place after downloading '{Url}'", folderPath, download.Url);
             return Result.Ok();
@@ -235,7 +233,7 @@ internal sealed class DependencyDownloader : IDependencyDownloader
 
     private async Task DeleteTemporaryFolderAsync(string temporaryFolderPath)
     {
-        if (!await IsFolderAsync(temporaryFolderPath))
+        if (await _fileSystem.GetKindAsync(temporaryFolderPath) != StorageItemKind.Folder)
         {
             return;
         }
@@ -245,14 +243,6 @@ internal sealed class DependencyDownloader : IDependencyDownloader
         {
             _logger.LogWarning(deleteResult, $"Failed to delete the temporary download folder '{temporaryFolderPath}'");
         }
-    }
-
-    private async Task<bool> IsFolderAsync(string folderPath)
-    {
-        var infoResult = await _fileSystem.GetInfoAsync(folderPath);
-
-        return infoResult.IsSuccess
-            && infoResult.Value.Kind == StorageItemKind.Folder;
     }
 
     private static string GetArchiveExtension(string url)

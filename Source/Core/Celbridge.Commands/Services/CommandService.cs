@@ -36,7 +36,7 @@ public class CommandService : ICommandService
 
     // How long an operation runs before the watchdog warns about it, and how long the watchdog waits between
     // warnings.
-    internal TimeSpan WatchdogWarningInterval { get; init; } = TimeSpan.FromSeconds(5);
+    internal TimeSpan WatchdogWarningInterval { get; init; } = TimeSpan.FromSeconds(10);
 
     // How long the command loop parks when the queue is empty. Enqueuing a command signals
     // _commandEnqueued, so this interval only bounds how often the application update ticks,
@@ -53,9 +53,9 @@ public class CommandService : ICommandService
     // thread, as in unit tests.
     private DispatcherQueue? _dispatcherQueue;
 
-    // The _stopwatch time at which the last dialog closed. The watchdog counts an operation's time from the later of
-    // the operation's start and this time.
-    private TimeSpan _lastDialogClosedTime;
+    // The _stopwatch time when the last dialog closed or the last progress dialog token was released. The
+    // watchdog counts an operation's time from the later of the operation's start and this time.
+    private TimeSpan _lastWaitEndedTime;
 
     public CommandService(
         IServiceProvider serviceProvider,
@@ -75,11 +75,17 @@ public class CommandService : ICommandService
         _dialogService = dialogService;
 
         _messengerService.Register<ModalDialogClosedMessage>(this, OnModalDialogClosed);
+        _messengerService.Register<ProgressDialogReleasedMessage>(this, OnProgressDialogReleased);
     }
 
     private void OnModalDialogClosed(object recipient, ModalDialogClosedMessage message)
     {
-        _lastDialogClosedTime = _stopwatch.Elapsed;
+        _lastWaitEndedTime = _stopwatch.Elapsed;
+    }
+
+    private void OnProgressDialogReleased(object recipient, ProgressDialogReleasedMessage message)
+    {
+        _lastWaitEndedTime = _stopwatch.Elapsed;
     }
 
     public Result Execute<T>(
@@ -368,8 +374,10 @@ public class CommandService : ICommandService
     // The serial queue cannot advance until the awaited operation returns, so a genuine hang would
     // otherwise leave no trace. The operation is never cancelled. The watchdog only emits a warning,
     // and repeats it while the operation stays blocked so a permanent hang keeps reporting itself.
-    // An operation that shows a dialog waits for the user's answer, and that wait is not a hang. So the
-    // watchdog stays quiet while a dialog is open, and counts again from the moment the dialog closes.
+    // An operation that shows a dialog waits for the user's answer, and that wait is not a hang. An operation that
+    // shows the progress dialog is expected to run long, and the progress dialog logs its own timing. So the watchdog
+    // stays quiet while either dialog is up. The watchdog counts again from the moment the dialog closes, or from the
+    // moment a progress dialog token is released.
     private async Task<Result> ExecuteWithWatchdogAsync(Task<Result> operation, string operationName)
     {
         // The application update completes synchronously on almost every tick, so allocating the
@@ -393,14 +401,15 @@ public class CommandService : ICommandService
                 return await operation;
             }
 
-            if (_dialogService.IsDialogOpen)
+            if (_dialogService.IsDialogOpen ||
+                _dialogService.IsProgressDialogActive)
             {
                 continue;
             }
 
-            var countStart = startElapsed > _lastDialogClosedTime
+            var countStart = startElapsed > _lastWaitEndedTime
                 ? startElapsed
-                : _lastDialogClosedTime;
+                : _lastWaitEndedTime;
 
             var blockedTime = _stopwatch.Elapsed - countStart;
             if (blockedTime < WatchdogWarningInterval)
@@ -410,7 +419,8 @@ public class CommandService : ICommandService
 
             _logger.LogWarning(
                 $"Command queue blocked: {operationName} has run for {blockedTime.TotalSeconds:F0}s without completing, " +
-                $"counted from its start or from the last dialog closing. No further commands will execute until it returns.");
+                $"counted from its start or from the last dialog or progress dialog ending. " +
+                $"No further commands will execute until it returns.");
         }
     }
 

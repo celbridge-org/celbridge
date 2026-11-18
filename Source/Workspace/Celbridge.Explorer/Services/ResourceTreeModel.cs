@@ -406,13 +406,23 @@ public sealed class ResourceTreeModel
             return;
         }
 
-        var checkResult = await ResourceService.FileSystem.HasChildAsync(folder, IsVisible);
-        if (checkResult.IsFailure)
+        var hasVisibleChild = false;
+        var visitResult = await ResourceService.FileSystem.VisitFolderAsync(folder, folderChild =>
+        {
+            if (!IsVisible(folderChild))
+            {
+                return VisitStep.Continue;
+            }
+
+            hasVisibleChild = true;
+            return VisitStep.Stop;
+        });
+        if (visitResult.IsFailure)
         {
             return;
         }
 
-        _expanderChecks[folder] = checkResult.Value;
+        _expanderChecks[folder] = hasVisibleChild;
     }
 
     // Lists the folder again when its held listing lacks the resource. A command that changes the disk can name the

@@ -9,8 +9,9 @@ using Celbridge.Tests.Helpers;
 namespace Celbridge.Tests.Console;
 
 /// <summary>
-/// Covers uv as a dependency: the check of the version's folder, the download for the running platform, and the
-/// deletion of other versions' folders once a new version installs. Also covers the assembly's embedded pin.
+/// Covers uv as a dependency. The tests cover the check for the pinned version's folder and the download for the
+/// running platform. The tests also cover the deletion of other versions' folders after a new version installs, and
+/// the assembly's embedded pin.
 /// </summary>
 [TestFixture]
 public class UvDependencyTests
@@ -84,7 +85,7 @@ public class UvDependencyTests
     [Test]
     public async Task Install_DownloadsTheRunningPlatformsArchiveIntoTheVersionsFolder()
     {
-        var platform = UvPin.GetRunningPlatform();
+        var platform = UvPinnedRelease.GetRunningPlatform();
         Assume.That(platform, Is.Not.Null, "uv publishes no release for this platform");
         var dependency = CreateDependency();
 
@@ -104,7 +105,7 @@ public class UvDependencyTests
     [Test]
     public async Task Install_AVersionFolderWithoutUv_IsReplacedByTheDownload()
     {
-        Assume.That(UvPin.GetRunningPlatform(), Is.Not.Null, "uv publishes no release for this platform");
+        Assume.That(UvPinnedRelease.GetRunningPlatform(), Is.Not.Null, "uv publishes no release for this platform");
         var folderPath = CreateVersionFolder(PinnedVersion, "uvx");
         var dependency = CreateDependency();
 
@@ -131,7 +132,7 @@ public class UvDependencyTests
     [Test]
     public async Task Install_ANewVersion_DeletesTheOtherVersionsFolders()
     {
-        Assume.That(UvPin.GetRunningPlatform(), Is.Not.Null, "uv publishes no release for this platform");
+        Assume.That(UvPinnedRelease.GetRunningPlatform(), Is.Not.Null, "uv publishes no release for this platform");
         Directory.CreateDirectory(Path.Combine(_uvFolderPath, "0.9.0"));
         Directory.CreateDirectory(Path.Combine(_uvFolderPath, ".download-0123456789abcdef"));
         Directory.CreateDirectory(Path.Combine(_uvFolderPath, "notes"));
@@ -148,7 +149,7 @@ public class UvDependencyTests
     [Test]
     public async Task Install_AFailedDownload_KeepsTheOtherVersionsFolders()
     {
-        Assume.That(UvPin.GetRunningPlatform(), Is.Not.Null, "uv publishes no release for this platform");
+        Assume.That(UvPinnedRelease.GetRunningPlatform(), Is.Not.Null, "uv publishes no release for this platform");
         Directory.CreateDirectory(Path.Combine(_uvFolderPath, "0.9.0"));
         _downloader.DownloadAsync(Arg.Any<DependencyDownload>()).Returns(Result.Fail("The network is down"));
         var dependency = CreateDependency();
@@ -162,10 +163,10 @@ public class UvDependencyTests
     [Test]
     public void Load_ReadsTheEmbeddedPin_WithAnArchiveForTheRunningPlatform()
     {
-        var pin = UvPin.Load();
+        var pin = UvPinnedRelease.Load();
 
         SemanticVersion.TryParse(pin.Version, out _).Should().BeTrue();
-        var platform = UvPin.GetRunningPlatform();
+        var platform = UvPinnedRelease.GetRunningPlatform();
         if (platform is not null)
         {
             var archive = pin.FindArchive(platform);
@@ -179,12 +180,12 @@ public class UvDependencyTests
     public void Parse_AnArchiveWithoutAHash_Throws()
     {
         var pinText = """
-            <UvPin Version="0.10.11" ReleasesUrl="https://example.com/releases">
+            <UvPinnedRelease Version="0.10.11" ReleasesUrl="https://example.com/releases">
               <Archive Platform="aarch64-apple-darwin" Name="uv-aarch64-apple-darwin.tar.gz" />
-            </UvPin>
+            </UvPinnedRelease>
             """;
 
-        var parse = () => UvPin.Parse(pinText);
+        var parse = () => UvPinnedRelease.Parse(pinText);
 
         parse.Should().Throw<FormatException>().WithMessage("*Sha256*");
     }
@@ -205,12 +206,12 @@ public class UvDependencyTests
     private UvDependency CreateDependency()
     {
         var archives = new List<UvArchive>();
-        var platform = UvPin.GetRunningPlatform();
+        var platform = UvPinnedRelease.GetRunningPlatform();
         if (platform is not null)
         {
             archives.Add(new UvArchive(platform, $"uv-{platform}.tar.gz", "abc123", $"uv-{platform}"));
         }
-        var pin = new UvPin(PinnedVersion, "https://example.com/releases", archives);
+        var pin = new UvPinnedRelease(PinnedVersion, "https://example.com/releases", archives);
 
         var appEnvironment = Substitute.For<IAppEnvironment>();
         appEnvironment.DependenciesFolderPath.Returns(_dependenciesFolderPath);

@@ -1,9 +1,9 @@
 namespace Celbridge.Python;
 
 /// <summary>
-/// Removes the temporary environments that REPLs run in from uv's cache. uv run builds one environment for each
-/// REPL, and removes the environment when the REPL exits normally. A REPL leaves its environment behind when its
-/// console is torn down, or when a quit or a crash ends the REPL.
+/// Removes the temporary environments of REPLs from uv's cache. uv run builds one environment for each REPL, and
+/// removes the environment when the REPL exits normally. The environment stays in the cache when the REPL's console
+/// closes, and when the application quits or crashes while the REPL is running.
 /// </summary>
 public interface ITemporaryEnvironments
 {

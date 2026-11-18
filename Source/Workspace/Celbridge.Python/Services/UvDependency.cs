@@ -24,7 +24,7 @@ public sealed class UvDependency : IDependency
     private readonly IDependencyDownloader _downloader;
     private readonly ILocalizerService _localizerService;
     private readonly ILogger<UvDependency> _logger;
-    private readonly UvPin _pin;
+    private readonly UvPinnedRelease _pin;
 
     public UvDependency(
         ILocalFileSystem fileSystem,
@@ -32,7 +32,7 @@ public sealed class UvDependency : IDependency
         IDependencyDownloader downloader,
         ILocalizerService localizerService,
         ILogger<UvDependency> logger)
-        : this(fileSystem, appEnvironment, downloader, localizerService, logger, UvPin.Load())
+        : this(fileSystem, appEnvironment, downloader, localizerService, logger, UvPinnedRelease.Load())
     {
     }
 
@@ -42,7 +42,7 @@ public sealed class UvDependency : IDependency
         IDependencyDownloader downloader,
         ILocalizerService localizerService,
         ILogger<UvDependency> logger,
-        UvPin pin)
+        UvPinnedRelease pin)
     {
         _fileSystem = fileSystem;
         _appEnvironment = appEnvironment;
@@ -76,12 +76,12 @@ public sealed class UvDependency : IDependency
 
     public async Task<bool> IsInstalledAsync()
     {
-        return await IsItemAsync(ExecutablePath, StorageItemKind.File);
+        return await _fileSystem.GetKindAsync(ExecutablePath) == StorageItemKind.File;
     }
 
     public async Task<Result> InstallAsync()
     {
-        var platform = UvPin.GetRunningPlatform();
+        var platform = UvPinnedRelease.GetRunningPlatform();
         if (platform is null)
         {
             return Result.Fail("uv publishes no release for this platform");
@@ -100,7 +100,7 @@ public sealed class UvDependency : IDependency
         }
 
         // A folder that lacks uv's executable is incomplete, and the download's rename needs the name free.
-        if (await IsItemAsync(FolderPath, StorageItemKind.Folder))
+        if (await _fileSystem.GetKindAsync(FolderPath) == StorageItemKind.Folder)
         {
             var deleteResult = await _fileSystem.DeleteFolderAsync(FolderPath, recursive: true);
             if (deleteResult.IsFailure)
@@ -125,14 +125,6 @@ public sealed class UvDependency : IDependency
         await DeleteOtherVersionsAsync();
 
         return Result.Ok();
-    }
-
-    private async Task<bool> IsItemAsync(string path, StorageItemKind kind)
-    {
-        var infoResult = await _fileSystem.GetInfoAsync(path);
-
-        return infoResult.IsSuccess
-            && infoResult.Value.Kind == kind;
     }
 
     // Deletes only the folders named by a version, so another copy of Celbridge keeps the temporary folder of a

@@ -10,19 +10,19 @@ namespace Celbridge.Python.Helpers;
 public sealed record UvArchive(string Platform, string Name, string Sha256, string Folder);
 
 /// <summary>
-/// The uv release that this build of Celbridge pins, with an archive for each platform. The assembly embeds the
+/// The uv release pinned by this build of Celbridge, with an archive for each platform. The assembly embeds the
 /// uv_pin.xml file, and the build reads the same file.
 /// </summary>
-public sealed record UvPin(string Version, string ReleasesUrl, IReadOnlyList<UvArchive> Archives)
+public sealed record UvPinnedRelease(string Version, string ReleasesUrl, IReadOnlyList<UvArchive> Archives)
 {
     private const string ResourceName = "uv_pin.xml";
 
     /// <summary>
     /// Reads the assembly's embedded pin.
     /// </summary>
-    public static UvPin Load()
+    public static UvPinnedRelease Load()
     {
-        var assembly = typeof(UvPin).Assembly;
+        var assembly = typeof(UvPinnedRelease).Assembly;
         using var stream = assembly.GetManifestResourceStream(ResourceName);
         if (stream is null)
         {
@@ -38,7 +38,7 @@ public sealed record UvPin(string Version, string ReleasesUrl, IReadOnlyList<UvA
     /// <summary>
     /// Reads a pin from the text of a uv_pin.xml file.
     /// </summary>
-    public static UvPin Parse(string pinText)
+    public static UvPinnedRelease Parse(string pinText)
     {
         var document = XDocument.Parse(pinText);
         var root = document.Root;
@@ -62,7 +62,7 @@ public sealed record UvPin(string Version, string ReleasesUrl, IReadOnlyList<UvA
             archives.Add(archive);
         }
 
-        return new UvPin(version, releasesUrl, archives);
+        return new UvPinnedRelease(version, releasesUrl, archives);
     }
 
     /// <summary>

@@ -45,16 +45,16 @@
   <Target Name="ReadUvPin" Condition="'$(GeneratePythonAssets)' == 'true'">
     <Error Condition="'$(UvPlatform)' == ''"
            Text="uv publishes no release for this platform, so the celbridge wheel cannot be built here." />
-    <XmlPeek XmlInputPath="$(UvPinFile)" Query="/UvPin/@Version">
+    <XmlPeek XmlInputPath="$(UvPinFile)" Query="/UvPinnedRelease/@Version">
       <Output TaskParameter="Result" PropertyName="UvVersion" />
     </XmlPeek>
-    <XmlPeek XmlInputPath="$(UvPinFile)" Query="/UvPin/@ReleasesUrl">
+    <XmlPeek XmlInputPath="$(UvPinFile)" Query="/UvPinnedRelease/@ReleasesUrl">
       <Output TaskParameter="Result" PropertyName="UvReleasesUrl" />
     </XmlPeek>
-    <XmlPeek XmlInputPath="$(UvPinFile)" Query="/UvPin/Archive[@Platform='$(UvPlatform)']/@Name">
+    <XmlPeek XmlInputPath="$(UvPinFile)" Query="/UvPinnedRelease/Archive[@Platform='$(UvPlatform)']/@Name">
       <Output TaskParameter="Result" PropertyName="UvArchiveName" />
     </XmlPeek>
-    <XmlPeek XmlInputPath="$(UvPinFile)" Query="/UvPin/Archive[@Platform='$(UvPlatform)']/@Sha256">
+    <XmlPeek XmlInputPath="$(UvPinFile)" Query="/UvPinnedRelease/Archive[@Platform='$(UvPlatform)']/@Sha256">
       <Output TaskParameter="Result" PropertyName="UvArchiveSha256" />
     </XmlPeek>
     <Error Condition="'$(UvVersion)' == '' OR '$(UvArchiveName)' == '' OR '$(UvArchiveSha256)' == ''"
