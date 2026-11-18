@@ -1,26 +1,16 @@
-using System.Reflection;
-using Celbridge.ProjectSettings.ViewModels;
 using Celbridge.Settings;
 using Celbridge.Tests.Architecture;
+using Celbridge.Tests.Helpers;
 
 namespace Celbridge.Tests.ProjectSettings;
 
 /// <summary>
-/// Keeps FeatureFlagCatalog (the metadata behind the Features section of Project Settings) in sync with
-/// FeatureFlagConstants (the canonical flag names).
+/// Keeps the groups of FeatureFlagCatalog in step with the flags the catalog declares. The Features section of
+/// Project Settings shows the groups.
 /// </summary>
 [TestFixture]
 public class FeatureFlagCatalogTests
 {
-    private static IReadOnlyList<string> GetConstantFlagNames()
-    {
-        return typeof(FeatureFlagConstants)
-            .GetFields(BindingFlags.Public | BindingFlags.Static)
-            .Where(field => field.IsLiteral && field.FieldType == typeof(string))
-            .Select(field => (string)field.GetRawConstantValue()!)
-            .ToList();
-    }
-
     private static IReadOnlyList<FeatureFlagDescriptor> GetCatalogFlags()
     {
         return FeatureFlagCatalog.Groups
@@ -29,20 +19,21 @@ public class FeatureFlagCatalogTests
     }
 
     [Test]
-    public void Catalog_CoversEveryKnownFeatureFlag()
+    public void Groups_ListEveryDeclaredFlag()
     {
-        var constantNames = GetConstantFlagNames();
-        var catalogNames = GetCatalogFlags().Select(descriptor => descriptor.FlagName).ToList();
+        var declaredFlags = DeclaredFeatureFlags.Read();
 
-        catalogNames.Should().BeEquivalentTo(constantNames);
+        GetCatalogFlags().Should().BeEquivalentTo(declaredFlags);
     }
 
     [Test]
     public void Catalog_HasNoDuplicateFlags()
     {
-        var catalogNames = GetCatalogFlags().Select(descriptor => descriptor.FlagName).ToList();
+        var catalogNames = GetCatalogFlags().Select(descriptor => descriptor.Name).ToList();
+        var declaredNames = DeclaredFeatureFlags.Read().Select(descriptor => descriptor.Name).ToList();
 
         catalogNames.Should().OnlyHaveUniqueItems();
+        declaredNames.Should().OnlyHaveUniqueItems("two descriptors with one name would share one project override");
     }
 
     [Test]

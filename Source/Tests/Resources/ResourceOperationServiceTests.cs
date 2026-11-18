@@ -641,30 +641,29 @@ public class ResourceOperationServiceTests
     }
 
     [Test]
-    public async Task HasChildAsync_LeavesOutLinkedFilesAndFolders()
+    public async Task VisitFolderAsync_LeavesOutLinkedFilesAndFolders()
     {
         CreateFolderThatContainsLinks();
         var offeredNames = new List<string>();
 
-        var hasChildResult = await _resourceFileSystem.HasChildAsync(new ResourceKey("folder"), folderChild =>
+        var visitResult = await _resourceFileSystem.VisitFolderAsync(new ResourceKey("folder"), folderChild =>
         {
             offeredNames.Add(folderChild.Resource.ResourceName);
-            return false;
+            return VisitStep.Continue;
         });
 
-        hasChildResult.IsSuccess.Should().BeTrue(hasChildResult.MessageChain);
-        hasChildResult.Value.Should().BeFalse();
+        visitResult.IsSuccess.Should().BeTrue(visitResult.MessageChain);
         offeredNames.Should().Equal("plain.txt");
     }
 
     [Test]
-    public async Task HasChildAsync_FailsForAFile()
+    public async Task VisitFolderAsync_FailsForAFile()
     {
         await File.WriteAllTextAsync(Path.Combine(_tempFolder, "notes.txt"), "notes");
 
-        var hasChildResult = await _resourceFileSystem.HasChildAsync(new ResourceKey("notes.txt"), _ => true);
+        var visitResult = await _resourceFileSystem.VisitFolderAsync(new ResourceKey("notes.txt"), _ => VisitStep.Stop);
 
-        hasChildResult.IsFailure.Should().BeTrue();
+        visitResult.IsFailure.Should().BeTrue();
     }
 
     [Test]

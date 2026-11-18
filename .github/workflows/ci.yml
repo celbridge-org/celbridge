@@ -77,9 +77,10 @@ jobs:
 
       # Checks the lockfile against the npm advisory database, so this can start failing
       # without a code change when a new advisory is published against a pinned version.
+      # The script skips the advisories that GitHub has withdrawn and npm still reports.
       - name: Audit dependencies
         working-directory: ./Source
-        run: npm audit --audit-level=moderate
+        run: node ../.github/scripts/audit-dependencies.mjs
 
       - name: Run JS tests
         working-directory: ./Source

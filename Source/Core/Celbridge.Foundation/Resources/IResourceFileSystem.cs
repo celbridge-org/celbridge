@@ -100,11 +100,11 @@ public interface IResourceFileSystem
     Task<Result<IReadOnlyList<FolderChild>>> EnumerateFolderAsync(ResourceKey folder);
 
     /// <summary>
-    /// Returns true when the predicate accepts a child of a folder resource. The children are read in the
-    /// platform's own order, and reading stops at the first child the predicate accepts. A link or a reserved
-    /// folder is never offered. Fails when the resource is not a folder.
+    /// Calls the visitor for each child of a folder resource, until the visitor returns Stop. The children are read
+    /// in the platform's own order, and only as far as the walk goes. A link or a reserved folder is never offered.
+    /// Fails when the resource is not a folder.
     /// </summary>
-    Task<Result<bool>> HasChildAsync(ResourceKey folder, Func<FolderChild, bool> predicate);
+    Task<Result> VisitFolderAsync(ResourceKey folder, Func<FolderChild, VisitStep> visit);
 
     /// <summary>
     /// Returns a deterministic content fingerprint for the resource as an

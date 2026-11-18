@@ -16,6 +16,7 @@ function CelbridgeSaveStartup {
         PathFolders = @("$env:CELBRIDGE_CONSOLE_PATH_FOLDERS" -split ';' | Where-Object { $_ })
         UseShellProfile = [bool]$env:CELBRIDGE_CONSOLE_USE_SHELL_PROFILE
         CompactPrompt = [bool]$env:CELBRIDGE_CONSOLE_COMPACT_PROMPT
+        PythonFeature = [bool]$env:CELBRIDGE_CONSOLE_PYTHON_FEATURE
         History = $env:CELBRIDGE_CONSOLE_HISTORY
         WorkingFolder = $env:CELBRIDGE_CONSOLE_WORKING_FOLDER
         Command = @(if ($env:CELBRIDGE_CONSOLE_COMMAND) { $env:CELBRIDGE_CONSOLE_COMMAND -split "`n" })
@@ -44,13 +45,15 @@ function CelbridgeIsRemoved($celbridgeName) {
     return $false
 }
 
-# Restores Celbridge's settings. Removes the uv and Python settings the profiles added, puts back the saved
-# values, and moves Celbridge's folders to the front of PATH. Also removes any alias or function that hides one
-# of Celbridge's commands.
+# Restores Celbridge's settings. Puts back the saved values, and moves Celbridge's folders to the front of PATH.
+# With the python feature on, also removes the uv and Python settings the profiles added, and any alias or
+# function that hides one of Celbridge's commands.
 function CelbridgeRestore {
-    foreach ($celbridgeVariable in @(Get-ChildItem Env:)) {
-        if (CelbridgeIsRemoved $celbridgeVariable.Name) {
-            Remove-Item -LiteralPath "Env:$($celbridgeVariable.Name)"
+    if ($global:CelbridgeStartup.PythonFeature) {
+        foreach ($celbridgeVariable in @(Get-ChildItem Env:)) {
+            if (CelbridgeIsRemoved $celbridgeVariable.Name) {
+                Remove-Item -LiteralPath "Env:$($celbridgeVariable.Name)"
+            }
         }
     }
 
@@ -61,6 +64,10 @@ function CelbridgeRestore {
     $celbridgeFolders = $global:CelbridgeStartup.PathFolders
     $celbridgeRest = @("$env:Path" -split ';' | Where-Object { $_ -and $celbridgeFolders -notcontains $_ })
     $env:Path = ($celbridgeFolders + $celbridgeRest) -join ';'
+
+    if (-not $global:CelbridgeStartup.PythonFeature) {
+        return
+    }
 
     foreach ($celbridgeCommand in @({{COMMAND_NAMES}})) {
         foreach ($celbridgeDrive in @('Alias', 'Function')) {

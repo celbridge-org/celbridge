@@ -413,6 +413,9 @@ This file could not be saved</value>
   <data name="Notification_SafeMode_Untrusted" xml:space="preserve">
     <value>Safe Mode is on. You haven't trusted this project</value>
   </data>
+  <data name="Notification_SafeMode_DependencyInstallFailed" xml:space="preserve">
+    <value>Safe Mode is on. Celbridge could not install {0}. Check your internet connection, then reload the project</value>
+  </data>
   <data name="Notification_ProjectLoadIssues_One" xml:space="preserve">
     <value>The project loaded with 1 issue</value>
   </data>
@@ -1068,6 +1071,9 @@ Open with default application instead?</value>
   <data name="ProjectSettings_SafeModeUntrusted" xml:space="preserve">
     <value>This project's code stays off until you trust the project. Trust it only if you know where it came from.</value>
   </data>
+  <data name="ProjectSettings_SafeModeDependencyInstallFailed" xml:space="preserve">
+    <value>Celbridge could not install {0}. Check your internet connection, then reload the project. You can configure this project's features in the Features section.</value>
+  </data>
   <data name="ProjectSettings_TrustProject" xml:space="preserve">
     <value>Trust Project</value>
   </data>
@@ -1248,6 +1254,9 @@ Open with default application instead?</value>
   <data name="ProjectSettings_FeatureFlagGroup_Documents_Title" xml:space="preserve">
     <value>Documents</value>
   </data>
+  <data name="ProjectSettings_FeatureFlagGroup_Languages_Title" xml:space="preserve">
+    <value>Languages</value>
+  </data>
   <data name="ProjectSettings_FeatureFlag_WebViewLoadDiagnostics_Title" xml:space="preserve">
     <value>Page Load Diagnostics</value>
   </data>
@@ -1271,6 +1280,12 @@ Open with default application instead?</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_NoteEditor_Description" xml:space="preserve">
     <value>An experimental editor for .note files, which may be removed in a later release.</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_Python_Title" xml:space="preserve">
+    <value>Python</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_Python_Description" xml:space="preserve">
+    <value>Python consoles, for running Python scripts that call Celbridge. Celbridge downloads Python the first time a project needs it.</value>
   </data>
   <data name="ProjectSettings_CelbridgeVersionLabel" xml:space="preserve">
     <value>Celbridge Version</value>
@@ -1739,6 +1754,21 @@ Open with default application instead?</value>
   <data name="Workspace_LoadingProject" xml:space="preserve">
     <value>Loading {0}</value>
   </data>
+  <data name="Dependency_Uv_Name" xml:space="preserve">
+    <value>uv</value>
+  </data>
+  <data name="Dependency_Uv_ProgressTitle" xml:space="preserve">
+    <value>Downloading uv</value>
+  </data>
+  <data name="Dependency_CelbridgeWheel_Name" xml:space="preserve">
+    <value>Python support</value>
+  </data>
+  <data name="Dependency_CelbridgeWheel_ProgressTitle" xml:space="preserve">
+    <value>Installing Python support</value>
+  </data>
+  <data name="Console_Disabled_Python" xml:space="preserve">
+    <value>Python is disabled in this project. The Python setting is in the Features section of Project Settings.</value>
+  </data>
   <data name="Template_Empty_Name" xml:space="preserve">
     <value>Empty Project</value>
   </data>
@@ -2057,6 +2087,9 @@ Open with default application instead?</value>
   <data name="Report_Finding_Project_ConfigParseFailed" xml:space="preserve">
     <value>The project file could not be read.</value>
   </data>
+  <data name="Report_Finding_Project_DependencyInstallFailed" xml:space="preserve">
+    <value>Failed to install {0}.</value>
+  </data>
   <data name="Report_Finding_Package_PackageLoadFailed" xml:space="preserve">
     <value>Package failed to load: {0}</value>
   </data>
@@ -2149,6 +2182,9 @@ Open with default application instead?</value>
   </data>
   <data name="Report_ProjectLoad_SafeModeCause_Untrusted" xml:space="preserve">
     <value>The project is not trusted on this computer.</value>
+  </data>
+  <data name="Report_ProjectLoad_SafeModeCause_DependencyInstallFailed" xml:space="preserve">
+    <value>A feature could not be installed.</value>
   </data>
   <data name="Report_ProjectLoad_Fact_LoadDuration" xml:space="preserve">
     <value>Load duration</value>

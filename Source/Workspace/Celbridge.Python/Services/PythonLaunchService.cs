@@ -1,9 +1,7 @@
 using System.Diagnostics;
 using Celbridge.FileSystem;
 using Celbridge.Logging;
-using Celbridge.Platform;
 using Celbridge.Projects;
-using Celbridge.Server;
 using Celbridge.Utilities;
 
 namespace Celbridge.Python.Services;
@@ -34,8 +32,8 @@ public sealed record PythonStartupResult(
 public interface IPythonLaunchService
 {
     /// <summary>
-    /// Resolves the startup command and its per-console environment for a Python session, installing the
-    /// support files first. Fails if the install fails or if uv is missing.
+    /// Resolves the startup command and its per-console environment for a Python session. The project load
+    /// installs the celbridge wheel. Fails if uv is missing.
     /// </summary>
     Task<Result<PythonStartupResult>> BuildStartupAsync(PythonLaunchRequest request);
 
@@ -52,8 +50,8 @@ public interface IPythonLaunchService
     string BuildConsolePath(string basePath);
 
     /// <summary>
-    /// Returns the host-integration environment every console shares, installing the Python support files
-    /// first. A celbridge-py launched from any console then behaves like a python console session.
+    /// Returns the shared Python environment. A celbridge-py launched from a console that has this environment
+    /// behaves like a python console session.
     /// </summary>
     Task<IReadOnlyDictionary<string, string>> BuildConsoleEnvironmentAsync();
 }
@@ -64,24 +62,24 @@ public sealed class PythonLaunchService : IPythonLaunchService
     private const string ProjectUvBinFolderName = "uv_bin";
     private const string IPythonProfileFolderName = "ipython";
 
-    private readonly IAppEnvironment _environmentService;
-    private readonly IServerService _serverService;
-    private readonly IPythonInstaller _pythonInstaller;
+    private readonly CelbridgeWheelDependency _celbridgeWheelDependency;
+    private readonly CelbridgeWheelFolders _folders;
+    private readonly UvDependency _uvDependency;
     private readonly ILocalFileSystem _fileSystem;
     private readonly IProjectService _projectService;
     private readonly ILogger<PythonLaunchService> _logger;
 
     public PythonLaunchService(
-        IAppEnvironment environmentService,
-        IServerService serverService,
-        IPythonInstaller pythonInstaller,
+        CelbridgeWheelDependency celbridgeWheelDependency,
+        CelbridgeWheelFolders folders,
+        UvDependency uvDependency,
         ILocalFileSystem fileSystem,
         IProjectService projectService,
         ILogger<PythonLaunchService> logger)
     {
-        _environmentService = environmentService;
-        _serverService = serverService;
-        _pythonInstaller = pythonInstaller;
+        _celbridgeWheelDependency = celbridgeWheelDependency;
+        _folders = folders;
+        _uvDependency = uvDependency;
         _fileSystem = fileSystem;
         _projectService = projectService;
         _logger = logger;
@@ -93,16 +91,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
         _projectService.CurrentProject!.ProjectDataFolderPath,
         ProjectConstants.PythonFolder);
 
-    // The folders behind the temp: and logs: roots. Scripts get their paths so they can read and write files
-    // there directly, or pass a file to another program.
-    private string ProjectTempFolder => Path.Combine(
-        _projectService.CurrentProject!.ProjectDataFolderPath,
-        ProjectConstants.TempFolder);
-
-    private string ProjectLogsFolder => Path.Combine(
-        _projectService.CurrentProject!.ProjectDataFolderPath,
-        ProjectConstants.LogsFolder);
-
     private string ProjectUvBinFolder => Path.Combine(ProjectPythonFolder, ProjectUvBinFolderName);
 
     private string ProjectUvToolsFolder => Path.Combine(ProjectPythonFolder, ProjectUvToolsFolderName);
@@ -110,17 +98,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
     public async Task<Result<PythonStartupResult>> BuildStartupAsync(PythonLaunchRequest request)
     {
         var startupTimer = Stopwatch.StartNew();
-
-        var environmentInfo = _environmentService.GetEnvironmentInfo();
-
-        // The celbridge-py command this returns is published by that install, so a console starting while
-        // it runs waits for it here rather than launching against a command that is not there yet.
-        var installResult = await _pythonInstaller.InstallPythonAsync(environmentInfo.AppVersion);
-        if (installResult.IsFailure)
-        {
-            return Result<PythonStartupResult>.Fail("Failed to ensure Python support files are installed")
-                .WithErrors(installResult);
-        }
 
         var resolveUvResult = await ResolveUvExecutableAsync();
         if (resolveUvResult.IsFailure)
@@ -148,7 +125,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
             startupEnvironment["CELBRIDGE_PYTHON_WITH"] = string.Join('\n', dependencies);
         }
 
-        var celbridgeToolCommand = _pythonInstaller.CelbridgeToolCommandPath;
+        var celbridgeToolCommand = _folders.CelbridgeToolCommandPath;
 
         _logger.LogDebug("Built Python startup in {DurationMs}ms: {Command} with launch defaults {Environment}",
             startupTimer.ElapsedMilliseconds,
@@ -165,8 +142,8 @@ public sealed class PythonLaunchService : IPythonLaunchService
     {
         var folders = new List<string>
         {
-            _pythonInstaller.UvBinFolderPath,
-            _pythonInstaller.UvToolBinFolderPath,
+            _uvDependency.FolderPath,
+            _folders.UvToolBinFolderPath,
             ProjectUvBinFolder,
         };
 
@@ -202,26 +179,10 @@ public sealed class PythonLaunchService : IPythonLaunchService
 
     public async Task<IReadOnlyDictionary<string, string>> BuildConsoleEnvironmentAsync()
     {
-        var environmentInfo = _environmentService.GetEnvironmentInfo();
-
-        // Every console type advertises the uv bin folder on its PATH, so the install has to have finished
-        // before the environment is handed over. A reinstall empties that folder while it runs.
-        var installResult = await _pythonInstaller.InstallPythonAsync(environmentInfo.AppVersion);
-        if (installResult.IsFailure)
-        {
-            _logger.LogError(
-                "Failed to install Python support files, so the console environment omits uv: {Error}",
-                installResult.FirstErrorMessage);
-        }
-
         var ipythonDir = Path.Combine(ProjectPythonFolder, IPythonProfileFolderName);
         await _fileSystem.CreateFolderAsync(ipythonDir);
 
-        var celbridgeVersion = environmentInfo.Configuration == "Debug"
-            ? $"{environmentInfo.AppVersion} (Debug)"
-            : $"{environmentInfo.AppVersion}";
-
-        var uvCacheDir = _pythonInstaller.UvCacheFolderPath;
+        var uvCacheDir = _folders.UvCacheFolderPath;
 
         // uv's own variables, so a uv the user types in a console works against the same folders the
         // console's own Python does. A console can override any of them. Sharing the cache does not share
@@ -229,7 +190,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
         var environment = new Dictionary<string, string>
         {
             ["UV_CACHE_DIR"] = uvCacheDir,
-            ["UV_PYTHON_INSTALL_DIR"] = _pythonInstaller.UvPythonInstallFolderPath,
+            ["UV_PYTHON_INSTALL_DIR"] = _folders.UvPythonInstallFolderPath,
             ["UV_TOOL_DIR"] = ProjectUvToolsFolder,
             ["UV_TOOL_BIN_DIR"] = ProjectUvBinFolder,
 
@@ -242,11 +203,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
             // the variable behind --managed-python, which the REPL's own launch passes: the older
             // UV_PYTHON_PREFERENCE names a different argument, and uv rejects the pair.
             ["UV_MANAGED_PYTHON"] = "1",
-            ["CELBRIDGE_MCP_PORT"] = _serverService.Port.ToString(),
-            ["CELBRIDGE_PROJECT_FOLDER"] = _projectService.CurrentProject!.ProjectFolderPath,
-            ["CELBRIDGE_TEMP_FOLDER"] = ProjectTempFolder,
-            ["CELBRIDGE_LOGS_FOLDER"] = ProjectLogsFolder,
-            ["CELBRIDGE_VERSION"] = celbridgeVersion,
             ["CELBRIDGE_IPYTHON_DIR"] = ipythonDir,
 
             // Read by celbridge-py, which passes it as an explicit --cache-dir. That outranks any
@@ -255,7 +211,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
         };
 
         // Where a typed celbridge-py finds uv and the celbridge wheel when its launch options make it
-        // re-exec through uv. Only set once the support files are installed, because before that no
+        // re-exec through uv. Only set when the celbridge wheel is installed, because otherwise no
         // celbridge-py exists to consume them.
         var resolveUvResult = await ResolveUvExecutableAsync();
         if (resolveUvResult.IsSuccess)
@@ -263,7 +219,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
             environment["CELBRIDGE_UV"] = resolveUvResult.Value;
         }
 
-        var wheelPathResult = await _pythonInstaller.GetInstalledWheelPathAsync();
+        var wheelPathResult = await _celbridgeWheelDependency.GetInstalledWheelPathAsync();
         if (wheelPathResult.IsSuccess)
         {
             environment["CELBRIDGE_WHEEL"] = wheelPathResult.Value;
@@ -272,11 +228,10 @@ public sealed class PythonLaunchService : IPythonLaunchService
         return environment;
     }
 
-    // The install reports success before this is called, so a missing binary means something removed it
-    // afterwards rather than an install that has not run.
+    // The project load installs uv, so a missing binary means something removed it afterwards.
     private async Task<Result<string>> ResolveUvExecutableAsync()
     {
-        var uvExePath = _pythonInstaller.UvExecutablePath;
+        var uvExePath = _uvDependency.ExecutablePath;
 
         var uvExeInfoResult = await _fileSystem.GetInfoAsync(uvExePath);
         var uvExeExists = uvExeInfoResult.IsSuccess

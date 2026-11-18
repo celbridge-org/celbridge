@@ -26,8 +26,8 @@ public class FeatureFlagsSectionViewModelTests
     {
         var configData = new Dictionary<string, string?>
         {
-            [$"FeatureFlags:{FeatureFlagConstants.WebViewDevTools}"] = "true",
-            [$"FeatureFlags:{FeatureFlagConstants.NoteEditor}"] = "false"
+            [$"FeatureFlags:{FeatureFlagCatalog.WebViewDevTools.Name}"] = "true",
+            [$"FeatureFlags:{FeatureFlagCatalog.NoteEditor.Name}"] = "false"
         };
 
         var configuration = new ConfigurationBuilder()
@@ -63,7 +63,7 @@ public class FeatureFlagsSectionViewModelTests
     {
         var projectFeatures = new Dictionary<string, bool>
         {
-            [FeatureFlagConstants.NoteEditor] = true
+            [FeatureFlagCatalog.NoteEditor.Name] = true
         };
         _featureFlags.ApplyProjectOverrides(projectFeatures);
         _featureFlags.TurnOffAllFeatures();
@@ -75,8 +75,8 @@ public class FeatureFlagsSectionViewModelTests
 
         section.Load();
 
-        FindFlag(section, FeatureFlagConstants.NoteEditor).IsOn.Should().BeTrue("the project file turns the flag on");
-        FindFlag(section, FeatureFlagConstants.WebViewDevTools).IsOn.Should().BeTrue("the application turns the flag on by default");
+        FindFlag(section, FeatureFlagCatalog.NoteEditor).IsOn.Should().BeTrue("the project file turns the flag on");
+        FindFlag(section, FeatureFlagCatalog.WebViewDevTools).IsOn.Should().BeTrue("the application turns the flag on by default");
     }
 
     private static FeatureFlagsSectionViewModel CreateSection(ProjectConfig config)
@@ -100,12 +100,9 @@ public class FeatureFlagsSectionViewModelTests
         return new FeatureFlagsSectionViewModel(context, stringLocalizer);
     }
 
-    private static FeatureFlagItemViewModel FindFlag(FeatureFlagsSectionViewModel section, string flagName)
+    private static FeatureFlagItemViewModel FindFlag(FeatureFlagsSectionViewModel section, FeatureFlagDescriptor flag)
     {
-        var titleKey = FeatureFlagCatalog.Groups
-            .SelectMany(group => group.Flags)
-            .Single(descriptor => descriptor.FlagName == flagName)
-            .TitleKey;
+        var titleKey = flag.TitleKey;
 
         return section.Groups
             .SelectMany(group => group.Flags)

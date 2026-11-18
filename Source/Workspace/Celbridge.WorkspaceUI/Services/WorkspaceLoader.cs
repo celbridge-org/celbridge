@@ -70,6 +70,11 @@ public class WorkspaceLoader
                 _loadReporter.RecordConfigLoadFailure(currentProject.ConfigLoadFailure);
             }
 
+            if (currentProject.DependencyInstallFailure is not null)
+            {
+                _loadReporter.RecordDependencyInstallFailure(currentProject.DependencyInstallFailure);
+            }
+
             // Record entries the config parser skipped or degraded. The rest of the file applied, and
             // the load report is where the detail lands.
             HandleConfigEntryErrors(currentProject.Config.EntryErrors, currentProject.ProjectFilePath);
@@ -199,7 +204,10 @@ public class WorkspaceLoader
         }
 
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
-        var message = new WorkspaceLoadedInSafeModeMessage(causes, projectFileResource);
+        var message = new WorkspaceLoadedInSafeModeMessage(causes, projectFileResource)
+        {
+            DependencyInstallFailure = _projectService.CurrentProject!.DependencyInstallFailure
+        };
         messengerService.Send(message);
     }
 

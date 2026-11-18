@@ -1,4 +1,3 @@
-using System.Reflection;
 using Celbridge.Messaging;
 using Celbridge.Platform;
 using Celbridge.Projects;
@@ -52,10 +51,8 @@ public interface IAppStateProvider
 
 internal sealed class AppStateProvider : IAppStateProvider
 {
-    // Cached set of public flag names declared on FeatureFlagConstants. Reading
-    // them via reflection means adding a new constant automatically widens the
-    // get_state payload.
-    private static readonly IReadOnlyList<string> KnownFeatureFlagNames = ReadFeatureFlagNames();
+    // Every flag in FeatureFlagCatalog, so a new flag widens the get_state payload with no further wiring.
+    private static readonly IReadOnlyList<FeatureFlagDescriptor> KnownFeatureFlags = ReadFeatureFlags();
 
     private readonly IAppEnvironment _environmentService;
     private readonly IProjectService _projectService;
@@ -136,10 +133,10 @@ internal sealed class AppStateProvider : IAppStateProvider
                 .Count(failure => failure.Origin == PackageOrigin.Project);
         }
 
-        var featureFlags = new Dictionary<string, bool>(KnownFeatureFlagNames.Count);
-        foreach (var flagName in KnownFeatureFlagNames)
+        var featureFlags = new Dictionary<string, bool>(KnownFeatureFlags.Count);
+        foreach (var flag in KnownFeatureFlags)
         {
-            featureFlags[flagName] = _featureFlags.IsEnabled(flagName);
+            featureFlags[flag.Name] = _featureFlags.IsEnabled(flag);
         }
 
         var focusedPanel = _focusService.FocusedPanel.ToString();
@@ -178,22 +175,13 @@ internal sealed class AppStateProvider : IAppStateProvider
             SpotlightLandmarks: spotlightLandmarks);
     }
 
-    private static IReadOnlyList<string> ReadFeatureFlagNames()
+    private static IReadOnlyList<FeatureFlagDescriptor> ReadFeatureFlags()
     {
-        var fields = typeof(FeatureFlagConstants).GetFields(BindingFlags.Public | BindingFlags.Static);
-        var names = new List<string>(fields.Length);
-        foreach (var field in fields)
-        {
-            if (field.IsLiteral && !field.IsInitOnly && field.FieldType == typeof(string))
-            {
-                var value = (string?)field.GetRawConstantValue();
-                if (!string.IsNullOrEmpty(value))
-                {
-                    names.Add(value);
-                }
-            }
-        }
-        names.Sort(StringComparer.Ordinal);
-        return names;
+        var flags = FeatureFlagCatalog.Groups
+            .SelectMany(group => group.Flags)
+            .OrderBy(flag => flag.Name, StringComparer.Ordinal)
+            .ToList();
+
+        return flags;
     }
 }

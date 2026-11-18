@@ -17,6 +17,11 @@ public enum SafeModeCause
     /// fails to parse each have this cause.
     /// </summary>
     ConfigurationFailed,
+
+    /// <summary>
+    /// A dependency of a feature that is on failed to install.
+    /// </summary>
+    DependencyInstallFailed,
 }
 
 /// <summary>

@@ -163,6 +163,17 @@ public sealed class FakeFileSystem : ILocalFileSystem
         return Task.FromResult<Result<StorageItemInfo>>(notFound);
     }
 
+    public async Task<StorageItemKind> GetKindAsync(string path)
+    {
+        var infoResult = await GetInfoAsync(path);
+        if (infoResult.IsFailure)
+        {
+            return StorageItemKind.NotFound;
+        }
+
+        return infoResult.Value.Kind;
+    }
+
     public Task<Result<IReadOnlyList<FileSystemEntry>>> EnumerateAsync(string path, string pattern, bool recursive)
     {
         Record($"EnumerateAsync('{path}', '{pattern}', recursive={recursive})");
@@ -228,9 +239,9 @@ public sealed class FakeFileSystem : ILocalFileSystem
         return Task.FromResult(Result<IReadOnlyList<FileSystemEntry>>.Ok(list));
     }
 
-    public async Task<Result<bool>> HasEntryAsync(string path, Func<FileSystemEntry, bool> predicate)
+    public async Task<Result> VisitAsync(string path, Func<FileSystemEntry, VisitStep> visit)
     {
-        Record($"HasEntryAsync('{path}')");
+        Record($"VisitAsync('{path}')");
 
         // Matches LocalFileSystem, which fails for a folder that does not exist.
         bool folderExists;
@@ -240,7 +251,7 @@ public sealed class FakeFileSystem : ILocalFileSystem
         }
         if (!folderExists)
         {
-            return Result<bool>.Fail($"Folder does not exist: '{path}'");
+            return Result.Fail($"Folder does not exist: '{path}'");
         }
 
         var enumerateResult = await EnumerateAsync(path, "*", recursive: false);
@@ -249,7 +260,15 @@ public sealed class FakeFileSystem : ILocalFileSystem
             return Result.Fail(enumerateResult);
         }
 
-        return enumerateResult.Value.Any(predicate);
+        foreach (var entry in enumerateResult.Value)
+        {
+            if (visit(entry) == VisitStep.Stop)
+            {
+                break;
+            }
+        }
+
+        return Result.Ok();
     }
 
     public Task<Result> MoveFileAsync(string source, string dest, bool overwrite = false)

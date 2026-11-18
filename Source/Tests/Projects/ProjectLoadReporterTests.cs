@@ -1,3 +1,5 @@
+using Celbridge.Settings;
+using Celbridge.Dependencies;
 using Celbridge.Tests.Localization;
 using System.Text.Json;
 using Celbridge.FileSystem.Services;
@@ -253,6 +255,28 @@ public class ProjectLoadReporterTests
 
         var detail = GetSectionItems(report, "Load").Single().GetProperty("detail").GetString();
         detail.Should().Contain("unexpected key 'pakages'");
+    }
+
+    [Test]
+    public async Task FlushAsync_AFailedInstall_NamesTheDependencyAndGivesTheError()
+    {
+        var failure = new DependencyInstallFailure(FeatureFlagCatalog.Python, "uv", Result.Fail("The server answered with status 503"));
+
+        _reporter.BeginLoad(_projectFilePath);
+        _reporter.RecordMigrationResult(MigrationResult.Success(), userConfirmedUpgrade: false, userCancelledUpgrade: false);
+        _reporter.RecordSafeModeCauses([SafeModeCause.DependencyInstallFailed]);
+        _reporter.RecordDependencyInstallFailure(failure);
+        _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
+
+        var report = await FlushAndReadAsync();
+
+        report.RootElement.GetProperty("severity").GetString().Should().Be("error");
+        GetSectionCodes(report, "Load").Should().Equal(ReportFindingCatalog.Project.DependencyInstallFailed.Code);
+
+        var item = GetSectionItems(report, "Load").Single();
+        item.GetProperty("message").GetString().Should().Be("Failed to install uv.");
+        item.GetProperty("detail").GetString().Should().Contain("status 503");
+        GetSectionFacts(report, "Summary")["Safe Mode"].Should().Be("On. A feature could not be installed.");
     }
 
     [Test]

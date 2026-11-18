@@ -1,5 +1,6 @@
 using Celbridge.Automation;
 using Celbridge.Commands;
+using Celbridge.Dependencies;
 using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Logging;
@@ -30,6 +31,7 @@ internal class ProjectLoader : IProjectLoader
     private readonly IAutomationService _automationService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IProjectLoadReporter _loadReporter;
+    private readonly IDependencyService _dependencyService;
 
     public ProjectLoader(
         ILogger<ProjectLoader> logger,
@@ -45,7 +47,8 @@ internal class ProjectLoader : IProjectLoader
         ICommandService commandService,
         IAutomationService automationService,
         IStringLocalizer stringLocalizer,
-        IProjectLoadReporter loadReporter)
+        IProjectLoadReporter loadReporter,
+        IDependencyService dependencyService)
     {
         _logger = logger;
         _migrationService = migrationService;
@@ -61,6 +64,7 @@ internal class ProjectLoader : IProjectLoader
         _automationService = automationService;
         _stringLocalizer = stringLocalizer;
         _loadReporter = loadReporter;
+        _dependencyService = dependencyService;
     }
 
     public async Task<Result> LoadProjectAsync(string projectFilePath, ProjectLoadOrigin origin)
@@ -489,6 +493,27 @@ internal class ProjectLoader : IProjectLoader
         await _dialogService.ShowAlertDialogAsync(title, message);
     }
 
+    // Installs the dependencies of the project's features before the workspace shows, so a console or a document
+    // never waits on an install. Safe Mode turns every feature off, so a project that opens in Safe Mode installs
+    // nothing. A failed install opens the project in Safe Mode.
+    private async Task InstallDependenciesAsync(IProject project)
+    {
+        if (!project.IsTrusted
+            || !project.ConfigIsHealthy)
+        {
+            return;
+        }
+
+        var failure = await _dependencyService.InstallDependenciesAsync(project.Config.Features);
+        if (failure is null)
+        {
+            return;
+        }
+
+        _logger.LogWarning(failure.Error, $"The project '{project.ProjectName}' opens in Safe Mode, because a dependency of the '{failure.Feature.Name}' feature failed to install");
+        _projectService.RecordDependencyInstallFailure(failure);
+    }
+
     private async Task ShowLoadFailedAlertAsync(string projectFilePath)
     {
         var title = _stringLocalizer.GetString("LoadProjectFailedAlert_Title");
@@ -504,6 +529,14 @@ internal class ProjectLoader : IProjectLoader
             return Result.Fail($"Failed to open project file '{projectFilePath}'")
                 .WithErrors(loadResult);
         }
+        var project = loadResult.Value;
+
+        // The token covers the rest of the load. The progress dialog then stays up from a dependency's install
+        // until the workspace takes a second token, once the workspace's page has loaded.
+        var loadingTitle = _stringLocalizer.GetString("Workspace_LoadingProject", project.ProjectName);
+        using var progressToken = _dialogService.AcquireProgressDialog(loadingTitle);
+
+        await InstallDependenciesAsync(project);
 
         var loadPageCancellationToken = new CancellationTokenSource();
 

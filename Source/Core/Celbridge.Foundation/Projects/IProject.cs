@@ -1,3 +1,5 @@
+using Celbridge.Dependencies;
+
 namespace Celbridge.Projects;
 
 /// <summary>
@@ -55,6 +57,12 @@ public interface IProject
     /// True when the user trusts the project on this machine. An untrusted project opens in Safe Mode.
     /// </summary>
     bool IsTrusted { get; }
+
+    /// <summary>
+    /// The dependency that failed to install during the project's load. The value is null once every dependency is
+    /// in place. A failed install opens the project in Safe Mode.
+    /// </summary>
+    DependencyInstallFailure? DependencyInstallFailure { get; }
 
     /// <summary>
     /// True when the resource is this project's .celbridge file, which sits at the project root.

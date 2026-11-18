@@ -671,6 +671,8 @@ public class AgentResponseFilterTests
     {
         public bool IsDialogOpen { get; set; }
 
+        public bool IsProgressDialogActive => false;
+
         public Task ShowAlertDialogAsync(string titleText, string messageText) => throw new NotSupportedException();
 
         public Task<Result<bool>> ShowConfirmationDialogAsync(string titleText, string messageText, ConfirmationDialogOptions? options = null) => throw new NotSupportedException();

@@ -22,6 +22,12 @@ public interface IAppEnvironment
     string LocalApplicationDataFolderPath { get; }
 
     /// <summary>
+    /// The folder in the application data folder where Celbridge installs the features' dependencies.
+    /// Every project on the machine shares it.
+    /// </summary>
+    string DependenciesFolderPath { get; }
+
+    /// <summary>
     /// A folder for the application's temporary files.
     /// </summary>
     string TemporaryFolderPath { get; }

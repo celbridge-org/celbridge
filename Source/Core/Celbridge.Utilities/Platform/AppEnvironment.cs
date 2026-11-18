@@ -12,6 +12,7 @@ namespace Celbridge.Utilities.Platform;
 public sealed class AppEnvironment : IAppEnvironment
 {
     private const string ApplicationDataFolderName = "Celbridge";
+    private const string DependenciesFolderName = "Dependencies";
     private const string WebHostModuleFolderName = "Celbridge.WebHost";
 
     // The process working folder captured at startup, before any loaded project changes it.
@@ -57,6 +58,8 @@ public sealed class AppEnvironment : IAppEnvironment
 #endif
         }
     }
+
+    public string DependenciesFolderPath => Path.Combine(LocalApplicationDataFolderPath, DependenciesFolderName);
 
     public string TemporaryFolderPath
     {

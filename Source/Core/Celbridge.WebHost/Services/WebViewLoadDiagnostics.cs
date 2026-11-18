@@ -105,7 +105,7 @@ internal sealed class WebViewLoadDiagnostics
     // Read per call rather than cached, because a project's overrides are applied when it loads and can
     // change while the app is running. A page that loads blank is reported either way: what this gates is
     // the timeline around it, which is the bulk of the volume.
-    private bool IsNarrationEnabled => _featureFlags.IsEnabled(FeatureFlagConstants.WebViewLoadDiagnostics);
+    private bool IsNarrationEnabled => _featureFlags.IsEnabled(FeatureFlagCatalog.WebViewLoadDiagnostics);
 
     // Describes the surface a load runs against. The description covers the control's tree and layout state, and
     // the native state the view can see behind the control.

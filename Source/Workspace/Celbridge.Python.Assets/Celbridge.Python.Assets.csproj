@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.Build.NoTargets/3.7.56">
 
   <!--
-    Produces the two generated assets Celbridge.Python ships: the uv archive the application unpacks at
-    first launch, and the celbridge wheel it installs as a tool. Neither is committed.
+    Builds the celbridge wheel, which Celbridge.Python ships and the application installs as a tool. The wheel
+    is not committed. The build runs uv to build the wheel. uv_pin.xml in Celbridge.Python pins the uv release,
+    and the build checks its download against the pin's hash.
 
     One target framework, so that it builds once however many frameworks reference it. Celbridge.Python
     multi-targets and builds its frameworks in parallel, so assets generated there would be written by
@@ -12,44 +13,27 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <PythonModuleFolder>$(MSBuildThisFileDirectory)..\Celbridge.Python</PythonModuleFolder>
-    <!-- Set by a build that wants the Celbridge.Python assembly and not the assets, so uv is neither
-         downloaded nor run. The application cannot run Python without them, so anything that has to
+    <!-- Set by a build that wants the Celbridge.Python assembly and not the wheel, so uv is neither
+         downloaded nor run. The application cannot run Python without the wheel, so anything that has to
          launch must leave this unset. -->
     <GeneratePythonAssets Condition="'$(SkipPythonAssets)' != 'true' AND '$(DesignTimeBuild)' != 'true'">true</GeneratePythonAssets>
   </PropertyGroup>
 
   <PropertyGroup>
-    <UvVersion>0.10.11</UvVersion>
+    <UvPinFile>$(PythonModuleFolder)\uv_pin.xml</UvPinFile>
     <UvPlatform Condition="$([MSBuild]::IsOSPlatform('Windows'))">x86_64-pc-windows-msvc</UvPlatform>
     <UvPlatform Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">aarch64-apple-darwin</UvPlatform>
     <UvPlatform Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X64'">x86_64-apple-darwin</UvPlatform>
     <UvPlatform Condition="$([MSBuild]::IsOSPlatform('Linux')) AND '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X64'">x86_64-unknown-linux-gnu</UvPlatform>
     <UvPlatform Condition="$([MSBuild]::IsOSPlatform('Linux')) AND '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">aarch64-unknown-linux-gnu</UvPlatform>
-    <!-- The Windows uv release is a .zip. The macOS and Linux releases are .tar.gz archives. -->
-    <UvArchiveExtension Condition="$([MSBuild]::IsOSPlatform('Windows'))">zip</UvArchiveExtension>
-    <UvArchiveExtension Condition="!$([MSBuild]::IsOSPlatform('Windows'))">tar.gz</UvArchiveExtension>
-    <UvAssetFolder>$(PythonModuleFolder)\Assets\UV</UvAssetFolder>
-    <UvArchivePath>$(UvAssetFolder)\uv-$(UvPlatform).$(UvArchiveExtension)</UvArchivePath>
-    <!-- Ships beside the archive, which carries no version in its name. The application folds it into
-         the marker that decides whether an install is current. -->
-    <UvVersionFile>$(UvAssetFolder)\uv_version.txt</UvVersionFile>
-    <UvDownloadUrl>https://github.com/astral-sh/uv/releases/download/$(UvVersion)/uv-$(UvPlatform).$(UvArchiveExtension)</UvDownloadUrl>
 
     <UvBuildFolder>$(MSBuildThisFileDirectory)obj\uv</UvBuildFolder>
     <UvBuildExecutable Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(UvBuildFolder)\uv.exe</UvBuildExecutable>
     <UvBuildExecutable Condition="'$(UvBuildExecutable)' == ''">$(UvBuildFolder)/uv</UvBuildExecutable>
-    <!-- tar restores each entry's recorded modification time, which is the uv release date and so always
-         older than the archive we downloaded. A stamp this target writes is what MSBuild can compare. -->
-    <UvExtractStamp>$(UvBuildFolder)\extracted-$(UvVersion).stamp</UvExtractStamp>
 
     <PythonPackageFolder>$(PythonModuleFolder)\packages\celbridge</PythonPackageFolder>
     <PythonAssetsFolder>$(PythonModuleFolder)\Assets\Python</PythonAssetsFolder>
     <PythonWheelPath>$(PythonAssetsFolder)\celbridge-0.1.0-py3-none-any.whl</PythonWheelPath>
-  </PropertyGroup>
-
-  <!-- The version already on disk, so a version bump re-downloads an archive whose name never changes. -->
-  <PropertyGroup Condition="Exists('$(UvVersionFile)')">
-    <DownloadedUvVersion>$([System.IO.File]::ReadAllText('$(UvVersionFile)').Trim())</DownloadedUvVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -57,33 +41,61 @@
     <PythonSourceFiles Include="$(PythonPackageFolder)\pyproject.toml" />
   </ItemGroup>
 
-  <Target Name="DownloadUv"
-          Condition="'$(GeneratePythonAssets)' == 'true' AND ('$(DownloadedUvVersion)' != '$(UvVersion)' OR !Exists('$(UvArchivePath)'))">
+  <!-- Reads the pinned version, and the archive and hash for the build's platform. -->
+  <Target Name="ReadUvPin" Condition="'$(GeneratePythonAssets)' == 'true'">
     <Error Condition="'$(UvPlatform)' == ''"
-           Text="uv publishes no release for this platform, so the Celbridge Python assets cannot be built here." />
-    <Message Text="Downloading uv $(UvVersion) for $(UvPlatform)..." Importance="high" />
-    <MakeDir Directories="$(UvAssetFolder)" />
-    <DownloadFile SourceUrl="$(UvDownloadUrl)" DestinationFolder="$(UvAssetFolder)"
-                  DestinationFileName="uv-$(UvPlatform).$(UvArchiveExtension)" SkipUnchangedFiles="false" />
-    <WriteLinesToFile File="$(UvVersionFile)" Lines="$(UvVersion)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+           Text="uv publishes no release for this platform, so the celbridge wheel cannot be built here." />
+    <XmlPeek XmlInputPath="$(UvPinFile)" Query="/UvPinnedRelease/@Version">
+      <Output TaskParameter="Result" PropertyName="UvVersion" />
+    </XmlPeek>
+    <XmlPeek XmlInputPath="$(UvPinFile)" Query="/UvPinnedRelease/@ReleasesUrl">
+      <Output TaskParameter="Result" PropertyName="UvReleasesUrl" />
+    </XmlPeek>
+    <XmlPeek XmlInputPath="$(UvPinFile)" Query="/UvPinnedRelease/Archive[@Platform='$(UvPlatform)']/@Name">
+      <Output TaskParameter="Result" PropertyName="UvArchiveName" />
+    </XmlPeek>
+    <XmlPeek XmlInputPath="$(UvPinFile)" Query="/UvPinnedRelease/Archive[@Platform='$(UvPlatform)']/@Sha256">
+      <Output TaskParameter="Result" PropertyName="UvArchiveSha256" />
+    </XmlPeek>
+    <Error Condition="'$(UvVersion)' == '' OR '$(UvArchiveName)' == '' OR '$(UvArchiveSha256)' == ''"
+           Text="uv_pin.xml lists no archive for the platform '$(UvPlatform)'." />
+    <PropertyGroup>
+      <UvArchivePath>$(UvBuildFolder)\$(UvArchiveName)</UvArchivePath>
+      <UvDownloadUrl>$(UvReleasesUrl.TrimEnd('/'))/$(UvVersion)/$(UvArchiveName)</UvDownloadUrl>
+      <!-- Written once the archive's hash matched and the archive extracted. The stamp is named by the
+           version, so a version bump downloads again. -->
+      <UvExtractStamp>$(UvBuildFolder)\extracted-$(UvVersion).stamp</UvExtractStamp>
+    </PropertyGroup>
   </Target>
 
-  <!-- tar reads both archives uv publishes. The tarball nests its binaries under a folder named after
+  <!-- Each task checks the stamp, because ReadUvPin sets the stamp's path after this target's own condition is
+       evaluated. tar reads both archives uv publishes. The tarball nests its binaries under a folder named after
        the archive, which the Windows zip does not. -->
-  <Target Name="ExtractUv" DependsOnTargets="DownloadUv"
-          Inputs="$(UvArchivePath)" Outputs="$(UvExtractStamp)"
+  <Target Name="PrepareUv" DependsOnTargets="ReadUvPin"
           Condition="'$(GeneratePythonAssets)' == 'true'">
-    <MakeDir Directories="$(UvBuildFolder)" />
+    <Message Text="Downloading uv $(UvVersion) for $(UvPlatform)..." Importance="high"
+             Condition="!Exists('$(UvExtractStamp)')" />
+    <RemoveDir Directories="$(UvBuildFolder)" Condition="!Exists('$(UvExtractStamp)')" />
+    <MakeDir Directories="$(UvBuildFolder)" Condition="!Exists('$(UvExtractStamp)')" />
+    <DownloadFile SourceUrl="$(UvDownloadUrl)" DestinationFolder="$(UvBuildFolder)"
+                  DestinationFileName="$(UvArchiveName)" SkipUnchangedFiles="false"
+                  Condition="!Exists('$(UvExtractStamp)')" />
+    <GetFileHash Files="$(UvArchivePath)" Algorithm="SHA256" Condition="!Exists('$(UvExtractStamp)')">
+      <Output TaskParameter="Hash" PropertyName="DownloadedUvSha256" />
+    </GetFileHash>
+    <Error Condition="!Exists('$(UvExtractStamp)') AND '$(DownloadedUvSha256.ToLowerInvariant())' != '$(UvArchiveSha256.ToLowerInvariant())'"
+           Text="The uv archive from $(UvDownloadUrl) has the SHA-256 hash $(DownloadedUvSha256), and uv_pin.xml expects $(UvArchiveSha256)." />
     <Exec Command="tar -xf &quot;$(UvArchivePath)&quot; -C &quot;$(UvBuildFolder)&quot;"
-          Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+          Condition="!Exists('$(UvExtractStamp)') AND $([MSBuild]::IsOSPlatform('Windows'))" />
     <Exec Command="tar -xzf &quot;$(UvArchivePath)&quot; --strip-components=1 -C &quot;$(UvBuildFolder)&quot;"
-          Condition="!$([MSBuild]::IsOSPlatform('Windows'))" />
-    <Touch Files="$(UvExtractStamp)" AlwaysCreate="true" />
+          Condition="!Exists('$(UvExtractStamp)') AND !$([MSBuild]::IsOSPlatform('Windows'))" />
+    <Delete Files="$(UvArchivePath)" Condition="!Exists('$(UvExtractStamp)')" />
+    <Touch Files="$(UvExtractStamp)" AlwaysCreate="true" Condition="!Exists('$(UvExtractStamp)')" />
   </Target>
 
   <!-- uv supplies the interpreter and the build backend, so building the wheel needs no Python on the
        machine. -->
-  <Target Name="BuildCelbridgeWheel" DependsOnTargets="ExtractUv" BeforeTargets="Build"
+  <Target Name="BuildCelbridgeWheel" DependsOnTargets="PrepareUv" BeforeTargets="Build"
           Inputs="@(PythonSourceFiles)" Outputs="$(PythonWheelPath)"
           Condition="'$(GeneratePythonAssets)' == 'true'">
     <Message Text="Building the celbridge wheel..." Importance="high" />

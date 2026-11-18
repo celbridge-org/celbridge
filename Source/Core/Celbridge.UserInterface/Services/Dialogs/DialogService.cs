@@ -21,11 +21,7 @@ public class DialogService : IDialogService
     private readonly IMessengerService _messengerService;
     private readonly IAutomationService _automationService;
     private readonly DialogAnswerScheduler _answerScheduler;
-    private readonly Lock _tokenLock = new();
-    private IProgressDialog? _progressDialog;
-    private IDisposable? _progressDialogOcclusionScope;
-    private bool _suppressProgressDialog;
-    private List<IProgressDialogToken> _progressDialogTokens = [];
+    private readonly ProgressDialogController _progressDialog;
 
     // Read by the command loop, which does not run on the UI thread that writes it.
     private volatile bool _isDialogOpen;
@@ -62,11 +58,14 @@ public class DialogService : IDialogService
         _messengerService = messengerService;
         _automationService = automationService;
         _answerScheduler = new DialogAnswerScheduler(logger, messengerService);
+        _progressDialog = new ProgressDialogController(logger, dialogFactory, messengerService);
 
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
     }
 
     public bool IsDialogOpen => _isDialogOpen;
+
+    public bool IsProgressDialogActive => _progressDialog.IsActive;
 
     public async Task ShowAlertDialogAsync(string titleText, string messageText)
     {
@@ -103,15 +102,7 @@ public class DialogService : IDialogService
 
     public IProgressDialogToken AcquireProgressDialog(string titleText)
     {
-        var token = new ProgressDialogToken(titleText, ReleaseProgressDialog);
-
-        lock (_tokenLock)
-        {
-            _progressDialogTokens.Add(token);
-        }
-
-        UpdateProgressDialog();
-        return token;
+        return _progressDialog.Acquire(titleText);
     }
 
     public async Task ShowSettingsDialogAsync(string sectionKey)
@@ -166,22 +157,6 @@ public class DialogService : IDialogService
         return Result.Fail($"Cannot show dialog '{dialogName}' because another dialog is already open.");
     }
 
-    private void ReleaseProgressDialog(IProgressDialogToken token)
-    {
-        lock (_tokenLock)
-        {
-            _progressDialogTokens.Remove(token);
-        }
-
-        UpdateProgressDialog();
-    }
-
-    private void SetProgressDialogSuppressed(bool suppressed)
-    {
-        _suppressProgressDialog = suppressed;
-        UpdateProgressDialog();
-    }
-
     private async Task<T> ShowDialogAsync<T>(object dialog, Func<Task<T>> showDialog, [CallerMemberName] string dialogName = "")
     {
         _isDialogOpen = true;
@@ -196,7 +171,7 @@ public class DialogService : IDialogService
             contentDialog.Closing += OnDialogClosing;
         }
 
-        SetProgressDialogSuppressed(true);
+        _progressDialog.SetSuppressed(true);
         using var occlusionMonitorScope = MacOSModalOcclusionMonitor.BeginDialogScope(dialogName);
 
         // Where the keyboard goes back to, noted before the dialog takes it. By the time the dialog has
@@ -229,7 +204,7 @@ public class DialogService : IDialogService
 
             // Keeps the progress dialog hidden if a request is waiting to open its own dialog next. Showing it in
             // between would put two dialogs on screen at once, which throws.
-            SetProgressDialogSuppressed(_requestsWaiting > 0);
+            _progressDialog.SetSuppressed(_requestsWaiting > 0);
 
             ReturnKeyboard(focusedPanel, notedFocus);
 
@@ -323,46 +298,6 @@ public class DialogService : IDialogService
         _logger.LogTrace("Returning the keyboard to {Panel} after a dialog closed", focusedPanel);
 
         _focusService.RefocusPanel(focusedPanel);
-    }
-
-    private void UpdateProgressDialog()
-    {
-        bool hasTokens;
-        string? lastTokenTitle = null;
-
-        lock (_tokenLock)
-        {
-            hasTokens = _progressDialogTokens.Count > 0;
-            if (hasTokens)
-            {
-                lastTokenTitle = _progressDialogTokens[^1].DialogTitle;
-            }
-        }
-
-        bool showDialog = hasTokens && !_suppressProgressDialog;
-
-        if (showDialog)
-        {
-            if (_progressDialog is null)
-            {
-                _progressDialog = _dialogFactory.CreateProgressDialog();
-                _progressDialog.ShowDialog();
-                _progressDialogOcclusionScope = MacOSModalOcclusionMonitor.BeginDialogScope("ProgressDialog");
-            }
-
-            // Use the title text from the most recent token added
-            _progressDialog.TitleText = lastTokenTitle!;
-        }
-        else
-        {
-            if (_progressDialog is not null)
-            {
-                _progressDialog.HideDialog();
-                _progressDialog = null;
-                _progressDialogOcclusionScope?.Dispose();
-                _progressDialogOcclusionScope = null;
-            }
-        }
     }
 
     public async Task<Result<NewProjectConfig>> ShowNewProjectDialogAsync()

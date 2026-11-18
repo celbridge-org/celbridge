@@ -41,7 +41,7 @@ public class DocumentEditorsBundledPackageProviderTests
     private static IReadOnlyList<string> GetPackageFolderNames(bool noteEditorEnabled)
     {
         var featureFlags = Substitute.For<IFeatureFlags>();
-        featureFlags.IsEnabled(FeatureFlagConstants.NoteEditor).Returns(noteEditorEnabled);
+        featureFlags.IsEnabled(FeatureFlagCatalog.NoteEditor).Returns(noteEditorEnabled);
 
         var provider = new DocumentEditorsBundledPackageProvider(featureFlags);
 

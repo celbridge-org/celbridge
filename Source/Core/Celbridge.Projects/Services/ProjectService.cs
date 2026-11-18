@@ -1,3 +1,4 @@
+using Celbridge.Dependencies;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Packages;
@@ -81,7 +82,10 @@ internal class ProjectService : IProjectService
             project.MigrationResult,
             project.ConfigIsHealthy,
             project.ConfigLoadFailure,
-            project.IsTrusted);
+            project.IsTrusted)
+        {
+            DependencyInstallFailure = project.DependencyInstallFailure
+        };
 
         ReplaceRecentProject(project.ProjectFilePath, newProjectFilePath);
     }
@@ -252,6 +256,17 @@ internal class ProjectService : IProjectService
             return Result<IProject>.Fail($"An exception occurred when loading the project database.")
                 .WithException(ex);
         }
+    }
+
+    public void RecordDependencyInstallFailure(DependencyInstallFailure failure)
+    {
+        var project = CurrentProject as Project;
+        Guard.IsNotNull(project);
+
+        CurrentProject = project with
+        {
+            DependencyInstallFailure = failure
+        };
     }
 
     public async Task<ProjectConfigReconcileResult?> ReconcileConfigAsync(

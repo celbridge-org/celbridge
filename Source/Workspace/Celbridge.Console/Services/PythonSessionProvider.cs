@@ -1,6 +1,6 @@
-using Celbridge.Logging;
 using Celbridge.Python;
 using Celbridge.Python.Services;
+using Celbridge.Settings;
 using Celbridge.Utilities;
 
 namespace Celbridge.Console.Services;
@@ -19,16 +19,13 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider
 
     private readonly IPythonConfigService _pythonConfigService;
     private readonly IPythonLaunchService _launchService;
-    private readonly ILogger<PythonSessionProvider> _logger;
 
     public PythonSessionProvider(
         IPythonConfigService pythonConfigService,
-        IPythonLaunchService launchService,
-        ILogger<PythonSessionProvider> logger)
+        IPythonLaunchService launchService)
     {
         _pythonConfigService = pythonConfigService;
         _launchService = launchService;
-        _logger = logger;
     }
 
     public ConsoleSessionType SessionType { get; } = new(
@@ -38,6 +35,8 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider
         {
             new ConsoleRunner(new[] { ".py", ".ipy" }, "%run \"{resource}\"", "python"),
         });
+
+    public FeatureFlagDescriptor? Feature => FeatureFlagCatalog.Python;
 
     public async Task<Result<ConsoleStartupInvocation>> BuildStartupInvocationAsync(ConsoleSessionContext context)
     {

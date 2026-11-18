@@ -520,7 +520,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         return result.OkResult();
     }
 
-    public async Task<Result<bool>> HasChildAsync(ResourceKey folder, Func<FolderChild, bool> predicate)
+    public async Task<Result> VisitFolderAsync(ResourceKey folder, Func<FolderChild, VisitStep> visit)
     {
         var resolveResult = await ResolveFolderToListAsync(folder);
         if (resolveResult.IsFailure)
@@ -529,19 +529,23 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         }
         var folderPath = resolveResult.Value;
 
-        var hasEntryResult = await _fileSystem.HasEntryAsync(folderPath, entry =>
+        var visitResult = await _fileSystem.VisitAsync(folderPath, entry =>
         {
             var folderChild = ToFolderChild(folder, entry);
-            return folderChild is not null
-                && predicate(folderChild);
+            if (folderChild is null)
+            {
+                return VisitStep.Continue;
+            }
+
+            return visit(folderChild);
         });
-        if (hasEntryResult.IsFailure)
+        if (visitResult.IsFailure)
         {
             return Result.Fail($"Failed to enumerate folder: '{folder}'")
-                .WithErrors(hasEntryResult);
+                .WithErrors(visitResult);
         }
 
-        return hasEntryResult.Value;
+        return Result.Ok();
     }
 
     // Returns the path of a folder to list. Fails for a reserved folder, for a key that does not resolve, and for a

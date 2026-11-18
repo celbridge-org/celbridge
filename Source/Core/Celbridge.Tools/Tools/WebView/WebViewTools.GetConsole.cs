@@ -16,7 +16,7 @@ public partial class WebViewTools
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagCatalog.WebViewDevTools);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))

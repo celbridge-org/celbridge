@@ -19,10 +19,10 @@ if [ -n "${CELBRIDGE_CONSOLE_USE_SHELL_PROFILE-}" ]; then
     unset _celbridge_file
 fi
 
-# Runs once, just before the first prompt. Removes the uv and Python settings the start-up files added,
-# and restores Celbridge's. Then shows the console and runs its command. The last exit status is kept,
-# because a prompt may show it. The hook turns off set -u and resets IFS while it runs, so the options
-# the user's files set do not change how it runs.
+# Runs once, just before the first prompt. Restores Celbridge's settings, then shows the console and runs
+# its command. With the python feature on, the hook also removes the uv and Python settings the start-up
+# files added. The last exit status is kept, because a prompt may show it. The hook turns off set -u and
+# resets IFS while it runs, so the options the user's files set do not change how it runs.
 _celbridge_first_prompt() {
     local _celbridge_status=$?
     local _celbridge_options=$-
@@ -44,12 +44,14 @@ _celbridge_first_prompt() {
         builtin cd -- "$CELBRIDGE_CONSOLE_WORKING_FOLDER"
     fi
 
-    for _celbridge_name in $(compgen -v); do
-        case $_celbridge_name in
-            {{KEPT_PATTERNS}}) ;;
-            {{REMOVED_PATTERNS}}) unset "$_celbridge_name" ;;
-        esac
-    done
+    if [ -n "$CELBRIDGE_CONSOLE_PYTHON_FEATURE" ]; then
+        for _celbridge_name in $(compgen -v); do
+            case $_celbridge_name in
+                {{KEPT_PATTERNS}}) ;;
+                {{REMOVED_PATTERNS}}) unset "$_celbridge_name" ;;
+            esac
+        done
+    fi
 
     for _celbridge_name in $CELBRIDGE_CONSOLE_RESTORE; do
         _celbridge_saved="_celbridge_saved_$_celbridge_name"
@@ -73,10 +75,12 @@ _celbridge_first_prompt() {
         PATH="$_celbridge_folder${PATH:+:$PATH}"
     done
 
-    for _celbridge_name in {{COMMAND_NAMES}}; do
-        unalias "$_celbridge_name" 2>/dev/null
-        unset -f "$_celbridge_name" 2>/dev/null
-    done
+    if [ -n "$CELBRIDGE_CONSOLE_PYTHON_FEATURE" ]; then
+        for _celbridge_name in {{COMMAND_NAMES}}; do
+            unalias "$_celbridge_name" 2>/dev/null
+            unset -f "$_celbridge_name" 2>/dev/null
+        done
+    fi
     hash -r
 
     # Replace this hook with the one that runs before every later prompt. That hook writes each command

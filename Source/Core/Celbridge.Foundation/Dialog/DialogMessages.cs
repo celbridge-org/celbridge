@@ -7,3 +7,9 @@ namespace Celbridge.Dialog;
 /// dialog test automation.
 /// </summary>
 public record DialogAnswerMessage(DialogKind Kind, string Payload);
+
+/// <summary>
+/// Sent when an operation releases a progress dialog token. The message is sent while the token still counts towards
+/// IDialogService.IsProgressDialogActive, so a listener has the release time before the property turns false.
+/// </summary>
+public record ProgressDialogReleasedMessage();

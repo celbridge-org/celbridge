@@ -94,14 +94,14 @@ public partial class NewProjectDialogViewModel : ObservableObject
         // 3. The previous path as-is, which may be invalid (validation disables Create).
         var previousFolder = _settingsService.Get(SettingCatalog.Project.PreviousNewProjectFolderPath);
         if (!string.IsNullOrEmpty(previousFolder)
-            && await FolderExistsAsync(previousFolder))
+            && await _fileSystem.GetKindAsync(previousFolder) == StorageItemKind.Folder)
         {
             DestFolderPath = previousFolder;
             return;
         }
 
         var documentsFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-        if (await FolderExistsAsync(documentsFolder))
+        if (await _fileSystem.GetKindAsync(documentsFolder) == StorageItemKind.Folder)
         {
             DestFolderPath = documentsFolder;
             return;
@@ -149,9 +149,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
         if (pickResult.IsSuccess)
         {
             var folder = pickResult.Value;
-            var infoResult = await _fileSystem.GetInfoAsync(folder);
-            if (infoResult.IsSuccess
-                && infoResult.Value.Kind == StorageItemKind.Folder)
+            if (await _fileSystem.GetKindAsync(folder) == StorageItemKind.Folder)
             {
                 DestFolderPath = pickResult.Value;
             }
@@ -199,7 +197,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
             return ValidationOutcome.Invalid("NewProjectDialog_InvalidProjectName");
         }
 
-        if (!await FolderExistsAsync(DestFolderPath))
+        if (await _fileSystem.GetKindAsync(DestFolderPath) != StorageItemKind.Folder)
         {
             return ValidationOutcome.Invalid("NewProjectDialog_InvalidFolderPath");
         }
@@ -208,7 +206,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
         if (CreateSubfolder)
         {
             var subfolderPath = Path.Combine(DestFolderPath, ProjectName);
-            if (await FolderExistsAsync(subfolderPath))
+            if (await _fileSystem.GetKindAsync(subfolderPath) == StorageItemKind.Folder)
             {
                 return ValidationOutcome.Invalid("NewProjectDialog_SubfolderAlreadyExists");
             }
@@ -219,7 +217,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
             destProjectFilePath = Path.Combine(DestFolderPath, $"{ProjectName}{ProjectConstants.ProjectFileExtension}");
         }
 
-        if (await FileExistsAsync(destProjectFilePath))
+        if (await _fileSystem.GetKindAsync(destProjectFilePath) == StorageItemKind.File)
         {
             return ValidationOutcome.Invalid("NewProjectDialog_ProjectFileAlreadyExists");
         }
@@ -259,30 +257,6 @@ public partial class NewProjectDialogViewModel : ObservableObject
         // dialog does not open showing a validation error.
         IsValidationErrorVisible = !outcome.CanCreate
             && !string.IsNullOrEmpty(ProjectName);
-    }
-
-    private async Task<bool> FolderExistsAsync(string path)
-    {
-        if (string.IsNullOrEmpty(path))
-        {
-            return false;
-        }
-
-        var infoResult = await _fileSystem.GetInfoAsync(path);
-        return infoResult.IsSuccess
-            && infoResult.Value.Kind == StorageItemKind.Folder;
-    }
-
-    private async Task<bool> FileExistsAsync(string path)
-    {
-        if (string.IsNullOrEmpty(path))
-        {
-            return false;
-        }
-
-        var infoResult = await _fileSystem.GetInfoAsync(path);
-        return infoResult.IsSuccess
-            && infoResult.Value.Kind == StorageItemKind.File;
     }
 
     // Outcome of one validation pass: whether Create is allowed, the resolved

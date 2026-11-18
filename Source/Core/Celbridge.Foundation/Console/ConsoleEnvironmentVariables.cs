@@ -22,4 +22,11 @@ public static class ConsoleEnvironmentVariables
     /// joined with the platform's path separator, in the order they should appear.
     /// </summary>
     public const string PathFolders = "CELBRIDGE_CONSOLE_PATH_FOLDERS";
+
+    /// <summary>
+    /// Set when the python feature is on. The console start-up reads it after the user's profile runs. When it is
+    /// set, the start-up removes the uv and Python variables, and any alias or function named uv, uvx or
+    /// celbridge-py.
+    /// </summary>
+    public const string PythonFeature = "CELBRIDGE_CONSOLE_PYTHON_FEATURE";
 }

@@ -181,6 +181,23 @@ public sealed class LocalFileSystem : ILocalFileSystem
         }
     }
 
+    public async Task<StorageItemKind> GetKindAsync(string path)
+    {
+        // Reading an empty path throws, so the path is checked first.
+        if (string.IsNullOrEmpty(path))
+        {
+            return StorageItemKind.NotFound;
+        }
+
+        var infoResult = await GetInfoAsync(path);
+        if (infoResult.IsFailure)
+        {
+            return StorageItemKind.NotFound;
+        }
+
+        return infoResult.Value.Kind;
+    }
+
     public async Task<Result<IReadOnlyList<FileSystemEntry>>> EnumerateAsync(string path, string pattern, bool recursive)
     {
         await Task.CompletedTask;
@@ -238,7 +255,7 @@ public sealed class LocalFileSystem : ILocalFileSystem
         }
     }
 
-    public async Task<Result<bool>> HasEntryAsync(string path, Func<FileSystemEntry, bool> predicate)
+    public async Task<Result> VisitAsync(string path, Func<FileSystemEntry, VisitStep> visit)
     {
         try
         {
@@ -247,24 +264,24 @@ public sealed class LocalFileSystem : ILocalFileSystem
             // Probed so a missing folder fails without raising DirectoryNotFoundException.
             if (!directoryInfo.Exists)
             {
-                return Result<bool>.Fail($"Folder does not exist: '{path}'");
+                return Result.Fail($"Folder does not exist: '{path}'");
             }
 
-            // EnumerateFileSystemInfos reads each entry only when the loop reaches it. Returning at the first accepted
-            // entry leaves the rest of the folder unread.
+            // EnumerateFileSystemInfos reads each entry only when the loop reaches it. Ending the loop when the visitor
+            // stops leaves the rest of the folder unread.
             foreach (var entryInfo in directoryInfo.EnumerateFileSystemInfos())
             {
                 var entry = entryInfo is FileInfo fileInfo
                     ? await DescribeEntryAsync(fileInfo, StorageItemKind.File, fileInfo.Length)
                     : await DescribeEntryAsync(entryInfo, StorageItemKind.Folder, size: 0);
 
-                if (predicate(entry))
+                if (visit(entry) == VisitStep.Stop)
                 {
-                    return true;
+                    break;
                 }
             }
 
-            return false;
+            return Result.Ok();
         }
         catch (Exception ex)
         {

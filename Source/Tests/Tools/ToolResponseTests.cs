@@ -1,3 +1,4 @@
+using Celbridge.Settings;
 using Celbridge.Tools;
 using TextContentBlock = ModelContextProtocol.Protocol.TextContentBlock;
 
@@ -76,7 +77,7 @@ public class ToolResponseTests
     [Test]
     public void FeatureFlagDisabled_NamesTheFlagAndStashesTroubleshooterInMeta()
     {
-        var result = ToolResponse.FeatureFlagDisabled("webview-dev-tools");
+        var result = ToolResponse.FeatureFlagDisabled(FeatureFlagCatalog.WebViewDevTools);
 
         result.IsError.Should().BeTrue();
         var text = ((TextContentBlock)result.Content!.Single()).Text;

@@ -1,3 +1,4 @@
+using Celbridge.Dependencies;
 using Celbridge.Documents;
 using Celbridge.Localization;
 using Celbridge.Notifications;
@@ -161,14 +162,32 @@ public sealed class NotificationComposer
         var cause = message.Causes.FirstOrDefault(cause => cause != SafeModeCause.Untrusted, SafeModeCause.Untrusted);
 
         // An untrusted project's entry is a warning, because the user chose Safe Mode. A failure's entry is an error.
-        var (severity, messageKey) = cause switch
+        switch (cause)
         {
-            SafeModeCause.Untrusted => (ReportSeverity.Warning, "Notification_SafeMode_Untrusted"),
-            SafeModeCause.ConfigurationFailed => (ReportSeverity.Error, "Notification_SafeMode_ConfigurationFailed"),
-            _ => throw new ArgumentOutOfRangeException(nameof(cause), cause, "Unhandled Safe Mode cause")
-        };
+            case SafeModeCause.Untrusted:
+                return Compose(ReportSeverity.Warning, "Notification_SafeMode_Untrusted", action);
 
-        return Compose(severity, messageKey, action);
+            case SafeModeCause.ConfigurationFailed:
+                return Compose(ReportSeverity.Error, "Notification_SafeMode_ConfigurationFailed", action);
+
+            case SafeModeCause.DependencyInstallFailed:
+                var featureTitle = ResolveFeatureTitle(message.DependencyInstallFailure);
+                return Compose(ReportSeverity.Error, "Notification_SafeMode_DependencyInstallFailed", action, featureTitle);
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(cause), cause, "Unhandled Safe Mode cause");
+        }
+    }
+
+    // Returns the feature's title in the Features section.
+    private string ResolveFeatureTitle(DependencyInstallFailure? failure)
+    {
+        if (failure is null)
+        {
+            return string.Empty;
+        }
+
+        return _localizerService.GetString(failure.Feature.TitleKey);
     }
 
     private NotificationContent ComposeOperationNotification(ResourceOperationFailedMessage message)
