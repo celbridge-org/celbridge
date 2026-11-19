@@ -62,7 +62,14 @@ public sealed record ConsoleSessionContext(
 public sealed record ConsoleSessionType(
     string TypeId,
     IReadOnlyList<string> OptionKeys,
-    IReadOnlyList<ConsoleRunner> BuiltInRunners);
+    IReadOnlyList<ConsoleRunner> BuiltInRunners)
+{
+    /// <summary>
+    /// False when the loaded project disables the type's feature. The session service's list of types carries the
+    /// loaded project's value. A provider's own declaration is always available.
+    /// </summary>
+    public bool IsAvailable { get; init; } = true;
+}
 
 /// <summary>
 /// Builds the startup command for one console session type. Every console session runs the platform's shell
@@ -77,8 +84,7 @@ public interface IConsoleSessionProvider
 
     /// <summary>
     /// The project feature a console of this type needs, or null when the type needs none. A console of the type
-    /// does not start while the loaded project has the feature disabled. It shows a notice instead, and a console's
-    /// settings do not offer the type.
+    /// does not start while the loaded project has the feature disabled. It shows a notice instead.
     /// </summary>
     FeatureFlagDescriptor? Feature { get; }
 

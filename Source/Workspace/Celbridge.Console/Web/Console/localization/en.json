@@ -16,14 +16,15 @@
     "Console_SessionEnded": "The console session ended.",
     "Console_StartFailed": "Failed to start the console session.",
     "Console_InvalidConfig": "Invalid .console configuration.",
-    "Console_UnknownType": "This console has the type \"{0}\", which this editor cannot edit. The settings are read-only so they are not overwritten.",
+    "Console_TypeTurnedOff": "This console type is turned off in this project. The setting is in the Features section of Project Settings.",
+    "Console_UnknownType": "Celbridge doesn't recognize this console's type, \"{0}\". Changing these settings removes that type's own settings.",
 
     "Console_Group_Session": "Session",
     "Console_Group_Shortcuts": "Shortcuts",
     "Console_Group_Runners": "Runners",
     "Console_Group_Triggers": "Triggers",
 
-    "Console_Desc_Session": "Settings that apply whatever this console launches.",
+    "Console_Desc_Session": "The type of console, and settings that apply to every type.",
     "Console_Desc_Shortcuts": "Buttons on the console rail that type a command into the session.",
     "Console_Desc_Runners": "Run a file in this console from the Explorer Run menu.",
     "Console_Desc_Triggers": "Run a command in this console when a matching file in the project changes.",

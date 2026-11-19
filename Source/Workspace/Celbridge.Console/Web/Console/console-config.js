@@ -54,6 +54,14 @@ export function configsEqual(a, b) {
     return JSON.stringify(normalizeConfig(a)) === JSON.stringify(normalizeConfig(b));
 }
 
+// Returns true when the form's config differs from the config the live session launched from. When the session
+// failed to start, nothing launched, and the comparison uses the form's config at the failure.
+export function needsReopen(currentConfig, launchedConfig, failedConfig) {
+    const baseline = launchedConfig ?? failedConfig;
+
+    return baseline !== null && !configsEqual(currentConfig, baseline);
+}
+
 // The comparable launch-relevant view of a config. Only the selected type's table is carried.
 export function buildStartConfig(config) {
     const type = config.type || 'shell';

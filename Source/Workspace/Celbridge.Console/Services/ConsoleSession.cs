@@ -220,8 +220,7 @@ internal sealed class ConsoleSession : IDisposable
         if (!ConsoleSessionFeature.IsEnabled(provider, featureFlags))
         {
             var localizerService = _serviceProvider.GetRequiredService<ILocalizerService>();
-            var noticeKey = ConsoleSessionFeature.NoticeKey(config.SessionType);
-            var notice = localizerService.GetString(noticeKey);
+            var notice = localizerService.GetString("Console_TypeTurnedOff");
 
             Fail(notice, isExpected: true);
             return;

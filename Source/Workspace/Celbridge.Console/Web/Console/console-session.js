@@ -153,7 +153,7 @@ export function createConsoleSession({ client, term, settings, fitTerminal, wait
     // Renders an attach or reopen outcome: the launched config drives the pip, the replay fills the
     // terminal, and the state decides between the veil, the failed overlay, and a live prompt.
     function applyAttachResult(result) {
-        // The session types that can start in the loaded project ride along with the attach.
+        // The attach result lists every registered session type, with the type's availability in the loaded project.
         if (result && Array.isArray(result.sessionTypes)) {
             settings.setSessionTypes(result.sessionTypes);
         }

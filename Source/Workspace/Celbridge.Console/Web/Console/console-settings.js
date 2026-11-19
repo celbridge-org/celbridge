@@ -1,5 +1,5 @@
 // The console's settings surface: the .console file as a form. The selected session type decides which
-// fields the Type section offers and which built-in runners are listed. Everything below it is common to
+// fields the type's section shows and which built-in runners are listed. The other sections are common to
 // every type. The surface also carries the console's status, since a config that has moved on from the one
 // the live session was launched from is only fixable here.
 
@@ -12,7 +12,7 @@ import {
     splitLines,
     parseEnvironmentLines,
     parseExtensionList,
-    configsEqual,
+    needsReopen,
 } from './console-config.js';
 import shellType from './types/shell.js';
 import pythonType from './types/python.js';
@@ -59,8 +59,12 @@ export function createConsoleSettings({ client }) {
     // What the terminal's failure overlay is saying, so the settings surface can say it too while the
     // terminal is the hidden half of the row. Null while a session is running.
     let sessionFailure = null;
-    // The session types that can start in the loaded project, in the order the form offers them. Each entry
-    // carries the keys the type accepts and the runners the type contributes. Null until an attach reports them.
+    // The config the form held when the session failed to start, for the "needs a reopen" check. Null while a
+    // session is running.
+    let failedConfig = null;
+    // The host's registered session types, in the order the form offers them. Each entry carries a type's
+    // runners, and whether a console of the type can start in the loaded project. Null until an attach reports
+    // the types.
     let hostSessionTypes = null;
     // The ids of the built-in runners switched off for this console.
     let disabledBuiltInRunners = [];
@@ -90,13 +94,27 @@ export function createConsoleSettings({ client }) {
             input: typeFieldsElement.querySelector(`#${field.id}`),
         }));
 
-        // These controls arrive after the switcher's blanket read-only pass, so each takes the document's
-        // state and its dirty-marking listener as it is bound.
-        const readOnly = !isFormEditable();
+        // These controls arrive after the switcher's blanket read-only pass. So each control gets a
+        // dirty-marking listener and a read-only state here.
         for (const field of typeFields) {
-            field.input.disabled = readOnly;
             field.input.addEventListener('input', onFormInput);
         }
+        applyTypeFieldState();
+    }
+
+    // Makes the selected type's own fields read-only while the loaded project turns the type off, or while the
+    // document is read-only.
+    function applyTypeFieldState() {
+        const readOnly = !isDocumentWritable() || isTypeTurnedOff(selectedType());
+        for (const field of typeFields) {
+            field.input.disabled = readOnly;
+        }
+    }
+
+    // Returns the Type control's value. Before the form is first populated, the control is empty and the
+    // config's type is returned.
+    function selectedType() {
+        return sessionTypeSelect.value || currentConfig.type || 'shell';
     }
 
     // A type with no string of its own shows its raw id.
@@ -118,16 +136,26 @@ export function createConsoleSettings({ client }) {
         return (hostSessionTypes || []).find((sessionType) => sessionType.typeId === typeId) || null;
     }
 
-    // The Type options, offering the types the host reports as registered that this client also has fields
-    // for, in the host's order. Before the attach that carries that list, the client's own set stands in.
-    function renderSessionTypeOptions() {
+    // Returns true when the loaded project turns the type off.
+    function isTypeTurnedOff(typeId) {
+        return findSessionType(typeId)?.isAvailable === false;
+    }
+
+    // Fills the Type options with each type in the host's list that has fields in this client, in the host's
+    // order. Until an attach reports the list, the options are the client's own types. When the console's type
+    // is missing from the options, the options gain that type. The control then shows the console's type until
+    // the user picks another type.
+    function renderSessionTypeOptions(type) {
         const offered = hostSessionTypes === null
-            ? clientTypeIds
+            ? clientTypeIds.slice()
             : hostSessionTypes
                 .map((sessionType) => sessionType.typeId)
                 .filter((typeId) => clientTypeIds.includes(typeId));
 
-        const selected = sessionTypeSelect.value;
+        if (!offered.includes(type)) {
+            offered.push(type);
+        }
+
         sessionTypeSelect.replaceChildren();
 
         for (const typeId of offered) {
@@ -137,25 +165,12 @@ export function createConsoleSettings({ client }) {
             sessionTypeSelect.appendChild(option);
         }
 
-        sessionTypeSelect.value = selected;
+        sessionTypeSelect.value = type;
     }
 
-    // True when the document names a type this client has no fields for, which makes the form read-only.
+    // Returns true when the document names a type without fields in this client.
     function isUnknownSessionType() {
-        return !clientTypeIds.includes(currentConfig.type || 'shell');
-    }
-
-    // True when the document names a type this client has fields for, but the host does not list. The host lists
-    // only the types that can start in the loaded project, so the project disables this type. The Type options
-    // leave the type out, and an edit could then rewrite the type, so the form is read-only. The session's
-    // failure gives the notice.
-    function isUnavailableSessionType() {
-        if (hostSessionTypes === null) {
-            return false;
-        }
-
-        const type = currentConfig.type || 'shell';
-        return clientTypeIds.includes(type) && findSessionType(type) === null;
+        return !clientTypeIds.includes(selectedType());
     }
 
     // A stored option value as its control shows it. A value is typed by the TOML it was written as, not by
@@ -182,9 +197,7 @@ export function createConsoleSettings({ client }) {
 
         // The option labels need the localized strings, which arrive with the host handshake that also
         // delivers the first config.
-        renderSessionTypeOptions();
-
-        sessionTypeSelect.value = type;
+        renderSessionTypeOptions(type);
         applyType(type);
 
         for (const field of typeFields) {
@@ -209,7 +222,7 @@ export function createConsoleSettings({ client }) {
     // the file declares, and re-reads them from the provider on every launch. Switching one off is the
     // exception: the config names it by id, which is what the host resolves against.
     function renderBuiltInRunners() {
-        const runners = findSessionType(sessionTypeSelect.value)?.builtInRunners || [];
+        const runners = findSessionType(selectedType())?.builtInRunners || [];
         builtInRunnerList.replaceChildren();
 
         for (const runner of runners) {
@@ -226,7 +239,7 @@ export function createConsoleSettings({ client }) {
 
             const toggle = card.querySelector('.toggle-switch');
             toggle.setAttribute('aria-checked', String(!isOff));
-            toggle.disabled = !isFormEditable();
+            toggle.disabled = !isDocumentWritable();
 
             // The switch sits inside the summary, whose default action would otherwise toggle the card open.
             toggle.addEventListener('click', (event) => {
@@ -251,9 +264,7 @@ export function createConsoleSettings({ client }) {
     }
 
     function readForm() {
-        // The config's own type stands in when the control holds no selection, which is what a type the host
-        // does not offer leaves behind.
-        const type = sessionTypeSelect.value || currentConfig.type || 'shell';
+        const type = selectedType();
 
         // Every type's table is carried forward and only the selected type's is rewritten. An empty field
         // writes no key, matching what parsing a file that omits it gives.
@@ -306,7 +317,7 @@ export function createConsoleSettings({ client }) {
         focusSelector: '.runner-extensions',
         localize: applyLocalization,
         onChanged: () => onFormInput(),
-        isWritable: isFormEditable,
+        isWritable: isDocumentWritable,
 
         fillCard(card, runner) {
             card.querySelector('.runner-extensions').value = (runner.extensions || []).join(', ');
@@ -340,7 +351,7 @@ export function createConsoleSettings({ client }) {
         focusSelector: '.trigger-pattern',
         localize: applyLocalization,
         onChanged: () => onFormInput(),
-        isWritable: isFormEditable,
+        isWritable: isDocumentWritable,
 
         fillCard(card, trigger) {
             card.querySelector('.trigger-pattern').value = trigger.pattern || '';
@@ -374,7 +385,7 @@ export function createConsoleSettings({ client }) {
         focusSelector: '.shortcut-label',
         localize: applyLocalization,
         onChanged: () => onFormInput(),
-        isWritable: isFormEditable,
+        isWritable: isDocumentWritable,
 
         fillCard(card, shortcut) {
             card.querySelector('.shortcut-label').value = shortcut.label || '';
@@ -489,18 +500,13 @@ export function createConsoleSettings({ client }) {
         return writable === undefined || writable === 'Writable';
     }
 
-    // Whether an edit is allowed to reach the document. A type this client has no fields for is read-only
-    // too, and so is a type the loaded project disables.
-    function isFormEditable() {
-        return isDocumentWritable() && !isUnknownSessionType() && !isUnavailableSessionType();
-    }
-
     // A read-only document disables the settings form so no edit marks the document dirty. The switcher's
-    // blanket pass over the sections runs first, so the card lists below decide the final state of the
-    // controls they own.
+    // blanket pass over the sections runs first, so the type's fields and the card lists below decide the
+    // final state of the controls they own.
     function applyWritableState() {
-        settingsSwitcher.setReadOnly(!isFormEditable());
+        settingsSwitcher.setReadOnly(!isDocumentWritable());
 
+        applyTypeFieldState();
         runnerCards.refreshState();
         triggerCards.refreshState();
         shortcutCards.refreshState();
@@ -512,23 +518,48 @@ export function createConsoleSettings({ client }) {
             return '';
         }
 
-        return t('Console_UnknownType', currentConfig.type || '');
+        return t('Console_UnknownType', selectedType());
+    }
+
+    function turnedOffTypeText() {
+        if (!isTypeTurnedOff(selectedType())) {
+            return '';
+        }
+
+        return t('Console_TypeTurnedOff');
+    }
+
+    // Returns the session's failure for the notice slot. Leaves the failure out when the session's type is
+    // turned off. The selected type's own notice then covers the form, or the form shows another type.
+    function sessionFailureText() {
+        if (failedConfig !== null
+            && isTypeTurnedOff(failedConfig.type || 'shell')) {
+            return '';
+        }
+
+        return sessionFailure || '';
     }
 
     // The pip flags a config error, a config that diverges from the launched session, or a session that never
     // started.
     function updateAttention() {
-        const diverged = launchedConfig !== null && !configsEqual(currentConfig, launchedConfig);
+        const diverged = needsReopen(currentConfig, launchedConfig, failedConfig);
         const needsAttention = diverged || configError !== null || sessionFailure !== null || isUnknownSessionType();
         pip.classList.toggle('hidden', !needsAttention);
 
         // The Reopen button stays enabled so the session can be restarted at any time. The accent colour
-        // appears only when a reopen is needed to apply changed launch settings. The footer caption
-        // explains it.
+        // appears only when a reopen is needed to apply changed launch settings, including settings changed
+        // since a failed start. The footer caption explains it.
         reopenSettingsButton.classList.toggle('cel-accent', diverged);
 
-        // One slot, so a parse error wins: it is the one the surface showing it can also fix.
-        settingsSwitcher.setNotice(configError || unknownTypeText() || sessionFailure);
+        // The notice has one slot, and a parse error wins. The form showing a parse error can also fix the error.
+        // A turned-off type's notice comes before the session's failure. A console switched to a turned-off type
+        // then shows the notice before a reopen.
+        settingsSwitcher.setNotice(
+            configError
+            || unknownTypeText()
+            || turnedOffTypeText()
+            || sessionFailureText());
     }
 
     function applyContent(content) {
@@ -553,13 +584,15 @@ export function createConsoleSettings({ client }) {
             return client.document.save(serializeConsoleToml(currentConfig));
         },
 
-        // Takes the session types an attach reports, which are the ones that can start in the loaded project. The
-        // Type options list them, and the form lists each type's built-in runners. The first attach lands after
-        // the form is populated, hence the re-render.
+        // Takes the session types from an attach. The Type options list the types, and the form lists each type's
+        // built-in runners. When the loaded project turns a type off, the type's fields are read-only and the
+        // settings say the type is turned off. The first attach lands after the form is populated, hence the
+        // re-render.
         setSessionTypes(sessionTypes) {
             hostSessionTypes = sessionTypes;
-            renderSessionTypeOptions();
+            renderSessionTypeOptions(selectedType());
             applyWritableState();
+            updateAttention();
         },
 
         // The config the live session was launched from, as the TOML the host reports it as. Null while
@@ -577,9 +610,11 @@ export function createConsoleSettings({ client }) {
             updateAttention();
         },
 
-        // What the session's failure overlay is saying, or null once a session is running again.
+        // Takes the message the session's failure overlay shows, or null once a session is running again. The
+        // form's config at the failure becomes the baseline for the "needs a reopen" check.
         setSessionFailure(message) {
             sessionFailure = message ?? null;
+            failedConfig = sessionFailure === null ? null : currentConfig;
             updateAttention();
         },
 

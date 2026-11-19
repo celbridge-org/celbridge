@@ -50,17 +50,18 @@
                 <div id="settings-switcher" class="cel-section-switcher">
 
                     <div class="cel-section-nav" role="tablist">
+                        <button class="cel-section-nav-item" type="button" role="tab" data-section="session"
+                                data-loc-key="Console_Group_Session" data-loc-attr="title,aria-label"
+                                aria-selected="true">
+                            <span class="cel-section-nav-icon"><i class="bi bi-box"></i></span>
+                            <span class="cel-section-nav-label" data-loc-key="Console_Group_Session"></span>
+                        </button>
                         <!-- Named for the selected session type. Its label, icon and heading are set from
                              the type, so they carry no data-loc-key. -->
                         <button id="type-nav-item" class="cel-section-nav-item" type="button" role="tab"
-                                data-section="type" aria-selected="true">
+                                data-section="type">
                             <span class="cel-section-nav-icon"><i id="type-nav-icon" class="bi bi-terminal"></i></span>
                             <span id="type-nav-label" class="cel-section-nav-label"></span>
-                        </button>
-                        <button class="cel-section-nav-item" type="button" role="tab" data-section="session"
-                                data-loc-key="Console_Group_Session" data-loc-attr="title,aria-label">
-                            <span class="cel-section-nav-icon"><i class="bi bi-box"></i></span>
-                            <span class="cel-section-nav-label" data-loc-key="Console_Group_Session"></span>
                         </button>
                         <button class="cel-section-nav-item" type="button" role="tab" data-section="shortcuts"
                                 data-loc-key="Console_Group_Shortcuts" data-loc-attr="title,aria-label">
@@ -87,13 +88,13 @@
                             <i class="bi bi-x-lg"></i>
                         </button>
 
-                        <div class="cel-section-header" data-section="type">
-                            <h1 id="type-section-title"></h1>
-                            <p id="type-section-description"></p>
-                        </div>
-                        <div class="cel-section-header" data-section="session" hidden>
+                        <div class="cel-section-header" data-section="session">
                             <h1 data-loc-key="Console_Group_Session"></h1>
                             <p data-loc-key="Console_Desc_Session"></p>
+                        </div>
+                        <div class="cel-section-header" data-section="type" hidden>
+                            <h1 id="type-section-title"></h1>
+                            <p id="type-section-description"></p>
                         </div>
                         <div class="cel-section-header" data-section="shortcuts" hidden>
                             <h1 data-loc-key="Console_Group_Shortcuts"></h1>
@@ -112,8 +113,7 @@
 
                         <div class="cel-section-content">
 
-                            <!-- The type and the fields that type owns. -->
-                            <section class="settings-section" data-section="type">
+                            <section class="settings-section" data-section="session">
                                 <label class="field">
                                     <span class="field-label" data-loc-key="Console_Field_Type"></span>
                                     <!-- Options are built from the types the host reports as registered. -->
@@ -121,12 +121,6 @@
                                     <span class="field-hint" data-loc-key="Console_Hint_Type"></span>
                                 </label>
 
-                                <!-- The selected type's fields, injected from its module under types/.
-                                     Only the selected type's controls are in the document. -->
-                                <div id="type-fields"></div>
-                            </section>
-
-                            <section class="settings-section" data-section="session" hidden>
                                 <label class="field">
                                     <span class="field-label" data-loc-key="Console_Field_WorkingDirectory"></span>
                                     <input id="working-directory" type="text" spellcheck="false" data-loc-key="Console_Placeholder_WorkingDirectory" data-loc-attr="placeholder">
@@ -156,6 +150,12 @@
                                     </button>
                                     <span class="field-hint" data-loc-key="Console_Hint_CompactPrompt"></span>
                                 </div>
+                            </section>
+
+                            <!-- The selected type's fields, injected from its module under types/. Only the
+                                 selected type's controls are in the document. -->
+                            <section class="settings-section" data-section="type" hidden>
+                                <div id="type-fields"></div>
                             </section>
 
                             <section class="settings-section" data-section="shortcuts" hidden>

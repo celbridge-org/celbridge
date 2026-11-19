@@ -360,18 +360,19 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         }
     }
 
-    // A console file still parses against every registered type. A console of a disabled type then fails with the
-    // type's notice.
     public IReadOnlyList<ConsoleSessionType> GetSessionTypes()
     {
         var featureFlags = _serviceProvider.GetRequiredService<IFeatureFlags>();
 
-        var enabledTypes = _sessionProviders
-            .Where(provider => ConsoleSessionFeature.IsEnabled(provider, featureFlags))
-            .Select(provider => provider.SessionType)
-            .ToList();
+        var sessionTypes = new List<ConsoleSessionType>();
+        foreach (var provider in _sessionProviders)
+        {
+            var isAvailable = ConsoleSessionFeature.IsEnabled(provider, featureFlags);
+            var sessionType = provider.SessionType with { IsAvailable = isAvailable };
+            sessionTypes.Add(sessionType);
+        }
 
-        return enabledTypes;
+        return sessionTypes;
     }
 
     private static IReadOnlyList<IConsoleSessionProvider> ResolveSessionProviders(IServiceProvider serviceProvider)

@@ -117,8 +117,8 @@ public interface IConsoleSessionService
     void OnConnectionLost(int connectionId);
 
     /// <summary>
-    /// Returns the registered session types that can start in the loaded project, in registration order. The list
-    /// leaves out each type that needs a feature the project disables.
+    /// Returns every registered session type in registration order. Each type's IsAvailable says whether a console
+    /// of the type can start in the loaded project.
     /// </summary>
     IReadOnlyList<ConsoleSessionType> GetSessionTypes();
 

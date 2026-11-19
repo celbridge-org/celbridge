@@ -1778,8 +1778,8 @@ Open with default application instead?</value>
   <data name="Dependency_CelbridgeWheel_ProgressTitle" xml:space="preserve">
     <value>Installing Python Support</value>
   </data>
-  <data name="Console_Disabled_Python" xml:space="preserve">
-    <value>Python is disabled in this project. The Python setting is in the Features section of Project Settings.</value>
+  <data name="Console_TypeTurnedOff" xml:space="preserve">
+    <value>This console type is turned off in this project. The setting is in the Features section of Project Settings.</value>
   </data>
   <data name="Template_Empty_Name" xml:space="preserve">
     <value>Empty Project</value>
