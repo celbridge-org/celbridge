@@ -54,8 +54,7 @@ export class EditorController {
             fixedOverflowWidgets: true
         });
 
-        this.#setupLineEndings();
-        this.#setupContentChangeListener();
+        this.#attachModel();
         this.#setupScrollListener();
         this.#setupPendingScrollListener();
         this.#setupThemeListener();
@@ -64,6 +63,13 @@ export class EditorController {
 
     getValue() {
         return this.#editor ? this.#editor.getValue() : '';
+    }
+
+    /**
+     * The editor's Monaco model, or null before the editor exists.
+     */
+    getModel() {
+        return this.#editor ? this.#editor.getModel() : null;
     }
 
     layout() {
@@ -542,6 +548,9 @@ export class EditorController {
         await celbridge.initializeDocument({
             onContent: async (content, metadata) => {
                 log('editor: initial content received', { length: content ? content.length : 0 });
+                if (metadata?.filePath) {
+                    this.#nameModel(metadata.filePath);
+                }
                 if (content) {
                     this.#editor.setValue(content);
                 }
@@ -762,6 +771,22 @@ export class EditorController {
 
     #markSaved() {
         this.#savedVersionId = this.getVersionId();
+    }
+
+    // Replaces the editor's empty model with one named by the file's URI, which is how a language server names
+    // the document. A model's URI is fixed, so the model keeps this name when the file is renamed.
+    #nameModel(filePath) {
+        const unnamedModel = this.#editor.getModel();
+        const model = monaco.editor.createModel('', 'plaintext', monaco.Uri.file(filePath));
+
+        this.#editor.setModel(model);
+        unnamedModel?.dispose();
+        this.#attachModel();
+    }
+
+    #attachModel() {
+        this.#setupLineEndings();
+        this.#setupContentChangeListener();
     }
 
     #shouldNotifyHost() {

@@ -843,11 +843,16 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // Metadata is made only to send to the page, so this is the document the page is told it shows.
         _page.SetResource(_viewModel.FileResource);
 
+        var workspaceWrapper = _serviceProvider.GetRequiredService<IWorkspaceWrapper>();
+        var languageServerService = workspaceWrapper.WorkspaceService.LanguageServerService;
+        var languageServer = languageServerService.GetServerId(_viewModel.FileResource);
+
         var metaData = new DocumentMetadata(
             _viewModel.FilePath,
             _viewModel.FileResource.ToString(),
             Path.GetFileName(_viewModel.FilePath),
-            locale);
+            locale,
+            languageServer);
 
         return metaData;
     }

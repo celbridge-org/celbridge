@@ -1,13 +1,12 @@
 using System.Runtime.InteropServices;
 
-namespace Celbridge.Console.Platform;
+namespace Celbridge.Utilities.Platform;
 
 /// <summary>
-/// A Windows Job Object configured to kill its assigned processes when its last handle closes. Console
-/// child processes are assigned to it so an app crash, which closes the handle, tears them down. This
-/// complements the per-pty kill on a clean tab or project close.
+/// A Windows Job Object that kills the assigned processes when the job's last handle closes. An app crash
+/// closes the handle, so the child processes assigned to the job end with the app.
 /// </summary>
-internal sealed class WindowsJobObject : IDisposable
+public sealed class WindowsJobObject : IDisposable
 {
     private const uint JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000;
     private const int JobObjectExtendedLimitInformation = 9;

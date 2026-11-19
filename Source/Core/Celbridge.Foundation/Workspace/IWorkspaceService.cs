@@ -2,6 +2,7 @@ using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer;
+using Celbridge.LanguageServers;
 using Celbridge.Search;
 
 namespace Celbridge.Workspace;
@@ -63,6 +64,11 @@ public interface IWorkspaceService
     /// Returns the Console Service associated with the workspace.
     /// </summary>
     IConsoleService ConsoleService { get; }
+
+    /// <summary>
+    /// Returns the Language Server Service associated with the workspace.
+    /// </summary>
+    ILanguageServerService LanguageServerService { get; }
 
     /// <summary>
     /// Gets the search service used to perform text search operations within the workspace.

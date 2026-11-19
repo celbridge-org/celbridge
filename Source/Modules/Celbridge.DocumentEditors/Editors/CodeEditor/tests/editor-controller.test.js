@@ -323,6 +323,69 @@ describe('EditorController initial content', () => {
     });
 });
 
+describe('EditorController model name', () => {
+    let controller;
+    let editor;
+    let unnamedModel;
+    let namedModel;
+    let steps;
+
+    beforeEach(() => {
+        for (const key of Object.keys(__capturedHandlers)) {
+            delete __capturedHandlers[key];
+        }
+
+        steps = [];
+        unnamedModel = createMockModel();
+        unnamedModel.dispose = vi.fn();
+        namedModel = createMockModel();
+
+        editor = createMockEditor(unnamedModel);
+        editor.setModel = vi.fn((model) => {
+            steps.push('setModel');
+            editor.getModel = vi.fn(() => model);
+        });
+        editor.setValue = vi.fn(() => steps.push('setValue'));
+
+        installMonacoStub(editor);
+        monaco.Uri = { file: vi.fn((path) => `uri of ${path}`) };
+        monaco.editor.createModel = vi.fn(() => namedModel);
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+    });
+
+    it('names the model by the file\'s URI before the first content arrives', async () => {
+        await controller.initializeHost();
+
+        await __capturedHandlers.onContent('let a = 1;', { fileName: 'main.ts', filePath: 'D:\\Projects\\Acme\\main.ts' });
+
+        expect(monaco.Uri.file).toHaveBeenCalledWith('D:\\Projects\\Acme\\main.ts');
+        expect(monaco.editor.createModel).toHaveBeenCalledWith('', 'plaintext', 'uri of D:\\Projects\\Acme\\main.ts');
+        expect(steps).toEqual(['setModel', 'setValue']);
+        expect(unnamedModel.dispose).toHaveBeenCalledTimes(1);
+        expect(controller.getModel()).toBe(namedModel);
+    });
+
+    it('follows the named model\'s changes and sets its line endings', async () => {
+        await controller.initializeHost();
+
+        await __capturedHandlers.onContent('let a = 1;', { fileName: 'main.ts', filePath: '/Projects/Acme/main.ts' });
+
+        expect(namedModel.setEOL).toHaveBeenCalledTimes(1);
+        expect(namedModel.onDidChangeContent).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the editor\'s own model for a document with no file path', async () => {
+        await controller.initializeHost();
+
+        await __capturedHandlers.onContent('<p>Page</p>', { fileName: 'page.html' });
+
+        expect(monaco.editor.createModel).not.toHaveBeenCalled();
+        expect(controller.getModel()).toBe(unnamedModel);
+    });
+});
+
 describe('EditorController document name', () => {
     let controller;
 

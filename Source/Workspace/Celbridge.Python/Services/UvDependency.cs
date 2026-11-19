@@ -110,7 +110,8 @@ public sealed class UvDependency : IDependency
             }
         }
 
-        var download = new DependencyDownload(_pin.GetArchiveUrl(archive), archive.Sha256, FolderPath)
+        var archiveHash = new DependencyHash(DependencyHashAlgorithm.Sha256, archive.Sha256);
+        var download = new DependencyDownload(_pin.GetArchiveUrl(archive), archiveHash, FolderPath)
         {
             ArchiveFolder = archive.Folder
         };

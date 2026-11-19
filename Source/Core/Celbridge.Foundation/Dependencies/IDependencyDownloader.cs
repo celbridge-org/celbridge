@@ -1,18 +1,39 @@
 namespace Celbridge.Dependencies;
 
 /// <summary>
-/// An archive that installs a dependency: the archive's address, the archive's expected SHA-256 hash as hex, and
-/// the folder to install into. ArchiveFolder names a folder inside the archive, which becomes the installed folder.
-/// ArchiveFolder is empty when the archive's root becomes the installed folder.
+/// The algorithm of an archive's expected hash.
 /// </summary>
-public record DependencyDownload(string Url, string Sha256, string FolderPath)
+public enum DependencyHashAlgorithm
+{
+    /// <summary>
+    /// SHA-256, a hash of 64 hex digits.
+    /// </summary>
+    Sha256,
+
+    /// <summary>
+    /// SHA-512, a hash of 128 hex digits.
+    /// </summary>
+    Sha512
+}
+
+/// <summary>
+/// An archive's expected hash: the algorithm, and the hash as hex.
+/// </summary>
+public record DependencyHash(DependencyHashAlgorithm Algorithm, string Value);
+
+/// <summary>
+/// An archive that installs a dependency: the archive's address, the archive's expected hash, and the folder to
+/// install into. ArchiveFolder names a folder inside the archive, which becomes the installed folder. ArchiveFolder
+/// is empty when the archive's root becomes the installed folder.
+/// </summary>
+public record DependencyDownload(string Url, DependencyHash Hash, string FolderPath)
 {
     public string ArchiveFolder { get; init; } = string.Empty;
 }
 
 /// <summary>
-/// Downloads and extracts the archives that install dependencies. A .zip archive and a .tar.gz archive both
-/// extract.
+/// Downloads and extracts the archives that install dependencies. A .zip archive extracts, and so does a .tar.gz
+/// or .tgz archive.
 /// </summary>
 public interface IDependencyDownloader
 {

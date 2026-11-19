@@ -1,10 +1,15 @@
 namespace Celbridge.Host;
 
 /// <summary>
-/// Metadata about the document being edited.
-/// Includes the locale for JS-side localization loading.
+/// Metadata about the document being edited. Includes the locale for JS-side localization loading. LanguageServer
+/// is the id of the language server that covers the document, and is empty when no server covers the document.
 /// </summary>
-public record DocumentMetadata(string FilePath, string ResourceKey, string FileName, string Locale);
+public record DocumentMetadata(
+    string FilePath,
+    string ResourceKey,
+    string FileName,
+    string Locale,
+    string LanguageServer);
 
 /// <summary>
 /// Result of the document/initialize request.

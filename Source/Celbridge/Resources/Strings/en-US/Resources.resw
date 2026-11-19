@@ -1287,6 +1287,12 @@ Open with default application instead?</value>
   <data name="ProjectSettings_FeatureFlag_Python_Description" xml:space="preserve">
     <value>Python consoles, for running Python scripts that call Celbridge. Celbridge downloads Python the first time a project needs it.</value>
   </data>
+  <data name="ProjectSettings_FeatureFlag_TypeScript_Title" xml:space="preserve">
+    <value>TypeScript and JavaScript</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_TypeScript_Description" xml:space="preserve">
+    <value>Errors, completions and hovers in TypeScript and JavaScript files, checked across the whole project. Celbridge downloads TypeScript the first time a project needs it.</value>
+  </data>
   <data name="ProjectSettings_CelbridgeVersionLabel" xml:space="preserve">
     <value>Celbridge Version</value>
   </data>
@@ -1759,6 +1765,12 @@ Open with default application instead?</value>
   </data>
   <data name="Dependency_Uv_ProgressTitle" xml:space="preserve">
     <value>Downloading uv</value>
+  </data>
+  <data name="Dependency_TypeScript_Name" xml:space="preserve">
+    <value>TypeScript</value>
+  </data>
+  <data name="Dependency_TypeScript_ProgressTitle" xml:space="preserve">
+    <value>Downloading TypeScript</value>
   </data>
   <data name="Dependency_CelbridgeWheel_Name" xml:space="preserve">
     <value>Python support</value>

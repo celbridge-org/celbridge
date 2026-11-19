@@ -11,10 +11,12 @@ import { ViewMode } from './view-mode-controller.js';
 import { PreviewPipeline } from './preview-pipeline.js';
 import { initializeToolbar, pressToolbarReloadButton, setToolbarReadOnly } from './toolbar.js';
 import { initializeLanguageMap, getLanguageForFile } from './language-mapper.js';
+import { LanguageFeatures } from './language-features.js';
 import { log, warn } from './logger.js';
 
 let editorController = null;
 let previewPipeline = null;
+const languageFeatures = new LanguageFeatures();
 
 // Configure AMD loader and load Monaco
 require.config({ paths: { 'vs': './min/vs' } });
@@ -223,8 +225,7 @@ async function initialize() {
     try {
         await editorController.initializeHost({
             onInitialContent: async (content, metadata) => {
-                const language = getLanguageForFile(metadata?.fileName || '');
-                editorController.setLanguage(language);
+                openLanguage(metadata);
 
                 const previewReady = previewPipeline?.handleInitialContent(content, metadata?.resourceKey);
 
@@ -240,7 +241,9 @@ async function initialize() {
                 previewPipeline?.handleExternalReload(content, metadata?.resourceKey);
             },
             onRenamed: (metadata) => {
-                setLanguageForFile(metadata?.fileName);
+                if (metadata?.fileName) {
+                    openLanguage(metadata);
+                }
                 previewPipeline?.handleRenamed(metadata?.resourceKey);
             },
             onSaved: () => {
@@ -260,8 +263,20 @@ async function initialize() {
     }
 }
 
-// Highlights the source as the language of the file's extension. A rename or a move can change the
-// extension while the document stays open in this editor. Without a name, it changes nothing.
+// Gives the document the language of the file's extension, and connects the document to the language server that
+// the host reports. A rename or a move can change the extension, the server or both while the document stays
+// open.
+function openLanguage(metadata) {
+    const language = getLanguageForFile(metadata?.fileName || '');
+
+    languageFeatures.open(
+        editorController.getModel(),
+        language,
+        metadata,
+        (modelLanguage) => editorController.setLanguage(modelLanguage));
+}
+
+// Highlights the source as the language of the file's extension, when the file has a name.
 function setLanguageForFile(fileName) {
     if (!fileName) {
         return;

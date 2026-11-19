@@ -49,6 +49,7 @@
     <ProjectReference Include="..\Modules\Celbridge.Browser\Celbridge.Browser.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Documents\Celbridge.Documents.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Packages\Celbridge.Packages.csproj" />
+    <ProjectReference Include="..\Workspace\Celbridge.LanguageServers\Celbridge.LanguageServers.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Python\Celbridge.Python.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Tools\Celbridge.Tools.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />

@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using Celbridge.Console.Platform;
 using Celbridge.Logging;
+using Celbridge.Utilities.Platform;
 
 namespace Celbridge.Console.Services;
 
