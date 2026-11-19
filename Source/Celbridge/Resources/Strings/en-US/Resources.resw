@@ -1060,7 +1060,7 @@ Open with default application instead?</value>
     <value>Project settings cannot be shown until the file is valid. Open it as text to repair it, then reload the project.</value>
   </data>
   <data name="ProjectSettings_SafeModeCaption" xml:space="preserve">
-    <value>Safe Mode is on. Most features are switched off.</value>
+    <value>Safe Mode is on. Most features are disabled.</value>
   </data>
   <data name="ProjectSettings_SafeModeHeader" xml:space="preserve">
     <value>Safe Mode</value>
@@ -1210,7 +1210,7 @@ Open with default application instead?</value>
     <value>Opens the file every time the project loads, even if it was closed in the last session.</value>
   </data>
   <data name="ProjectSettings_ShortcutOpenOnLoadTooltip" xml:space="preserve">
-    <value>Off by default</value>
+    <value>Disabled by default</value>
   </data>
   <data name="ProjectSettings_ShortcutRailButtonLabel" xml:space="preserve">
     <value>Show Utility Button</value>
@@ -1219,7 +1219,7 @@ Open with default application instead?</value>
     <value>Adds a Utility button that opens the file.</value>
   </data>
   <data name="ProjectSettings_ShortcutRailButtonTooltip" xml:space="preserve">
-    <value>On by default</value>
+    <value>Enabled by default</value>
   </data>
   <data name="ProjectSettings_WorkspaceArea_Main" xml:space="preserve">
     <value>Main Panel</value>
@@ -1234,13 +1234,13 @@ Open with default application instead?</value>
     <value>Features</value>
   </data>
   <data name="ProjectSettings_FeatureFlagsDescription" xml:space="preserve">
-    <value>Turn advanced features on or off.</value>
+    <value>Enable or disable advanced features.</value>
   </data>
   <data name="ProjectSettings_FeatureFlagDefaultOnTooltip" xml:space="preserve">
-    <value>On by default</value>
+    <value>Enabled by default</value>
   </data>
   <data name="ProjectSettings_FeatureFlagDefaultOffTooltip" xml:space="preserve">
-    <value>Off by default</value>
+    <value>Disabled by default</value>
   </data>
   <data name="ProjectSettings_FeatureFlagsResetButton" xml:space="preserve">
     <value>Reset to Defaults</value>
@@ -1778,8 +1778,8 @@ Open with default application instead?</value>
   <data name="Dependency_CelbridgeWheel_ProgressTitle" xml:space="preserve">
     <value>Installing Python Support</value>
   </data>
-  <data name="Console_TypeTurnedOff" xml:space="preserve">
-    <value>This console type is turned off in this project. The setting is in the Features section of Project Settings.</value>
+  <data name="Console_TypeDisabled" xml:space="preserve">
+    <value>This console type is disabled in this project. The setting is in the Features section of Project Settings.</value>
   </data>
   <data name="Template_Empty_Name" xml:space="preserve">
     <value>Empty Project</value>

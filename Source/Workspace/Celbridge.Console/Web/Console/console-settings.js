@@ -102,10 +102,10 @@ export function createConsoleSettings({ client }) {
         applyTypeFieldState();
     }
 
-    // Makes the selected type's own fields read-only while the loaded project turns the type off, or while the
+    // Makes the selected type's own fields read-only while the loaded project disables the type, or while the
     // document is read-only.
     function applyTypeFieldState() {
-        const readOnly = !isDocumentWritable() || isTypeTurnedOff(selectedType());
+        const readOnly = !isDocumentWritable() || isTypeDisabled(selectedType());
         for (const field of typeFields) {
             field.input.disabled = readOnly;
         }
@@ -136,8 +136,8 @@ export function createConsoleSettings({ client }) {
         return (hostSessionTypes || []).find((sessionType) => sessionType.typeId === typeId) || null;
     }
 
-    // Returns true when the loaded project turns the type off.
-    function isTypeTurnedOff(typeId) {
+    // Returns true when the loaded project disables the type.
+    function isTypeDisabled(typeId) {
         return findSessionType(typeId)?.isAvailable === false;
     }
 
@@ -521,19 +521,19 @@ export function createConsoleSettings({ client }) {
         return t('Console_UnknownType', selectedType());
     }
 
-    function turnedOffTypeText() {
-        if (!isTypeTurnedOff(selectedType())) {
+    function disabledTypeText() {
+        if (!isTypeDisabled(selectedType())) {
             return '';
         }
 
-        return t('Console_TypeTurnedOff');
+        return t('Console_TypeDisabled');
     }
 
     // Returns the session's failure for the notice slot. Leaves the failure out when the session's type is
-    // turned off. The selected type's own notice then covers the form, or the form shows another type.
+    // disabled. The selected type's own notice then covers the form, or the form shows another type.
     function sessionFailureText() {
         if (failedConfig !== null
-            && isTypeTurnedOff(failedConfig.type || 'shell')) {
+            && isTypeDisabled(failedConfig.type || 'shell')) {
             return '';
         }
 
@@ -553,12 +553,12 @@ export function createConsoleSettings({ client }) {
         reopenSettingsButton.classList.toggle('cel-accent', diverged);
 
         // The notice has one slot, and a parse error wins. The form showing a parse error can also fix the error.
-        // A turned-off type's notice comes before the session's failure. A console switched to a turned-off type
+        // A disabled type's notice comes before the session's failure. A console switched to a disabled type
         // then shows the notice before a reopen.
         settingsSwitcher.setNotice(
             configError
             || unknownTypeText()
-            || turnedOffTypeText()
+            || disabledTypeText()
             || sessionFailureText());
     }
 
@@ -585,8 +585,8 @@ export function createConsoleSettings({ client }) {
         },
 
         // Takes the session types from an attach. The Type options list the types, and the form lists each type's
-        // built-in runners. When the loaded project turns a type off, the type's fields are read-only and the
-        // settings say the type is turned off. The first attach lands after the form is populated, hence the
+        // built-in runners. When the loaded project disables a type, the type's fields are read-only and the
+        // settings say the type is disabled. The first attach lands after the form is populated, hence the
         // re-render.
         setSessionTypes(sessionTypes) {
             hostSessionTypes = sessionTypes;

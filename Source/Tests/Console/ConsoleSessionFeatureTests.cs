@@ -90,18 +90,18 @@ public class ConsoleSessionFeatureTests
     }
 
     [Test]
-    public async Task FeatureOff_TheConsoleFailsWithTheTurnedOffNotice()
+    public async Task FeatureDisabled_TheConsoleFailsWithTheDisabledNotice()
     {
         _featureFlags.IsEnabled(FeatureFlagCatalog.Python).Returns(false);
 
         var snapshot = await AttachAsync();
 
         snapshot.State.Should().Be(ConsoleSessionRunState.Failed);
-        snapshot.Error.Should().Be(new TestLocalizerService().GetString("Console_TypeTurnedOff"));
+        snapshot.Error.Should().Be(new TestLocalizerService().GetString("Console_TypeDisabled"));
     }
 
     [Test]
-    public async Task FeatureOff_TheProviderNeverRuns()
+    public async Task FeatureDisabled_TheProviderNeverRuns()
     {
         _featureFlags.IsEnabled(FeatureFlagCatalog.Python).Returns(false);
 
@@ -111,7 +111,7 @@ public class ConsoleSessionFeatureTests
     }
 
     [Test]
-    public async Task FeatureOff_TheConsoleLogsNoWarning()
+    public async Task FeatureDisabled_TheConsoleLogsNoWarning()
     {
         _featureFlags.IsEnabled(FeatureFlagCatalog.Python).Returns(false);
 
@@ -122,7 +122,7 @@ public class ConsoleSessionFeatureTests
     }
 
     [Test]
-    public async Task FeatureOn_TheProviderBuildsTheStartup()
+    public async Task FeatureEnabled_TheProviderBuildsTheStartup()
     {
         var snapshot = await AttachAsync();
 
