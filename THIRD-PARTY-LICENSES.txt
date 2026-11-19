@@ -91,12 +91,6 @@ Tiptap 3
     Copyright (c) 2025, Tiptap GmbH
     Note: Bundled into the Tiptap script used by the Notes editor.
 
-uv 0.10.11
-    License: MIT OR Apache-2.0
-    Source: https://github.com/astral-sh/uv
-    Copyright (c) 2025 Astral Software Inc.
-    Note: Downloaded by the build and shipped with the app.
-
 xterm.js 6.0.0
     License: MIT
     Source: https://github.com/xtermjs/xterm.js
