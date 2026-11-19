@@ -210,6 +210,16 @@ public class ProjectConfigDraftTests
     }
 
     [Test]
+    public void Serialize_AFeature_IsWrittenWithABareKey()
+    {
+        var pinned = ApplyAndParse(BaseConfig, draft => draft.SetFeatureFlag("webview-dev-tools", false));
+
+        var text = ProjectConfigSerializer.Serialize(pinned);
+
+        text.Should().Contain("features = { webview-dev-tools = false }");
+    }
+
+    [Test]
     public void Draft_RemoveFeatureFlag_ClearsFeature()
     {
         var pinned = ApplyAndParse(BaseConfig, draft => draft.SetFeatureFlag("webview-dev-tools", false));

@@ -198,7 +198,7 @@ public static class ProjectConfigSerializer
     {
         var entries = map
             .OrderBy(pair => pair.Key, StringComparer.Ordinal)
-            .Select(pair => $"{TomlStringEncoder.EncodeBasicString(pair.Key)} = {TomlStringEncoder.EncodeBasicString(pair.Value)}");
+            .Select(pair => $"{TomlStringEncoder.EncodeKey(pair.Key)} = {TomlStringEncoder.EncodeBasicString(pair.Value)}");
         return $"{{ {string.Join(", ", entries)} }}";
     }
 
@@ -206,7 +206,7 @@ public static class ProjectConfigSerializer
     {
         var entries = map
             .OrderBy(pair => pair.Key, StringComparer.Ordinal)
-            .Select(pair => $"{TomlStringEncoder.EncodeBasicString(pair.Key)} = {(pair.Value ? "true" : "false")}");
+            .Select(pair => $"{TomlStringEncoder.EncodeKey(pair.Key)} = {(pair.Value ? "true" : "false")}");
         return $"{{ {string.Join(", ", entries)} }}";
     }
 }

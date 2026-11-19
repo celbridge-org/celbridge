@@ -105,6 +105,37 @@ public class TomlStringEncoderTests
         ReadValue(literal).Should().Be("a\tb");
     }
 
+    [TestCase("python")]
+    [TestCase("webview-dev-tools")]
+    [TestCase("note_editor")]
+    [TestCase("Version2")]
+    public void EncodeKey_AKeyOfLettersDigitsHyphensAndUnderscores_IsWrittenBare(string key)
+    {
+        TomlStringEncoder.EncodeKey(key).Should().Be(key);
+    }
+
+    [TestCase("")]
+    [TestCase("two words")]
+    [TestCase("dotted.key")]
+    [TestCase("quote\"d")]
+    [TestCase("caf\u00e9")]
+    public void EncodeKey_AnyOtherKey_IsWrittenAsAQuotedString(string key)
+    {
+        TomlStringEncoder.EncodeKey(key).Should().Be(TomlStringEncoder.EncodeBasicString(key));
+    }
+
+    [TestCase("python")]
+    [TestCase("webview-dev-tools")]
+    [TestCase("two words")]
+    [TestCase("dotted.key")]
+    public void EncodeKey_RoundTripsThroughTheParser(string key)
+    {
+        var table = TomlSerializer.Deserialize<TomlTable>($"{TomlStringEncoder.EncodeKey(key)} = true\n");
+
+        table.Should().NotBeNull();
+        table!.Keys.Should().Equal(key);
+    }
+
     // Parses an encoded literal with the parser every one of these writers is read back by, so what is
     // asserted is that the value survives rather than that the bytes take a particular shape.
     private static string ReadValue(string encodedLiteral)
