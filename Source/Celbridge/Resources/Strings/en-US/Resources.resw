@@ -1752,7 +1752,7 @@ Open with default application instead?</value>
     <value>A file name is required</value>
   </data>
   <data name="Workspace_LoadingProject" xml:space="preserve">
-    <value>Loading {0}</value>
+    <value>Loading Project</value>
   </data>
   <data name="Dependency_Uv_Name" xml:space="preserve">
     <value>uv</value>
@@ -1764,7 +1764,7 @@ Open with default application instead?</value>
     <value>Python support</value>
   </data>
   <data name="Dependency_CelbridgeWheel_ProgressTitle" xml:space="preserve">
-    <value>Installing Python support</value>
+    <value>Installing Python Support</value>
   </data>
   <data name="Console_Disabled_Python" xml:space="preserve">
     <value>Python is disabled in this project. The Python setting is in the Features section of Project Settings.</value>
