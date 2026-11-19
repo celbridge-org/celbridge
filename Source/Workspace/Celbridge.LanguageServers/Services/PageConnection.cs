@@ -60,8 +60,8 @@ internal sealed class PageConnection : ILanguagePageConnection
 }
 
 /// <summary>
-/// The connection of a page that no server serves. The page gets one message that says so, and then the connection
-/// closes.
+/// The connection of a page without a language server. The page gets one message that says so, and then the
+/// connection closes.
 /// </summary>
 internal sealed class RefusedPageConnection : ILanguagePageConnection
 {
@@ -89,8 +89,8 @@ internal sealed class RefusedPageConnection : ILanguagePageConnection
 }
 
 /// <summary>
-/// The names of the language client's own messages to a page, beside the Language Server Protocol's. Mirrored by
-/// language-client.js in the code editor.
+/// The names of the language client's own messages to a page, outside the Language Server Protocol's methods.
+/// Mirrored by language-client.js in the code editor.
 /// </summary>
 internal static class PageMessages
 {

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   The TypeScript release that Celbridge downloads when a project needs TypeScript. Each Package names the npm
-  package for one platform and the package's hash. Integrity is the dist.integrity value that the npm registry
-  publishes for the version, copied as published.
+  package for one platform and the package's hash. Integrity is the npm registry's dist.integrity value for the
+  version, copied as published.
   Example: <Package Platform="darwin-arm64" Name="@typescript/typescript-darwin-arm64" Integrity="sha512-..." />
 -->
 <TypeScriptPinnedRelease Version="7.0.2" RegistryUrl="https://registry.npmjs.org">

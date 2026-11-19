@@ -106,7 +106,7 @@ internal sealed partial record LspIncomingMessage(
     LspError? Error);
 
 //
-// The messages the language client sends to a server
+// Messages from the language client to a server
 //
 
 internal sealed record ClientInfo(string Name, string Version);
@@ -149,14 +149,13 @@ internal sealed record DiagnosticParams(
 internal sealed partial record CancelParams(long Id);
 
 //
-// The messages the language client reads from a server
+// Messages from a server to the language client
 //
 
 internal sealed record InitializeResult(JsonObject? Capabilities);
 
 /// <summary>
-/// A server's capabilities, with the one capability the language client reads. The value is a boolean or an
-/// options object.
+/// A server's capabilities. The language client reads only DiagnosticProvider, a boolean or an options object.
 /// </summary>
 internal sealed record ServerCapabilities(JsonNode? DiagnosticProvider);
 
@@ -178,7 +177,7 @@ internal sealed record LogMessageParams(int Type, string? Message);
 internal sealed record PublishDiagnosticsParams(string? Uri, JsonNode? Diagnostics);
 
 //
-// The messages between the language client and a page
+// Messages between the language client and a page
 //
 
 internal sealed record PageDidOpenParams(string? Text, int Version);

@@ -8,13 +8,13 @@ const openMethod = 'language/open';
 const sendMethod = 'language/send';
 const closeMethod = 'language/close';
 
-// The host's own messages, beside the protocol's. Mirrored by PageMessages in the host's
-// language servers module.
+// The host's own messages, outside the protocol's methods. Mirrored by PageMessages in the host's language servers
+// module.
 const serverReadyMethod = 'celbridge/serverReady';
 const serverUnavailableMethod = 'celbridge/serverUnavailable';
 const publishDiagnosticsMethod = 'textDocument/publishDiagnostics';
 
-// How the server wants a document's changes, in a server's textDocumentSync capability.
+// The kinds of change sync a server names in its textDocumentSync capability.
 const fullSync = 1;
 const incrementalSync = 2;
 

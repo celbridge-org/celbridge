@@ -1291,7 +1291,7 @@ Open with default application instead?</value>
     <value>TypeScript and JavaScript</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_TypeScript_Description" xml:space="preserve">
-    <value>Errors, completions and hovers in TypeScript and JavaScript files, checked across the whole project. Celbridge downloads TypeScript the first time a project needs it.</value>
+    <value>Code editor support for TypeScript and JavaScript files that understands the whole project. Celbridge downloads TypeScript the first time a project needs it.</value>
   </data>
   <data name="ProjectSettings_CelbridgeVersionLabel" xml:space="preserve">
     <value>Celbridge Version</value>

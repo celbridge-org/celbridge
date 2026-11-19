@@ -263,9 +263,9 @@ async function initialize() {
     }
 }
 
-// Gives the document the language of the file's extension, and connects the document to the language server that
-// the host reports. A rename or a move can change the extension, the server or both while the document stays
-// open.
+// Gives the document the language of the file's extension, and connects the document to the language server named
+// in the host's metadata. A rename or a move can change the extension, the server or both while the document
+// stays open.
 function openLanguage(metadata) {
     const language = getLanguageForFile(metadata?.fileName || '');
 

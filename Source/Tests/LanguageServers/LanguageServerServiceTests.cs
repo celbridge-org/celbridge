@@ -257,7 +257,7 @@ public class LanguageServerServiceTests
         _launcher.Servers.Should().HaveCount(1);
     }
 
-    // Connects a page so the server starts, and answers the server's initialize.
+    // Connects a page so the server starts, and has the fake server answer the initialize request.
     private async Task<FakeLanguageServer> StartServerAsync()
     {
         var page = _service.ConnectPage(new ResourceKey("src/first.ts"));

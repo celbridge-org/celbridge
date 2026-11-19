@@ -18,7 +18,7 @@ public static class LanguageChannelRpcMethods
 }
 
 /// <summary>
-/// Inbound RPC calls that a code editor page makes on the language channel.
+/// Inbound RPC calls from a code editor page on the language channel.
 /// </summary>
 public interface ILanguageChannelRpc
 {

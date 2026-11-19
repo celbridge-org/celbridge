@@ -12,7 +12,7 @@ import * as convert from './lsp-convert.js';
 
 const markerOwner = 'celbridge-language-server';
 
-// Every switch in Monaco's mode configuration for its own TypeScript and JavaScript worker, all off.
+// Monaco's mode configuration for its built-in TypeScript and JavaScript worker, with every option off.
 const builtInFeaturesOff = {
     completionItems: false,
     hovers: false,
@@ -46,7 +46,8 @@ export class LanguageFeatures {
     }
 
     /**
-     * Sets the document's language, and connects the document to the language server that the host reports.
+     * Sets the document's language, and connects the document to the language server named in the host's
+     * metadata.
      * The document leaves the previous server first. `setLanguage` sets the model's language.
      * @param {Object} model - The Monaco model of the document.
      * @param {string} language - The Monaco language of the document.
@@ -105,7 +106,7 @@ export class LanguageFeatures {
                 monaco.editor.setModelMarkers(model, markerOwner, convert.toMarkers(diagnostics));
             },
             onUnavailable: () => this.#removeProviders(),
-            // A server that is down leaves the document with syntax coloring alone.
+            // Clear the markers while the server is down. Syntax coloring stays.
             onDisconnected: () => monaco.editor.setModelMarkers(model, markerOwner, [])
         });
         this.#client.connect();
@@ -284,7 +285,7 @@ export class LanguageFeatures {
                     const result = await client.sendRequest('textDocument/documentHighlight', at(position), token);
                     const highlights = convert.toDocumentHighlights(result);
 
-                    // With no answer from the server, Monaco highlights the other uses of the word itself.
+                    // When the server's answer is empty, Monaco highlights the other uses of the word.
                     return highlights.length > 0 ? highlights : null;
                 }
             }));
@@ -369,8 +370,8 @@ export class LanguageFeatures {
     }
 }
 
-// Returns a URI as text that compares equal for two writings of one file. Windows and macOS ignore letter case
-// in file names.
+// Returns a URI as text that compares equal for two spellings of one file's path. Windows and macOS ignore letter
+// case in file names.
 function normalizeUri(uri) {
     const text = uri.toString();
 

@@ -13,8 +13,16 @@ namespace Celbridge.Tests.LanguageServers;
 [TestFixture]
 public class LanguageServerSessionTests
 {
-    private const string MainUri = "file:///d%3A/Projects/Acme/src/main.ts";
-    private const string OtherUri = "file:///d%3A/Projects/Acme/src/other.ts";
+    private static readonly string ProjectFolderPath = OperatingSystem.IsWindows()
+        ? @"D:\Projects\Acme"
+        : "/Projects/Acme";
+
+    private static readonly string ProjectFolderUri = OperatingSystem.IsWindows()
+        ? "file:///d%3A/Projects/Acme"
+        : "file:///Projects/Acme";
+
+    private static readonly string MainUri = ProjectFolderUri + "/src/main.ts";
+    private static readonly string OtherUri = ProjectFolderUri + "/src/other.ts";
 
     private static readonly TimeSpan ReadTimeout = TimeSpan.FromSeconds(5);
 
@@ -50,8 +58,8 @@ public class LanguageServerSessionTests
 
         var parameters = initializeRequest["params"]!;
         ((int)parameters["processId"]!).Should().Be(Environment.ProcessId);
-        ((string?)parameters["rootUri"]).Should().Be("file:///d%3A/Projects/Acme");
-        ((string?)parameters["workspaceFolders"]![0]!["uri"]).Should().Be("file:///d%3A/Projects/Acme");
+        ((string?)parameters["rootUri"]).Should().Be(ProjectFolderUri);
+        ((string?)parameters["workspaceFolders"]![0]!["uri"]).Should().Be(ProjectFolderUri);
         ((string?)parameters["workspaceFolders"]![0]!["name"]).Should().Be("Acme");
         ((string?)parameters["initializationOptions"]!["mode"]).Should().Be("strict");
 
@@ -309,7 +317,7 @@ public class LanguageServerSessionTests
         await SendServerRequestAsync(50, "workspace/workspaceFolders");
         var response = await _server.ReadAsync();
 
-        ((string?)response["result"]![0]!["uri"]).Should().Be("file:///d%3A/Projects/Acme");
+        ((string?)response["result"]![0]!["uri"]).Should().Be(ProjectFolderUri);
     }
 
     [TestCase("client/registerCapability")]
@@ -482,13 +490,18 @@ public class LanguageServerSessionTests
         var session = await StartReadySessionAsync();
         var page = await OpenPageAsync(session, MainUri);
 
+        // A server may spell a Windows drive differently from the page, for example D: for d%3A. A Unix path has no
+        // drive.
+        var serverUri = OperatingSystem.IsWindows()
+            ? "file:///D:/Projects/Acme/src/main.ts"
+            : MainUri;
         var diagnostic = new JsonObject
         {
             ["message"] = "pushed"
         };
         var parameters = new JsonObject
         {
-            ["uri"] = "file:///D:/Projects/Acme/src/main.ts",
+            ["uri"] = serverUri,
             ["diagnostics"] = new JsonArray(diagnostic)
         };
         var notification = new JsonObject
@@ -560,7 +573,7 @@ public class LanguageServerSessionTests
         return new LanguageServerSession(
             _definition,
             _server,
-            @"D:\Projects\Acme",
+            ProjectFolderPath,
             "1.8.0",
             new NullLogger<LanguageServerSession>(),
             _timeProvider,
@@ -655,7 +668,7 @@ public class LanguageServerSessionTests
         return _server.SendAsync(response);
     }
 
-    // Sends a request from the server that has no parameters.
+    // Sends a request without parameters from the server.
     private Task SendServerRequestAsync(int requestId, string method)
     {
         var request = new JsonObject

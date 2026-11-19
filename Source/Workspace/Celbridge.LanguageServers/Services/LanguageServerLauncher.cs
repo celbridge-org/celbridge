@@ -125,7 +125,7 @@ internal sealed class LanguageServerLauncher : ILanguageServerLauncher, IDisposa
             Output = process.StandardOutput.BaseStream;
             Exited = process.WaitForExitAsync();
 
-            // A server writes its own diagnostics to standard error. An unread pipe would fill and block the server.
+            // A server writes its log to standard error. A full pipe would block the server, so the pipe is read.
             // The id is read now, because a disposed process has no id.
             var processId = process.Id;
             process.ErrorDataReceived += (_, args) =>

@@ -43,7 +43,7 @@ internal sealed class LanguageChannel : ICustomEditorChannel, ILanguageChannelRp
             return;
         }
 
-        // A rename changes the host's resource, so the document is read at each open.
+        // Renaming the document changes the host's resource, so each open reads the resource again.
         var languageServerService = _workspaceWrapper.WorkspaceService.LanguageServerService;
         var connection = languageServerService.ConnectPage(host.Resource);
         var readCancellation = new CancellationTokenSource();
@@ -109,8 +109,8 @@ internal sealed class LanguageChannel : ICustomEditorChannel, ILanguageChannelRp
         readCancellation?.Dispose();
     }
 
-    // Passes the connection's messages to the page, in order. A server that stops ends the connection, and the
-    // page is told. The page is told nothing about a connection closed by the channel.
+    // Passes the connection's messages to the page, in order. When a server stops, the page gets
+    // `language/closed`. When the channel itself closes the connection, the page gets no message.
     private async Task SendConnectionMessagesAsync(
         ICustomEditorChannelHost host,
         ILanguagePageConnection connection,

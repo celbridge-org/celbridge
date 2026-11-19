@@ -1,7 +1,7 @@
 namespace Celbridge.LanguageServers.Services;
 
 /// <summary>
-/// The Language Server Protocol's method names, for each method that the language client handles or sends.
+/// The Language Server Protocol's method names. The language client handles or sends each of these methods.
 /// </summary>
 internal static class LspMethods
 {

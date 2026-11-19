@@ -32,7 +32,7 @@
     <PackageReference Include="StreamJsonRpc" />
   </ItemGroup>
 
-  <!-- The TypeScript release that the application downloads. -->
+  <!-- Embeds the pinned TypeScript release. -->
   <ItemGroup>
     <EmbeddedResource Include="typescript_pin.xml" LogicalName="typescript_pin.xml" />
   </ItemGroup>

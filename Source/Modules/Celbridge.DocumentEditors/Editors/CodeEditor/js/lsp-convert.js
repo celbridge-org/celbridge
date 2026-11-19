@@ -144,7 +144,7 @@ export function toCompletionContext(context) {
 }
 
 // Returns Monaco's suggestions for a completion answer, which is a list of items or a completion list.
-// `defaultRange` is the word at the cursor, for an item that names no range.
+// `defaultRange` is the word at the cursor. An item that names no range replaces that word.
 export function toCompletionList(result, defaultRange) {
     if (!result) {
         return { suggestions: [] };
@@ -193,7 +193,7 @@ function toCompletionItem(item, defaults, defaultRange) {
         insertText,
         range,
         commitCharacters: item.commitCharacters ?? defaults.commitCharacters,
-        // The item as the server sent it, for the request that resolves the item.
+        // The server's item, with the list's default data filled in, for the resolve request.
         lspItem: defaults.data !== undefined && item.data === undefined ? { ...item, data: defaults.data } : item
     };
 
@@ -403,7 +403,7 @@ export function toLink(documentLink) {
         range: toMonacoRange(documentLink.range),
         url: documentLink.target,
         tooltip: documentLink.tooltip,
-        // The link as the server sent it, for the request that resolves the link.
+        // The server's link, for the resolve request.
         lspLink: documentLink
     };
 }

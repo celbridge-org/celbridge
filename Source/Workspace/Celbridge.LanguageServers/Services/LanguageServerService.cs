@@ -173,7 +173,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
             }
             var filePath = resolveResult.Value;
 
-            // A server reads the project folder, so a file outside the folder gets no server.
+            // A server reads the project folder, so only a file inside the folder gets a server.
             var projectFolderPath = Path.TrimEndingDirectorySeparator(project.ProjectFolderPath);
             var projectFolderPrefix = projectFolderPath + Path.DirectorySeparatorChar;
             if (!filePath.StartsWith(projectFolderPrefix, PathComparison.Comparison))
@@ -232,7 +232,8 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
         }
     }
 
-    // Counts the server's unexpected ends within the crash window, and stops the server for good at the limit.
+    // Counts the times the server ended unexpectedly within the crash window, and stops the server for good at
+    // the limit.
     private void RecordCrash(string serverId)
     {
         if (!_crashTimes.TryGetValue(serverId, out var crashTimes))

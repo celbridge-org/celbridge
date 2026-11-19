@@ -11,8 +11,9 @@ namespace Celbridge.Tests.Dependencies;
 
 /// <summary>
 /// Covers the download of a dependency's archive into a real folder. The cases are a matching hash and a mismatched
-/// hash of each algorithm, and each kind of archive. The cases also cover a failed extraction, a failed request, and
-/// a folder from another copy of Celbridge. A download that fails leaves neither the final folder nor the temporary folder.
+/// hash of each algorithm, and each kind of archive. They also cover a failed extraction, a failed request, and a
+/// folder already installed by another copy of Celbridge. A download that fails leaves neither the final folder nor
+/// the temporary folder.
 /// </summary>
 [TestFixture]
 public class DependencyDownloaderTests

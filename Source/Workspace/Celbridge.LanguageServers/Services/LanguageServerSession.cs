@@ -191,7 +191,7 @@ internal sealed class LanguageServerSession
             return;
         }
 
-        // Every message from a page has a method, since a page answers no requests.
+        // A page sends only requests and notifications, so every message from a page has a method.
         if (message is null
             || string.IsNullOrEmpty(message.Method))
         {
@@ -222,7 +222,7 @@ internal sealed class LanguageServerSession
     }
 
     /// <summary>
-    /// Disconnects a page. The server closes the page's document, and cancels the page's unanswered requests.
+    /// Disconnects a page. Cancels the page's unanswered requests, and closes the page's document on the server.
     /// </summary>
     public void RemovePage(PageConnection page)
     {
@@ -249,7 +249,8 @@ internal sealed class LanguageServerSession
                 page.IsOpen = false;
                 SendDidClose(page);
 
-                // The server reads the file from disk again, so the other documents may show other errors.
+                // Closing the document makes the server read the file from disk, so the errors in other open
+                // documents may change.
                 RequestDiagnosticsRound();
             }
         }
@@ -358,7 +359,8 @@ internal sealed class LanguageServerSession
         await Task.WhenAny(_process.Exited, timeoutTask);
         _process.Dispose();
 
-        // The owner learns of the end before the pages do. A page connects again as soon as its connection closes.
+        // Report the end to the service first. A page connects again as soon as its connection closes, and the
+        // service must have removed this session by then.
         _onEnded(this, crashed);
 
         foreach (var page in pages)
@@ -705,8 +707,8 @@ internal sealed class LanguageServerSession
         }
     }
 
-    // A server that cancels a diagnostics request expects the request again. The error's data can say that the
-    // client must send no retry.
+    // A server that cancels a diagnostics request expects the request again. The error's data can turn the retry
+    // off.
     private static bool AllowsRetry(LspError error)
     {
         if (LspJson.TryRead<DiagnosticCancellationData>(error.Data, out var cancellationData)

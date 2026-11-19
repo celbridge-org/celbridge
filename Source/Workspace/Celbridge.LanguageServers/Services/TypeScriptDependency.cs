@@ -4,6 +4,7 @@ using Celbridge.LanguageServers.Helpers;
 using Celbridge.Localization;
 using Celbridge.Logging;
 using Celbridge.Platform;
+using Celbridge.Utilities;
 
 namespace Celbridge.LanguageServers.Services;
 
@@ -99,70 +100,20 @@ public sealed class TypeScriptDependency : IDependency
             return Result.Fail($"The TypeScript pin lists no package for the platform '{platform}'");
         }
 
-        // Another copy of Celbridge may have installed TypeScript since the check.
-        if (await IsInstalledAsync())
-        {
-            return Result.Ok();
-        }
-
-        // A folder that lacks the executable is incomplete, and the download's rename needs the name free.
-        if (await _fileSystem.GetKindAsync(FolderPath) == StorageItemKind.Folder)
-        {
-            var deleteResult = await _fileSystem.DeleteFolderAsync(FolderPath, recursive: true);
-            if (deleteResult.IsFailure)
-            {
-                return Result.Fail($"Failed to delete the incomplete folder of TypeScript {Version}")
-                    .WithErrors(deleteResult);
-            }
-        }
-
         var archiveHash = TypeScriptPinnedRelease.GetArchiveHash(package);
         var download = new DependencyDownload(_pin.GetArchiveUrl(package), archiveHash, FolderPath)
         {
             ArchiveFolder = PackageArchiveFolder
         };
 
-        var downloadResult = await _downloader.DownloadAsync(download);
-        if (downloadResult.IsFailure)
+        var installer = new VersionedFolderInstaller(_fileSystem, _downloader, _logger);
+        var installResult = await installer.InstallAsync(download, ExecutablePath);
+        if (installResult.IsFailure)
         {
-            return Result.Fail($"Failed to download TypeScript {Version}")
-                .WithErrors(downloadResult);
+            return Result.Fail($"Failed to install TypeScript {Version}")
+                .WithErrors(installResult);
         }
-
-        await DeleteOtherVersionsAsync();
 
         return Result.Ok();
-    }
-
-    // Deletes only the folders named by a version, so another copy of Celbridge keeps the temporary folder of a
-    // download in progress. A folder that fails to delete is logged and stays in place.
-    private async Task DeleteOtherVersionsAsync()
-    {
-        var enumerateResult = await _fileSystem.EnumerateAsync(VersionsFolderPath, "*", recursive: false);
-        if (enumerateResult.IsFailure)
-        {
-            _logger.LogWarning(enumerateResult, $"Failed to list the TypeScript versions in '{VersionsFolderPath}'");
-            return;
-        }
-
-        foreach (var entry in enumerateResult.Value)
-        {
-            var folderName = Path.GetFileName(entry.FullPath);
-            if (!entry.IsFolder
-                || folderName == Version
-                || !SemanticVersion.TryParse(folderName, out _))
-            {
-                continue;
-            }
-
-            var deleteResult = await _fileSystem.DeleteFolderAsync(entry.FullPath, recursive: true);
-            if (deleteResult.IsFailure)
-            {
-                _logger.LogWarning(deleteResult, $"Failed to delete the folder of TypeScript {folderName}");
-                continue;
-            }
-
-            _logger.LogInformation("Deleted the folder of TypeScript {Version}", folderName);
-        }
     }
 }

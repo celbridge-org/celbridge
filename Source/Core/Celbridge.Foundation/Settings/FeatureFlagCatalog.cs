@@ -65,8 +65,8 @@ public static class FeatureFlagCatalog
         "ProjectSettings_FeatureFlag_Python_Description");
 
     /// <summary>
-    /// Code intelligence for TypeScript and JavaScript files, from the TypeScript language server. The project load
-    /// installs TypeScript for a project with the feature on.
+    /// Code editor support for TypeScript and JavaScript files, from the TypeScript language server. Loading a
+    /// project with the feature on installs TypeScript.
     /// </summary>
     public static readonly FeatureFlagDescriptor TypeScript = new(
         "typescript",

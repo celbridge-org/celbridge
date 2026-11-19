@@ -32,8 +32,7 @@ public record DependencyDownload(string Url, DependencyHash Hash, string FolderP
 }
 
 /// <summary>
-/// Downloads and extracts the archives that install dependencies. A .zip archive extracts, and so does a .tar.gz
-/// or .tgz archive.
+/// Downloads and extracts the archives that install dependencies. Extracts .zip, .tar.gz and .tgz archives.
 /// </summary>
 public interface IDependencyDownloader
 {
