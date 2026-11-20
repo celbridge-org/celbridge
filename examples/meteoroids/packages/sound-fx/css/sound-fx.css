@@ -65,19 +65,10 @@ html, body {
     line-height: 1.5;
 }
 
+/* The notice is a warning info bar. The info bar's styles come from celbridge.css. */
 .notice {
     flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
-    background: var(--cel-notice-bg);
-    border-bottom: 1px solid var(--cel-warning-text);
-    font-size: var(--cel-font-size-small);
-}
-
-.notice > span {
-    flex: 1 1 auto;
+    margin: 8px 12px 0;
 }
 
 #waveform-area {
@@ -129,11 +120,15 @@ html, body {
     gap: 6px;
 }
 
+/* The panel takes the warning info bar's fill, outline, corners and inset, so the panel and the notice look alike.
+   The panel has no icon. */
 .replace-panel {
     flex: 0 0 auto;
-    padding: 10px 12px;
-    background: var(--cel-notice-bg);
-    border-bottom: 1px solid var(--cel-warning-text);
+    margin: 8px 12px 0;
+    padding: 12px 16px;
+    background: var(--cel-info-bar-warning-bg);
+    border: 1px solid var(--cel-info-bar-border);
+    border-radius: var(--cel-radius-control);
 }
 
 .replace-panel p {

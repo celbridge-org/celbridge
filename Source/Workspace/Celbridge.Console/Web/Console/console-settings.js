@@ -20,6 +20,9 @@ import pythonType from './types/python.js';
 // The glyph for a shortcut with no icon, or one the bundled icon set does not carry.
 const SHORTCUT_FALLBACK_ICON = 'bs-lightning-charge';
 
+// The id of the Project Settings button on the Utility Panel rail.
+const PROJECT_SETTINGS_UTILITY_ID = 'celbridge.project-settings';
+
 // The session types this client can edit, in the order the Type control offers them. A type is one module
 // under types/, carrying the icon its rail row shows and the fields the form edits it through.
 const typeModules = new Map([shellType, pythonType].map((typeModule) => [typeModule.typeId, typeModule]));
@@ -521,23 +524,58 @@ export function createConsoleSettings({ client }) {
         return t('Console_UnknownType', selectedType());
     }
 
-    function disabledTypeText() {
-        if (!isTypeDisabled(selectedType())) {
-            return '';
+    // Reports whether a session failed while the loaded project disables the session's type. The check reads the
+    // type from the form's config at the failure. The form's type is usually the session's own type. The two differ
+    // when the user changed the form's type while the session ran.
+    function isSessionTypeDisabled() {
+        if (failedConfig === null) {
+            return false;
         }
 
-        return t('Console_TypeDisabled');
+        return isTypeDisabled(failedConfig.type || 'shell');
+    }
+
+    // Opens Project Settings through the Project Settings button on the Utility Panel rail. The notice names the
+    // section that contains the type's setting.
+    async function openProjectSettings() {
+        try {
+            await client.cel.app.showUtility(PROJECT_SETTINGS_UTILITY_ID, '');
+        } catch (error) {
+            client.log.error('[Console] Failed to open Project Settings', error);
+        }
     }
 
     // Returns the session's failure for the notice slot. Leaves the failure out when the session's type is
     // disabled. The selected type's own notice then covers the form, or the form shows another type.
     function sessionFailureText() {
-        if (failedConfig !== null
-            && isTypeDisabled(failedConfig.type || 'shell')) {
+        if (isSessionTypeDisabled()) {
             return '';
         }
 
         return sessionFailure || '';
+    }
+
+    // The notice has one slot. A parse error comes first, because the form that shows a parse error can also fix the
+    // file. An unknown type comes next. A disabled type's notice comes before the session's failure. So a console
+    // switched to a disabled type shows the notice before a reopen. The disabled type's notice has a button that opens
+    // Project Settings.
+    function showNotice() {
+        const problem = configError || unknownTypeText();
+        if (problem) {
+            settingsSwitcher.setNotice(problem);
+            return;
+        }
+
+        const typeId = selectedType();
+        if (isTypeDisabled(typeId)) {
+            settingsSwitcher.setNotice(t('Console_TypeDisabled'), {
+                label: t('Console_OpenProjectSettings'),
+                onClick: () => openProjectSettings(),
+            });
+            return;
+        }
+
+        settingsSwitcher.setNotice(sessionFailureText());
     }
 
     // The pip flags a config error, a config that diverges from the launched session, or a session that never
@@ -552,14 +590,7 @@ export function createConsoleSettings({ client }) {
         // since a failed start. The footer caption explains it.
         reopenSettingsButton.classList.toggle('cel-accent', diverged);
 
-        // The notice has one slot, and a parse error wins. The form showing a parse error can also fix the error.
-        // A disabled type's notice comes before the session's failure. A console switched to a disabled type
-        // then shows the notice before a reopen.
-        settingsSwitcher.setNotice(
-            configError
-            || unknownTypeText()
-            || disabledTypeText()
-            || sessionFailureText());
+        showNotice();
     }
 
     function applyContent(content) {
@@ -617,6 +648,9 @@ export function createConsoleSettings({ client }) {
             failedConfig = sessionFailure === null ? null : currentConfig;
             updateAttention();
         },
+
+        isSessionTypeDisabled,
+        openProjectSettings,
 
         setVisible(visible) {
             settingsView.classList.toggle('hidden', !visible);

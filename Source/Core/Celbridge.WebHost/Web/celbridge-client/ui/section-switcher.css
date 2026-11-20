@@ -1,6 +1,8 @@
 /* One of the shared components celbridge.css links. Link it beside celbridge-tokens.css to take this
    component on its own, without the bare-element control rules. */
 
+@import url('/assets/celbridge-client/ui/info-bar.css');
+
 /* Section switcher: the surface a settings panel with more than one topic is built on, mirroring the native
    SettingsSectionSwitcher.xaml. A nav of section rows sits beside the selected section, which is carved out
    of the surface behind it and headed by its name and description. Use as:
@@ -237,16 +239,13 @@
     padding-right: calc(var(--cel-section-inset) * 2 + var(--cel-icon-button-size));
 }
 
-/* Something the whole surface has to say, pinned below the header so it stays visible from whichever section
-   is showing: a file that would not parse, a setting that cannot be honoured. */
+/* The notice reports a problem with the whole surface. A file's parse error is one example, and a setting the
+   surface has to ignore is another. The notice is pinned below the header, so the notice stays visible from
+   whichever section is showing. ui/section-switcher.js makes the notice a warning info bar. ui/info-bar.css draws
+   the info bar. */
 .cel-section-notice {
     flex: 0 0 auto;
     margin: var(--cel-section-inset) var(--cel-section-inset) 0;
-    padding: 8px 10px;
-    background: var(--cel-notice-bg);
-    border: 1px solid var(--cel-warning-text);
-    border-radius: var(--cel-radius-control);
-    white-space: pre-wrap;
 }
 
 /* Each section scrolls on its own, so its scroll position is its own to keep while another one is showing. */

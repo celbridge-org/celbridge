@@ -471,14 +471,6 @@
           "published": true,
           "comment": "The counterpart to warning-text at the next severity up, drawn from the same palette so the two read as one scale."
         },
-        "notice-background": {
-          "targets": ["css"],
-          "css": "--cel-notice-bg",
-          "light": "rgba(255, 160, 0, 0.15)",
-          "dark": "rgba(255, 202, 40, 0.18)",
-          "published": true,
-          "comment": "Fill behind a notice pinned in a settings section, outlined and read against warning-text. A tint of that colour rather than a tone of its own, so the callout reads as the same severity the text does."
-        },
         "caution": {
           "targets": ["xaml", "css"],
           "xaml": "CautionColor",
@@ -589,6 +581,99 @@
           "css": "--cel-expander-content-bg",
           "light": "#EDEDED",
           "dark": "#191A1D",
+          "published": true
+        }
+      }
+    },
+
+    {
+      "comment": "The info bar's colours. The .cel-info-bar component in ui/info-bar.css paints with them, and WinUI's InfoBar takes them through its own keys, so the two info bars cannot disagree. The values are WinUI's own. The informational icon has no token here, because both info bars fill it with the accent.",
+      "tokens": {
+        "info-bar-informational-background": {
+          "targets": ["xaml", "css"],
+          "xaml": "InfoBarInformationalBackgroundColor",
+          "xamlAliases": ["InfoBarInformationalSeverityBackgroundBrush"],
+          "css": "--cel-info-bar-informational-bg",
+          "light": "#80F6F6F6",
+          "dark": "#08FFFFFF",
+          "published": true
+        },
+        "info-bar-success-background": {
+          "targets": ["xaml", "css"],
+          "xaml": "InfoBarSuccessBackgroundColor",
+          "xamlAliases": ["InfoBarSuccessSeverityBackgroundBrush"],
+          "css": "--cel-info-bar-success-bg",
+          "light": "#DFF6DD",
+          "dark": "#393D1B",
+          "published": true
+        },
+        "info-bar-warning-background": {
+          "targets": ["xaml", "css"],
+          "xaml": "InfoBarWarningBackgroundColor",
+          "xamlAliases": ["InfoBarWarningSeverityBackgroundBrush"],
+          "css": "--cel-info-bar-warning-bg",
+          "light": "#FFF4CE",
+          "dark": "#433519",
+          "published": true
+        },
+        "info-bar-error-background": {
+          "targets": ["xaml", "css"],
+          "xaml": "InfoBarErrorBackgroundColor",
+          "xamlAliases": ["InfoBarErrorSeverityBackgroundBrush"],
+          "css": "--cel-info-bar-error-bg",
+          "light": "#FDE7E9",
+          "dark": "#442726",
+          "published": true
+        },
+        "info-bar-success-icon": {
+          "targets": ["xaml", "css"],
+          "xaml": "InfoBarSuccessIconColor",
+          "xamlAliases": ["InfoBarSuccessSeverityIconBackground"],
+          "css": "--cel-info-bar-success-icon",
+          "light": "#0F7B0F",
+          "dark": "#6CCB5F",
+          "published": true
+        },
+        "info-bar-warning-icon": {
+          "targets": ["xaml", "css"],
+          "xaml": "InfoBarWarningIconColor",
+          "xamlAliases": ["InfoBarWarningSeverityIconBackground"],
+          "css": "--cel-info-bar-warning-icon",
+          "light": "#9D5D00",
+          "dark": "#FCE100",
+          "published": true
+        },
+        "info-bar-error-icon": {
+          "targets": ["xaml", "css"],
+          "xaml": "InfoBarErrorIconColor",
+          "xamlAliases": ["InfoBarErrorSeverityIconBackground"],
+          "css": "--cel-info-bar-error-icon",
+          "light": "#C42B1C",
+          "dark": "#FF99A4",
+          "published": true
+        },
+        "info-bar-icon-glyph": {
+          "targets": ["xaml", "css"],
+          "xaml": "InfoBarIconGlyphColor",
+          "xamlAliases": [
+            "InfoBarInformationalSeverityIconForeground",
+            "InfoBarSuccessSeverityIconForeground",
+            "InfoBarWarningSeverityIconForeground",
+            "InfoBarErrorSeverityIconForeground"
+          ],
+          "css": "--cel-info-bar-icon-glyph",
+          "light": "#FFFFFF",
+          "dark": "#E4000000",
+          "published": true,
+          "comment": "The mark drawn over the filled circle of every severity's icon."
+        },
+        "info-bar-border": {
+          "targets": ["xaml", "css"],
+          "xaml": "InfoBarBorderColor",
+          "xamlAliases": ["InfoBarBorderBrush"],
+          "css": "--cel-info-bar-border",
+          "light": "#0F000000",
+          "dark": "#19000000",
           "published": true
         }
       }

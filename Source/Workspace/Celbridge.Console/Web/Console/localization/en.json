@@ -17,6 +17,7 @@
     "Console_StartFailed": "Failed to start the console session.",
     "Console_InvalidConfig": "Invalid .console configuration.",
     "Console_TypeDisabled": "This console type is disabled in this project. The setting is in the Features section of Project Settings.",
+    "Console_OpenProjectSettings": "Open Project Settings",
     "Console_UnknownType": "Celbridge doesn't recognize this console's type, \"{0}\". Changing these settings removes that type's own settings.",
 
     "Console_Group_Session": "Session",

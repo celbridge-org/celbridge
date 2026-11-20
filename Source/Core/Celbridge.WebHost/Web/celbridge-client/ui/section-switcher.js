@@ -12,7 +12,8 @@
 //   switcher.selected();            // the current section id
 //   switcher.scrollTop();           // the selected section's scroll offset, worth persisting with the id
 //   switcher.setScrollTop(240);     // apply a persisted offset to the selected section
-//   switcher.setNotice(message);    // show the notice slot, or hide it with an empty message
+//   switcher.setNotice(message);    // show the notice as a warning info bar. An empty message hides the notice.
+//   switcher.setNotice(message, { label: 'Open Settings', onClick() { } });   // the notice with a button
 //   switcher.setReadOnly(true);     // disable every control inside the sections
 //
 // The initially selected row is the one marked aria-selected="true" in the markup, or the first row. A panel
@@ -46,7 +47,7 @@ export function attachSectionSwitcher(rootElement, options = {}) {
     const { onChange } = options;
 
     const navElement = rootElement.querySelector('.cel-section-nav');
-    const noticeElement = rootElement.querySelector('.cel-section-notice');
+    const notice = createNotice(rootElement.querySelector('.cel-section-notice'));
     const contentElement = rootElement.querySelector('.cel-section-content');
     const navItems = Array.from(rootElement.querySelectorAll('.cel-section-nav-item'));
     const headers = Array.from(rootElement.querySelectorAll('.cel-section-header'));
@@ -213,15 +214,51 @@ export function attachSectionSwitcher(rootElement, options = {}) {
             scrollOffsets.set(selectedId, offset);
             applyScrollOffset();
         },
-        setNotice(message) {
-            if (!noticeElement) {
-                return;
-            }
-
-            const text = message || '';
-            noticeElement.textContent = text;
-            noticeElement.hidden = text === '';
+        setNotice(message, action = null) {
+            notice.set(message, action);
         },
         setReadOnly,
+    };
+}
+
+// Makes the notice slot a warning info bar, which ui/info-bar.css draws. The function builds the bar's message and
+// the bar's button, so the slot's markup is one empty element. The button shows only while the notice has an action.
+function createNotice(noticeElement) {
+    if (!noticeElement) {
+        return {
+            set() { },
+        };
+    }
+
+    noticeElement.classList.add('cel-info-bar');
+    noticeElement.dataset.severity = 'warning';
+
+    const messageElement = document.createElement('span');
+    messageElement.className = 'cel-info-bar-message';
+
+    const actionElement = document.createElement('button');
+    actionElement.type = 'button';
+    actionElement.className = 'cel-info-bar-action';
+    actionElement.hidden = true;
+
+    noticeElement.replaceChildren(messageElement, actionElement);
+
+    let onAction = null;
+    actionElement.addEventListener('click', () => {
+        if (onAction) {
+            onAction();
+        }
+    });
+
+    return {
+        set(message, action) {
+            const text = message || '';
+            messageElement.textContent = text;
+            noticeElement.hidden = text === '';
+
+            onAction = action ? action.onClick : null;
+            actionElement.textContent = action ? action.label : '';
+            actionElement.hidden = !action;
+        },
     };
 }

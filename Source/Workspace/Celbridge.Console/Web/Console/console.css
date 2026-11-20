@@ -159,6 +159,13 @@ html, body {
     word-break: break-word;
 }
 
+.overlay-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
 /* The settings surface is the shared .cel-section-switcher (celbridge.css), filling the row the terminal
    would otherwise have, inset from the document edge by the same margin both native settings surfaces keep.
    The rail is off screen for as long as it shows, so the switcher measures the whole document and resolves

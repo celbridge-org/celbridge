@@ -65,7 +65,12 @@ public interface IProject
     DependencyInstallFailure? DependencyInstallFailure { get; }
 
     /// <summary>
-    /// True when the resource is this project's .celbridge file, which sits at the project root.
+    /// The resource key of this project's .celbridge file. The file sits at the project root.
+    /// </summary>
+    ResourceKey ProjectFileResource { get; }
+
+    /// <summary>
+    /// True when the resource is this project's .celbridge file.
     /// </summary>
     bool IsProjectFile(ResourceKey resource);
 }

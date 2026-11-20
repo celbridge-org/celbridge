@@ -310,29 +310,25 @@ public class UtilityService : IUtilityService, IDisposable
 
         var shortcutItems = new List<UtilityRailItem>();
 
-        // The project file sits at the project root, so its resource key is just the file name. The editor is
-        // named so the choice does not depend on extension resolution.
+        // The shortcut names the Project Settings editor, so the editor that opens the file does not depend on the
+        // file's extension.
         var project = projectService.CurrentProject;
         if (project is not null)
         {
-            var projectFileName = Path.GetFileName(project.ProjectFilePath);
-            if (ResourceKey.TryCreate(projectFileName, out var projectFileResource))
-            {
-                string projectSettingsName = stringLocalizer.GetString("UtilityPanel_ProjectSettingsTooltip");
+            string projectSettingsName = stringLocalizer.GetString("UtilityPanel_ProjectSettingsTooltip");
 
-                var projectSettingsItem = UtilityRailItem.CreateDocumentShortcut(
-                    RailItemGroup.BuiltInShortcut,
-                    BuiltInShortcutIds.ProjectSettings,
-                    ProjectSettingsLandmarkId,
-                    iconService.GetIconName(IconSymbol.Sliders),
-                    projectSettingsName,
-                    projectSettingsName,
-                    projectFileResource,
-                    BuiltInEditors.ProjectSettingsEditorId,
-                    WorkspaceArea.Main);
+            var projectSettingsItem = UtilityRailItem.CreateDocumentShortcut(
+                RailItemGroup.BuiltInShortcut,
+                BuiltInShortcutIds.ProjectSettings,
+                ProjectSettingsLandmarkId,
+                iconService.GetIconName(IconSymbol.Sliders),
+                projectSettingsName,
+                projectSettingsName,
+                project.ProjectFileResource,
+                BuiltInEditors.ProjectSettingsEditorId,
+                WorkspaceArea.Main);
 
-                shortcutItems.Add(projectSettingsItem);
-            }
+            shortcutItems.Add(projectSettingsItem);
         }
 
         string communityName = stringLocalizer.GetString("UtilityPanel_CommunityTooltip");

@@ -131,7 +131,15 @@ public class DesignTokenCoverageTests
         "--cel-icon-size-large",
         "--cel-icon-size-medium",
         "--cel-icon-size-small",
-        "--cel-notice-bg",
+        "--cel-info-bar-border",
+        "--cel-info-bar-error-bg",
+        "--cel-info-bar-error-icon",
+        "--cel-info-bar-icon-glyph",
+        "--cel-info-bar-informational-bg",
+        "--cel-info-bar-success-bg",
+        "--cel-info-bar-success-icon",
+        "--cel-info-bar-warning-bg",
+        "--cel-info-bar-warning-icon",
         "--cel-page-zoom",
         "--cel-panel-edge",
         "--cel-panel-header-height",
@@ -169,11 +177,20 @@ public class DesignTokenCoverageTests
             .Select(token => token.CssPropertyName!)
             .ToHashSet();
 
-        var references = FindReferences(StyleFileExtensions, CssReferenceRegex);
+        var sourceFolder = ArchitectureHelpers.FindSourceFolder();
+        var references = FindReferences(sourceFolder, StyleFileExtensions, CssReferenceRegex);
 
         references.Should().NotBeEmpty("the source tree styles its web surfaces with the design tokens");
 
+        // The example packages use the published names. A token removed from the source must not leave a reference
+        // behind in them.
+        var examplesFolder = Path.Combine(Path.GetDirectoryName(sourceFolder)!, "examples");
+        var exampleReferences = FindReferences(examplesFolder, StyleFileExtensions, CssReferenceRegex);
+
+        exampleReferences.Should().NotBeEmpty("the example packages style their editors with the design tokens");
+
         var failures = references
+            .Concat(exampleReferences)
             .Where(reference => !declaredNames.Contains(reference.Name))
             .Select(reference => $"{reference.Name} referenced in {reference.RelativePath} is not declared in DesignTokens.json")
             .ToList();
@@ -195,7 +212,7 @@ public class DesignTokenCoverageTests
             .OfType<string>()
             .ToHashSet();
 
-        var references = FindReferences(["*.xaml"], XamlReferenceRegex);
+        var references = FindReferences(ArchitectureHelpers.FindSourceFolder(), ["*.xaml"], XamlReferenceRegex);
 
         references.Should().NotBeEmpty("the source tree paints its native chrome with the design tokens");
 
@@ -248,7 +265,9 @@ public class DesignTokenCoverageTests
     {
         var source = LoadTokenSource();
 
-        var referencedNames = FindReferences(StyleFileExtensions, CssReferenceRegex)
+        var sourceFolder = ArchitectureHelpers.FindSourceFolder();
+
+        var referencedNames = FindReferences(sourceFolder, StyleFileExtensions, CssReferenceRegex)
             .Select(reference => reference.Name)
             .ToHashSet();
 
@@ -374,14 +393,18 @@ public class DesignTokenCoverageTests
         return DesignTokenSourceLoader.LoadFromFile(tokenSourcePath);
     }
 
-    private static IReadOnlyList<TokenReference> FindReferences(string[] searchPatterns, Regex referenceRegex)
+    // Finds the references in the files under the folder. Each reference names its file relative to the repository.
+    private static IReadOnlyList<TokenReference> FindReferences(
+        string folder,
+        string[] searchPatterns,
+        Regex referenceRegex)
     {
-        var sourceFolder = ArchitectureHelpers.FindSourceFolder();
+        var repositoryFolder = Path.GetDirectoryName(ArchitectureHelpers.FindSourceFolder())!;
         var references = new List<TokenReference>();
 
-        foreach (var filePath in EnumerateSourceFiles(sourceFolder, searchPatterns))
+        foreach (var filePath in EnumerateSourceFiles(folder, searchPatterns))
         {
-            var relativePath = Path.GetRelativePath(sourceFolder, filePath);
+            var relativePath = Path.GetRelativePath(repositoryFolder, filePath);
             var content = ArchitectureHelpers.ReadSourceFile(filePath);
 
             foreach (Match match in referenceRegex.Matches(content))

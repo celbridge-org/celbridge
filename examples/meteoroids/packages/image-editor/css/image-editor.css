@@ -101,19 +101,10 @@ html, body {
     margin-left: 4px;
 }
 
+/* The notice is a warning info bar. The info bar's styles come from celbridge.css. */
 .notice {
     flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
-    background: var(--cel-notice-bg);
-    border-bottom: 1px solid var(--cel-warning-text);
-    font-size: var(--cel-font-size-small);
-}
-
-.notice > span {
-    flex: 1 1 auto;
+    margin: 8px;
 }
 
 #stage {
