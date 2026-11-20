@@ -23,5 +23,7 @@
     "CodeEditor_Snippet_Image": "Image",
     "CodeEditor_Snippet_Table": "Table",
     "CodeEditor_Snippet_Footnote": "Footnote",
-    "CodeEditor_Snippet_HorizontalRule": "Horizontal Rule"
+    "CodeEditor_Snippet_HorizontalRule": "Horizontal Rule",
+    "CodeEditor_Rename_Refused": "This can't be renamed.",
+    "CodeEditor_Rename_Failed": "The rename could not be applied."
 }

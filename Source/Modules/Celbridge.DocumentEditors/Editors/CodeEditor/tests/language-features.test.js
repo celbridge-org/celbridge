@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { installMonacoLanguageStub, createModelStub, FakeChannel } from './fixtures/monaco-language-stub.js';
 import { LanguageFeatures } from '../js/language-features.js';
@@ -10,6 +10,8 @@ const answers = recorded.answers;
 
 const mainPath = 'D:\\Projects\\Acme\\src\\main.ts';
 const serverMetadata = { filePath: mainPath, fileName: 'main.ts', languageServer: 'typescript' };
+const shapesUri = 'file:///d%3A/Projects/Acme/src/shapes.ts';
+const shapesText = 'export function area(circle: Circle): number {\n    return 0;\n}\n';
 
 let stub;
 let connections;
@@ -23,6 +25,17 @@ function answerRequest(method, result) {
     connection.receive({ id: request.id, result });
 
     return request;
+}
+
+// Answers a request with the given method once the page has sent it. A provider sends some requests only after the
+// server's first answer arrives.
+async function answerWhenSent(method, result) {
+    const connection = connections[connections.length - 1];
+    await vi.waitFor(() => {
+        expect(connection.sentWith(method).length).toBeGreaterThan(0);
+    });
+
+    return answerRequest(method, result);
 }
 
 // Starts the features for main.ts, and delivers the server's capabilities.
@@ -41,7 +54,7 @@ beforeEach(() => {
 });
 
 describe('LanguageFeatures.prepare', () => {
-    it('turns off Monaco\'s own features for the language of a document with a server', () => {
+    it('turns off Monaco\'s own TypeScript and JavaScript features for a document with a server', () => {
         features.prepare('typescript', serverMetadata);
 
         const { typescriptDefaults, javascriptDefaults } = stub.monaco.typescript;
@@ -49,15 +62,22 @@ describe('LanguageFeatures.prepare', () => {
         const configuration = typescriptDefaults.setModeConfiguration.mock.calls[0][0];
         expect(Object.values(configuration).every((value) => value === false)).toBe(true);
         expect(configuration.diagnostics).toBe(false);
-        expect(javascriptDefaults.setModeConfiguration).not.toHaveBeenCalled();
+        expect(javascriptDefaults.setModeConfiguration).toHaveBeenCalledWith(configuration);
     });
 
-    it('turns off the JavaScript features alone for a JavaScript document', () => {
+    it('turns off both languages\' features for a JavaScript document, since a peek can show either', () => {
         features.prepare('javascript', serverMetadata);
 
         const { typescriptDefaults, javascriptDefaults } = stub.monaco.typescript;
         expect(javascriptDefaults.setModeConfiguration).toHaveBeenCalledTimes(1);
-        expect(typescriptDefaults.setModeConfiguration).not.toHaveBeenCalled();
+        expect(typescriptDefaults.setModeConfiguration).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves Monaco\'s TypeScript features on for a document in another language with a server', () => {
+        features.prepare('python', { ...serverMetadata, languageServer: 'python' });
+
+        expect(stub.monaco.typescript.typescriptDefaults.setModeConfiguration).not.toHaveBeenCalled();
+        expect(stub.monaco.typescript.javascriptDefaults.setModeConfiguration).not.toHaveBeenCalled();
     });
 
     it('leaves Monaco\'s own features on, and opens no connection, when the host reports no server', () => {
@@ -103,14 +123,18 @@ describe('LanguageFeatures providers', () => {
 
         // The TypeScript server offers neither declarations nor document links.
         expect(Object.keys(stub.providers).sort()).toEqual([
+            'registerCodeActionProvider',
             'registerCompletionItemProvider',
             'registerDefinitionProvider',
+            'registerDocumentFormattingEditProvider',
             'registerDocumentHighlightProvider',
+            'registerDocumentRangeFormattingEditProvider',
             'registerDocumentSymbolProvider',
             'registerFoldingRangeProvider',
             'registerHoverProvider',
             'registerImplementationProvider',
             'registerReferenceProvider',
+            'registerRenameProvider',
             'registerSelectionRangeProvider',
             'registerSignatureHelpProvider',
             'registerTypeDefinitionProvider'
@@ -125,7 +149,7 @@ describe('LanguageFeatures providers', () => {
             documentLinkProvider: { resolveProvider: true }
         });
 
-        expect(Object.keys(stub.providers)).toHaveLength(13);
+        expect(Object.keys(stub.providers)).toHaveLength(17);
         expect(typeof stub.providers.registerLinkProvider.provider.resolveLink).toBe('function');
     });
 
@@ -195,17 +219,15 @@ describe('LanguageFeatures providers', () => {
         expect(help.value.signatures[0].label).toBe('area(circle: Circle): number');
     });
 
-    it('returns a definition in the document under the model\'s URI, and leaves out one in another file', async () => {
+    it('returns a definition in the document under the model\'s URI', async () => {
         startWithServer();
         const provider = stub.providers.registerDefinitionProvider.provider;
 
         const own = provider.provideDefinition(model, { lineNumber: 7, column: 21 });
         answerRequest('textDocument/definition', answers.definitionOwn);
-        const other = provider.provideDefinition(model, { lineNumber: 8, column: 23 });
-        answerRequest('textDocument/definition', answers.definitionOther);
 
         expect((await own)[0].uri).toBe(model.uri);
-        expect(await other).toEqual([]);
+        expect(connections[0].sentWith('celbridge/fileText')).toEqual([]);
     });
 
     it('sends each location request under its own method', async () => {
@@ -367,12 +389,228 @@ describe('LanguageFeatures after a rename', () => {
         const renamedAnswer = JSON.parse(JSON.stringify(answers.definitionOwn).replaceAll('main.ts', 'renamed.ts'));
         const underNewName = provider.provideDefinition(model, { lineNumber: 7, column: 21 });
         answerRequest('textDocument/definition', renamedAnswer);
-        const underOldName = provider.provideDefinition(model, { lineNumber: 7, column: 21 });
-        answerRequest('textDocument/definition', answers.definitionOwn);
 
         expect(connections).toHaveLength(2);
         expect(connections[1].sentWith('textDocument/didOpen')[0].params.text).toBe(recorded.mainText);
         expect((await underNewName)[0].uri).toBe(model.uri);
-        expect(await underOldName).toEqual([]);
+    });
+});
+
+describe('LanguageFeatures locations in other files', () => {
+    it('gives a location in another file a copy of the file\'s text, for a peek', async () => {
+        startWithServer();
+        const provider = stub.providers.registerDefinitionProvider.provider;
+
+        const pending = provider.provideDefinition(model, { lineNumber: 8, column: 23 });
+        answerRequest('textDocument/definition', answers.definitionOther);
+        const fileTextRequest = await answerWhenSent('celbridge/fileText', { stamp: '1-60', text: shapesText });
+        const [location] = await pending;
+
+        expect(fileTextRequest.params).toEqual({ uri: shapesUri });
+        expect(location.uri.toString()).toBe(shapesUri);
+        expect(location.range).toEqual({ startLineNumber: 10, startColumn: 1, endLineNumber: 12, endColumn: 2 });
+        expect(stub.models.get(shapesUri).text).toBe(shapesText);
+    });
+
+    it('sends the copy\'s stamp, and keeps the copy when the host reports that the file is unchanged', async () => {
+        startWithServer();
+        const provider = stub.providers.registerDefinitionProvider.provider;
+
+        const first = provider.provideDefinition(model, { lineNumber: 8, column: 23 });
+        answerRequest('textDocument/definition', answers.definitionOther);
+        await answerWhenSent('celbridge/fileText', { stamp: '1-60', text: shapesText });
+        await first;
+
+        const second = provider.provideDefinition(model, { lineNumber: 8, column: 23 });
+        answerRequest('textDocument/definition', answers.definitionOther);
+        await vi.waitFor(() => {
+            expect(connections[0].sentWith('celbridge/fileText')).toHaveLength(2);
+        });
+        const secondRequest = answerRequest('celbridge/fileText', { stamp: '1-60' });
+        await second;
+
+        expect(secondRequest.params).toEqual({ uri: shapesUri, stamp: '1-60' });
+        expect(stub.monaco.editor.createModel).toHaveBeenCalledTimes(1);
+        expect(stub.models.get(shapesUri).text).toBe(shapesText);
+    });
+
+    it('gives each other file in a references answer a copy of its text', async () => {
+        startWithServer();
+        const provider = stub.providers.registerReferenceProvider.provider;
+
+        const pending = provider.provideReferences(model, { lineNumber: 8, column: 23 }, { includeDeclaration: true });
+        answerRequest('textDocument/references', answers.referencesOther);
+        await answerWhenSent('celbridge/fileText', { stamp: '1-60', text: shapesText });
+        const references = await pending;
+
+        expect(references).toHaveLength(answers.referencesOther.length);
+        expect(references.filter((reference) => reference.uri === model.uri)).toHaveLength(3);
+        expect(connections[0].sentWith('celbridge/fileText')).toHaveLength(1);
+    });
+
+    it('removes the copies when the document leaves its server', async () => {
+        startWithServer();
+        const pending = stub.providers.registerDefinitionProvider.provider.provideDefinition(
+            model, { lineNumber: 8, column: 23 });
+        answerRequest('textDocument/definition', answers.definitionOther);
+        await answerWhenSent('celbridge/fileText', { stamp: '1-60', text: shapesText });
+        await pending;
+        const peekModel = stub.models.get(shapesUri);
+
+        features.stop();
+
+        expect(peekModel.dispose).toHaveBeenCalledTimes(1);
+    });
+
+    it('asks the host to open another file at the location', async () => {
+        startWithServer();
+
+        const opening = stub.opener.openCodeEditor(
+            {},
+            stub.monaco.Uri.parse(shapesUri),
+            { startLineNumber: 10, startColumn: 17, endLineNumber: 10, endColumn: 21 });
+        const request = answerRequest('window/showDocument', { success: true });
+
+        expect(request.params).toEqual({
+            uri: shapesUri,
+            takeFocus: true,
+            selection: { start: { line: 9, character: 16 }, end: { line: 9, character: 20 } }
+        });
+        expect(await opening).toBe(true);
+    });
+
+    it('opens nothing when the host refuses the file, and leaves the page\'s own document to Monaco', async () => {
+        startWithServer();
+
+        const refused = stub.opener.openCodeEditor({}, stub.monaco.Uri.parse(shapesUri), { lineNumber: 1, column: 1 });
+        const request = answerRequest('window/showDocument', { success: false });
+        const own = await stub.opener.openCodeEditor({}, model.uri, { lineNumber: 1, column: 1 });
+
+        expect(request.params.selection).toEqual({ start: { line: 0, character: 0 }, end: { line: 0, character: 0 } });
+        expect(await refused).toBe(false);
+        expect(own).toBe(false);
+        expect(connections[0].sentWith('window/showDocument')).toHaveLength(1);
+    });
+});
+
+describe('LanguageFeatures edits', () => {
+    it('hands a rename\'s edit to the host, and gives Monaco an empty edit', async () => {
+        startWithServer();
+        const provider = stub.providers.registerRenameProvider.provider;
+
+        const pending = provider.provideRenameEdits(model, { lineNumber: 9, column: 35 }, 'size');
+        const renameRequest = answerRequest('textDocument/rename', answers.rename);
+        const applyRequest = await answerWhenSent('workspace/applyEdit', { applied: true });
+        const result = await pending;
+
+        expect(renameRequest.params).toEqual({ position: { line: 8, character: 34 }, newName: 'size' });
+        expect(applyRequest.params).toEqual({ edit: answers.rename });
+        expect(result).toEqual({ edits: [] });
+    });
+
+    it('rejects the rename when the server finds nothing to rename or the host cannot apply the edit', async () => {
+        startWithServer();
+        const provider = stub.providers.registerRenameProvider.provider;
+
+        const nothing = provider.provideRenameEdits(model, { lineNumber: 1, column: 1 }, 'size');
+        answerRequest('textDocument/rename', null);
+        const failed = provider.provideRenameEdits(model, { lineNumber: 9, column: 35 }, 'size');
+        answerRequest('textDocument/rename', answers.rename);
+        await answerWhenSent('workspace/applyEdit', { applied: false, failureReason: 'The document changed' });
+
+        expect((await nothing).rejectReason).toBe('CodeEditor_Rename_Refused');
+        expect((await failed).rejectReason).toBe('CodeEditor_Rename_Failed');
+    });
+
+    it('asks the server where a rename starts', async () => {
+        startWithServer();
+        const provider = stub.providers.registerRenameProvider.provider;
+
+        const pending = provider.resolveRenameLocation(model, { lineNumber: 9, column: 35 });
+        const request = answerRequest('textDocument/prepareRename', answers.prepareRename);
+        const location = await pending;
+
+        expect(request.params).toEqual({ position: { line: 8, character: 34 } });
+        expect(location).toEqual({
+            range: { startLineNumber: 9, startColumn: 35, endLineNumber: 9, endColumn: 41 },
+            text: 'radius'
+        });
+    });
+
+    it('sends a code action request with the server\'s own diagnostics, and offers the server\'s actions', async () => {
+        startWithServer();
+        connections[0].receive({
+            method: 'textDocument/publishDiagnostics',
+            params: { diagnostics: [answers.codeActionDiagnostic] }
+        });
+        const registration = stub.providers.registerCodeActionProvider;
+        const marker = { startLineNumber: 8, startColumn: 7, endLineNumber: 8, endColumn: 11, message: answers.codeActionDiagnostic.message };
+
+        const pending = registration.provider.provideCodeActions(
+            model,
+            { startLineNumber: 8, startColumn: 7, endLineNumber: 8, endColumn: 11 },
+            { markers: [marker], trigger: 1, only: 'source.organizeImports' });
+        const request = answerRequest('textDocument/codeAction', answers.organizeImports);
+        const list = await pending;
+
+        expect(registration.metadata.providedCodeActionKinds).toEqual(answers.capabilities.codeActionProvider.codeActionKinds);
+        expect(request.params.context).toEqual({
+            diagnostics: [answers.codeActionDiagnostic],
+            triggerKind: 1,
+            only: ['source.organizeImports']
+        });
+        expect(list.actions.map((action) => action.title)).toEqual(['Organize Imports']);
+        expect(list.actions[0].command.id).toBe('celbridge.applyCodeAction');
+        expect(list.actions[0].edit).toBeUndefined();
+    });
+
+    it('hands the chosen code action\'s edit to the host', async () => {
+        startWithServer();
+        const [action] = answers.organizeImports;
+
+        const applying = stub.commands['celbridge.applyCodeAction']({}, action);
+        const request = answerRequest('workspace/applyEdit', { applied: true });
+        await applying;
+
+        expect(request.params).toEqual({ edit: action.edit });
+    });
+
+    it('asks the server to fill in a code action\'s edit when the server resolves actions', async () => {
+        startWithServer({
+            ...answers.capabilities,
+            codeActionProvider: { ...answers.capabilities.codeActionProvider, resolveProvider: true }
+        });
+        const [organizeImports] = answers.organizeImports;
+        const unresolved = { title: organizeImports.title, kind: organizeImports.kind, data: { id: 1 } };
+
+        const applying = stub.commands['celbridge.applyCodeAction']({}, unresolved);
+        const resolveRequest = answerRequest('codeAction/resolve', organizeImports);
+        const applyRequest = await answerWhenSent('workspace/applyEdit', { applied: true });
+        await applying;
+
+        expect(resolveRequest.params).toEqual(unresolved);
+        expect(applyRequest.params).toEqual({ edit: organizeImports.edit });
+    });
+
+    it('returns the server\'s formatting edits for the document and for a range', async () => {
+        model = createModelStub({ filePath: mainPath, text: recorded.formatText });
+        startWithServer();
+        const options = { tabSize: 4, insertSpaces: true };
+
+        const documentEdits = stub.providers.registerDocumentFormattingEditProvider.provider
+            .provideDocumentFormattingEdits(model, options);
+        const documentRequest = answerRequest('textDocument/formatting', answers.formatting);
+        const rangeEdits = stub.providers.registerDocumentRangeFormattingEditProvider.provider
+            .provideDocumentRangeFormattingEdits(
+                model, { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 25 }, options);
+        const rangeRequest = answerRequest('textDocument/rangeFormatting', answers.rangeFormatting);
+
+        expect(documentRequest.params).toEqual({ options });
+        expect(rangeRequest.params.range).toEqual({ start: { line: 0, character: 0 }, end: { line: 0, character: 24 } });
+        expect((await documentEdits)).toHaveLength(answers.formatting.length);
+        expect((await rangeEdits)[0]).toEqual({
+            range: { startLineNumber: 1, startColumn: 16, endLineNumber: 1, endColumn: 19 },
+            text: ' '
+        });
     });
 });

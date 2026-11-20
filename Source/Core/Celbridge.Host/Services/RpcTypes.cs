@@ -12,6 +12,21 @@ public record DocumentMetadata(
     string LanguageServer);
 
 /// <summary>
+/// A range in an editor's text. Lines and columns count from 1.
+/// </summary>
+public record EditorRange(int StartLineNumber, int StartColumn, int EndLineNumber, int EndColumn);
+
+/// <summary>
+/// One edit to an editor's text: the range to replace and the new text.
+/// </summary>
+public record EditorTextEdit(EditorRange Range, string Text);
+
+/// <summary>
+/// Parameters of the editor/applyEdits request.
+/// </summary>
+public record ApplyEditsParams(IReadOnlyList<EditorTextEdit> Edits);
+
+/// <summary>
 /// Result of the document/initialize request.
 /// </summary>
 public record InitializeResult(string Content, DocumentMetadata Metadata);

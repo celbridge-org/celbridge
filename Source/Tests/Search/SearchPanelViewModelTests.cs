@@ -350,7 +350,7 @@ public class SearchPanelViewModelTests
     {
         return _commandService.ReceivedCalls()
             .Count(call => call.GetMethodInfo().Name == nameof(ICommandService.ExecuteAsync)
-                && call.GetMethodInfo().GetGenericArguments().FirstOrDefault() == typeof(IApplyRangeEditsCommand));
+                && call.GetMethodInfo().GetGenericArguments().FirstOrDefault() == typeof(IApplyFileEditsCommand));
     }
 
     private List<string> ResultPaths()

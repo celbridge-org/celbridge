@@ -39,7 +39,8 @@ function createMockEditor(model) {
         onDidChangeCursorSelection: vi.fn(),
         onDidFocusEditorText: vi.fn(),
         onDidBlurEditorText: vi.fn(),
-        executeEdits: vi.fn(),
+        executeEdits: vi.fn(() => true),
+        pushUndoStop: vi.fn(),
         hasTextFocus: vi.fn(() => true),
         getOption: vi.fn(() => true),
         getSelection: vi.fn(() => ({ isEmpty: () => true })),
@@ -59,7 +60,8 @@ function installMonacoStub(editor) {
             EndOfLineSequence: { CRLF: 1, LF: 0 },
             EditorOption: { emptySelectionClipboard: 38 },
             setModelLanguage: vi.fn(),
-            setTheme: vi.fn()
+            setTheme: vi.fn(),
+            onDidCreateEditor: vi.fn()
         },
         EditorOption: { lineHeight: 0 },
         Selection: {
@@ -100,6 +102,54 @@ describe('EditorController.create', () => {
 
         __capturedHandlers.onAppStateChanged({ theme: 'Light' });
         expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('vs');
+    });
+});
+
+describe('EditorController editors inside the editor', () => {
+    it('makes each editor that Monaco creates later read-only, once the editor is ready', async () => {
+        installMonacoStub(createMockEditor(createMockModel()));
+        new EditorController().create(document.createElement('div'));
+
+        const peekEditor = { updateOptions: vi.fn() };
+        const [listener] = monaco.editor.onDidCreateEditor.mock.calls[0];
+        listener(peekEditor);
+
+        expect(peekEditor.updateOptions).not.toHaveBeenCalled();
+        await flushMicrotasks();
+        expect(peekEditor.updateOptions).toHaveBeenCalledWith({ readOnly: true });
+    });
+});
+
+describe('EditorController.applyEdits', () => {
+    it('applies the host\'s edits as one step in the undo history', () => {
+        const editor = createMockEditor(createMockModel());
+        installMonacoStub(editor);
+        const controller = new EditorController();
+        controller.create(document.createElement('div'));
+        const edits = [{
+            range: { startLineNumber: 4, startColumn: 5, endLineNumber: 4, endColumn: 11 },
+            text: 'size'
+        }];
+
+        const applied = controller.applyEdits(edits);
+
+        expect(applied).toBe(true);
+        expect(editor.executeEdits).toHaveBeenCalledWith('celbridge-host', edits);
+        const undoStops = editor.pushUndoStop.mock.invocationCallOrder;
+        const editOrder = editor.executeEdits.mock.invocationCallOrder[0];
+        expect(undoStops).toHaveLength(2);
+        expect(undoStops[0]).toBeLessThan(editOrder);
+        expect(undoStops[1]).toBeGreaterThan(editOrder);
+    });
+
+    it('reports a refusal when the editor is read-only', () => {
+        const editor = createMockEditor(createMockModel());
+        editor.executeEdits = vi.fn(() => false);
+        installMonacoStub(editor);
+        const controller = new EditorController();
+        controller.create(document.createElement('div'));
+
+        expect(controller.applyEdits([])).toBe(false);
     });
 });
 

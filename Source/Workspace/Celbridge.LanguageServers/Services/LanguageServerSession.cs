@@ -3,6 +3,8 @@ using System.Text.Json.Nodes;
 using System.Threading.Channels;
 using Celbridge.LanguageServers.Helpers;
 using Celbridge.Logging;
+using Celbridge.Resources;
+using Celbridge.Utilities;
 
 namespace Celbridge.LanguageServers.Services;
 
@@ -62,11 +64,17 @@ internal sealed class LanguageServerSession
         LspMethods.Diagnostic,
     };
 
+    // The properties of a server's answer that name a file. A workspace edit's changes name each file by a key.
+    private const string UriProperty = "uri";
+    private const string TargetUriProperty = "targetUri";
+    private const string ChangesProperty = "changes";
+
     private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan ExitTimeout = TimeSpan.FromSeconds(5);
 
     private readonly ILanguageServerDefinition _definition;
     private readonly ILanguageServerProcess _process;
+    private readonly ILanguageServerWorkspace _workspace;
     private readonly string _projectFolderPath;
     private readonly string _clientVersion;
     private readonly ILogger _logger;
@@ -95,6 +103,7 @@ internal sealed class LanguageServerSession
     public LanguageServerSession(
         ILanguageServerDefinition definition,
         ILanguageServerProcess process,
+        ILanguageServerWorkspace workspace,
         string projectFolderPath,
         string clientVersion,
         ILogger logger,
@@ -103,6 +112,7 @@ internal sealed class LanguageServerSession
     {
         _definition = definition;
         _process = process;
+        _workspace = workspace;
         _projectFolderPath = projectFolderPath;
         _clientVersion = clientVersion;
         _logger = logger;
@@ -407,6 +417,7 @@ internal sealed class LanguageServerSession
             SendNotification(LspMethods.DidOpen, new DidOpenParams(textDocument));
 
             page.IsOpen = true;
+            page.Version = openParams.Version;
             page.DiagnosticsResultId = string.Empty;
             RequestDiagnosticsRound();
             return;
@@ -423,6 +434,7 @@ internal sealed class LanguageServerSession
 
             var textDocument = new VersionedTextDocumentIdentifier(page.DocumentUri, changeParams.Version);
             SendNotification(LspMethods.DidChange, new DidChangeParams(textDocument, contentChanges));
+            page.Version = changeParams.Version;
 
             RequestDiagnosticsRound();
             return;
@@ -441,15 +453,31 @@ internal sealed class LanguageServerSession
 
     private void HandlePageRequest(PageConnection page, string method, JsonNode requestId, JsonNode? parameters)
     {
-        if (!IsPageRequestAllowed(method))
-        {
-            SendErrorToPage(page, requestId, MethodNotFoundCode, $"A page may not send '{method}'");
-            return;
-        }
-
         if (!page.IsOpen)
         {
             SendErrorToPage(page, requestId, RequestFailedCode, "The document is not open on the language server");
+            return;
+        }
+
+        // The session answers these requests itself, with the workspace's help. Each one names a file.
+        switch (method)
+        {
+            case LspMethods.ApplyEdit:
+                AnswerPageEdit(page, requestId, parameters);
+                return;
+
+            case LspMethods.ShowDocument:
+                AnswerShowDocument(page, requestId, parameters);
+                return;
+
+            case PageMessages.FileTextMethod:
+                AnswerFileText(page, requestId, parameters);
+                return;
+        }
+
+        if (!IsPageRequestAllowed(method))
+        {
+            SendErrorToPage(page, requestId, MethodNotFoundCode, $"A page may not send '{method}'");
             return;
         }
 
@@ -596,6 +624,11 @@ internal sealed class LanguageServerSession
             return;
         }
 
+        if (result is not null)
+        {
+            CollectNamedFiles(page, result);
+        }
+
         SendToPage(page, new LspResponse(pageRequestId, result));
     }
 
@@ -661,6 +694,11 @@ internal sealed class LanguageServerSession
                 RequestDiagnosticsRound();
                 break;
 
+            case LspMethods.ApplyEdit:
+                var editResult = ReadApplyEditParams(parameters, null);
+                StartWorkspaceTask(() => AnswerServerEditAsync(requestId, editResult));
+                break;
+
             default:
                 SendErrorResponse(requestId, MethodNotFoundCode, $"Celbridge does not handle '{method}'");
                 break;
@@ -704,6 +742,295 @@ internal sealed class LanguageServerSession
             }
 
             SendDiagnosticsToPage(page, publishParams.Diagnostics ?? new JsonArray());
+        }
+    }
+
+    // Applies a page's workspace edit, the result of a rename or a code action.
+    private void AnswerPageEdit(PageConnection page, JsonNode requestId, JsonNode? parameters)
+    {
+        var editResult = ReadApplyEditParams(parameters, page);
+
+        StartWorkspaceTask(async () =>
+        {
+            var answer = await ApplyEditAsync(editResult);
+            SendAnswerToPage(page, new LspResponse(requestId, answer));
+        });
+    }
+
+    // Opens another file as a document, for go to definition.
+    private void AnswerShowDocument(PageConnection page, JsonNode requestId, JsonNode? parameters)
+    {
+        if (!LspJson.TryRead<ShowDocumentParams>(parameters, out var showParams)
+            || showParams.Uri is not string uri)
+        {
+            SendErrorToPage(page, requestId, RequestFailedCode, "The request names no document");
+            return;
+        }
+
+        var filePath = LspUri.ToPath(uri);
+        if (!IsNamedFile(page, filePath))
+        {
+            SendErrorToPage(page, requestId, RequestFailedCode, "A page may ask only about files that a server named to it");
+            return;
+        }
+
+        DocumentRange? selection = null;
+        if (showParams.Selection is LspRange range)
+        {
+            selection = new DocumentRange(
+                range.Start.Line + 1,
+                range.Start.Character + 1,
+                range.End.Line + 1,
+                range.End.Character + 1);
+        }
+
+        StartWorkspaceTask(async () =>
+        {
+            var success = await _workspace.ShowDocumentAsync(filePath, selection);
+            SendAnswerToPage(page, new LspResponse(requestId, new ShowDocumentResult(success)));
+        });
+    }
+
+    // Sends the text of another file, for a page's peek. The page sends the stamp of its copy, and the text comes
+    // again only when the file has changed.
+    private void AnswerFileText(PageConnection page, JsonNode requestId, JsonNode? parameters)
+    {
+        if (!LspJson.TryRead<FileTextParams>(parameters, out var fileTextParams)
+            || fileTextParams.Uri is not string uri)
+        {
+            SendErrorToPage(page, requestId, RequestFailedCode, "The request names no file");
+            return;
+        }
+
+        var filePath = LspUri.ToPath(uri);
+        if (!IsNamedFile(page, filePath))
+        {
+            SendErrorToPage(page, requestId, RequestFailedCode, "A page may ask only about files that a server named to it");
+            return;
+        }
+
+        var knownStamp = fileTextParams.Stamp ?? string.Empty;
+
+        StartWorkspaceTask(async () =>
+        {
+            var stamp = await _workspace.GetFileStampAsync(filePath);
+            if (string.IsNullOrEmpty(stamp))
+            {
+                var missingError = new LspError(RequestFailedCode, "The file is missing");
+                SendAnswerToPage(page, new LspErrorResponse(requestId, missingError));
+                return;
+            }
+
+            if (stamp == knownStamp)
+            {
+                SendAnswerToPage(page, new LspResponse(requestId, new FileTextResult(stamp, null)));
+                return;
+            }
+
+            var textResult = await _workspace.ReadFileTextAsync(filePath);
+            if (textResult.IsFailure)
+            {
+                var readError = new LspError(RequestFailedCode, "Failed to read the file");
+                SendAnswerToPage(page, new LspErrorResponse(requestId, readError));
+                return;
+            }
+            var text = textResult.Value;
+
+            SendAnswerToPage(page, new LspResponse(requestId, new FileTextResult(stamp, text)));
+        });
+    }
+
+    private async Task AnswerServerEditAsync(JsonNode requestId, Result<List<FileEdits>> editResult)
+    {
+        var answer = await ApplyEditAsync(editResult);
+
+        lock (_lock)
+        {
+            SendResponse(requestId, answer);
+        }
+    }
+
+    // Reads the parameters of a workspace/applyEdit request from a page or from the server.
+    private Result<List<FileEdits>> ReadApplyEditParams(JsonNode? parameters, PageConnection? requestingPage)
+    {
+        if (!LspJson.TryRead<ApplyWorkspaceEditParams>(parameters, out var applyParams))
+        {
+            return Result.Fail("The request has no workspace edit");
+        }
+
+        return ReadWorkspaceEdit(applyParams.Edit, requestingPage);
+    }
+
+    // Reads a workspace edit as the edits to each file. Refuses the edit when a document's version differs from the
+    // last version sent by the document's page. A page's own edit may name only the page's document and the files
+    // named by the server's answers to the page.
+    private Result<List<FileEdits>> ReadWorkspaceEdit(JsonNode? editNode, PageConnection? requestingPage)
+    {
+        var readResult = WorkspaceEditReader.Read(editNode);
+        if (readResult.IsFailure)
+        {
+            return Result.Fail(readResult);
+        }
+        var documentEdits = readResult.Value;
+
+        var fileEdits = new List<FileEdits>();
+        var filePaths = new HashSet<string>(PathComparison.Comparer);
+
+        foreach (var documentEdit in documentEdits)
+        {
+            var filePath = LspUri.ToPath(documentEdit.Uri);
+            if (string.IsNullOrEmpty(filePath))
+            {
+                return Result.Fail($"The edit names a document outside the file system: '{documentEdit.Uri}'");
+            }
+
+            // A second part for the same file would apply to the first part's result. The command applies one set
+            // of edits to each file's original text.
+            if (!filePaths.Add(filePath))
+            {
+                return Result.Fail($"The edit names a file twice: '{filePath}'");
+            }
+
+            if (requestingPage is not null
+                && !IsNamedFile(requestingPage, filePath))
+            {
+                return Result.Fail($"The edit names a file that the server has not named to the page: '{filePath}'");
+            }
+
+            if (documentEdit.Version is int version)
+            {
+                var openPage = _pages.FirstOrDefault(candidate =>
+                    candidate.IsOpen
+                    && string.Equals(candidate.DocumentPath, filePath, PathComparison.Comparison));
+
+                if (openPage is null
+                    || openPage.Version != version)
+                {
+                    return Result.Fail($"The document changed after the server made the edit: '{filePath}'");
+                }
+            }
+
+            fileEdits.Add(new FileEdits(filePath, documentEdit.Edits));
+        }
+
+        return fileEdits;
+    }
+
+    private async Task<ApplyWorkspaceEditResult> ApplyEditAsync(Result<List<FileEdits>> editResult)
+    {
+        if (editResult.IsFailure)
+        {
+            _logger.LogDebug("Refused a workspace edit from the language server '{ServerId}': {Reason}", ServerId, editResult.FirstErrorMessage);
+            return new ApplyWorkspaceEditResult(false, editResult.FirstErrorMessage);
+        }
+        var fileEdits = editResult.Value;
+
+        var applyResult = await _workspace.ApplyEditAsync(fileEdits);
+        if (applyResult.IsFailure)
+        {
+            _logger.LogWarning(applyResult, $"Failed to apply a workspace edit from the language server '{ServerId}'");
+            return new ApplyWorkspaceEditResult(false, applyResult.FirstErrorMessage);
+        }
+
+        return new ApplyWorkspaceEditResult(true);
+    }
+
+    private static bool IsNamedFile(PageConnection page, string filePath)
+    {
+        if (string.IsNullOrEmpty(filePath))
+        {
+            return false;
+        }
+
+        return string.Equals(page.DocumentPath, filePath, PathComparison.Comparison)
+            || page.NamedFilePaths.Contains(filePath);
+    }
+
+    // Records each file named in a server's answer to the page, so the page may ask about the file later.
+    private static void CollectNamedFiles(PageConnection page, JsonNode node)
+    {
+        if (node is JsonArray array)
+        {
+            foreach (var item in array)
+            {
+                if (item is not null)
+                {
+                    CollectNamedFiles(page, item);
+                }
+            }
+            return;
+        }
+
+        if (node is not JsonObject jsonObject)
+        {
+            return;
+        }
+
+        foreach (var (propertyName, value) in jsonObject)
+        {
+            if (value is null)
+            {
+                continue;
+            }
+
+            var namesFile = propertyName == UriProperty
+                || propertyName == TargetUriProperty;
+            if (namesFile
+                && value is JsonValue uriValue
+                && uriValue.TryGetValue<string>(out var uri))
+            {
+                AddNamedFile(page, uri);
+                continue;
+            }
+
+            if (propertyName == ChangesProperty
+                && value is JsonObject changes)
+            {
+                foreach (var (changedUri, _) in changes)
+                {
+                    AddNamedFile(page, changedUri);
+                }
+            }
+
+            CollectNamedFiles(page, value);
+        }
+    }
+
+    private static void AddNamedFile(PageConnection page, string uri)
+    {
+        var filePath = LspUri.ToPath(uri);
+        if (!string.IsNullOrEmpty(filePath))
+        {
+            page.NamedFilePaths.Add(filePath);
+        }
+    }
+
+    // Runs work that needs the workspace on another thread, so the session's lock stays free while the workspace
+    // answers.
+    private void StartWorkspaceTask(Func<Task> work)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await work();
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(exception, "Failed to answer a request for the language server '{ServerId}'", ServerId);
+            }
+        });
+    }
+
+    // Sends the workspace's answer to the page, unless the page has gone.
+    private void SendAnswerToPage(PageConnection page, object message)
+    {
+        lock (_lock)
+        {
+            if (_pages.Contains(page))
+            {
+                SendToPage(page, message);
+            }
         }
     }
 

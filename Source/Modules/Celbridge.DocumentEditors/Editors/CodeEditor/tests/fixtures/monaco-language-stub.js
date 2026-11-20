@@ -1,6 +1,6 @@
 // A stand-in for the parts of the global `monaco` namespace that the language server modules use. Each enum
 // member's value is its own name, so a test reads which member a converter chose. Each register function records
-// its provider.
+// its provider. The editor functions record the editor opener, the commands and the models that the page creates.
 
 import { vi } from 'vitest';
 
@@ -15,6 +15,7 @@ function createUri(path) {
     const text = 'file://' + normalizedPath.split('/').map(encodeURIComponent).join('/');
 
     return {
+        scheme: 'file',
         path: normalizedPath,
         toString: () => text
     };
@@ -43,17 +44,25 @@ const registerFunctionNames = [
     'registerDocumentSymbolProvider',
     'registerFoldingRangeProvider',
     'registerSelectionRangeProvider',
-    'registerLinkProvider'
+    'registerLinkProvider',
+    'registerRenameProvider',
+    'registerCodeActionProvider',
+    'registerDocumentFormattingEditProvider',
+    'registerDocumentRangeFormattingEditProvider'
 ];
 
 /**
  * Installs the stand-in as the global `monaco`, and returns what the code under test did with it.
- * `providers` maps each register function's name to the provider it was given. `registrations` lists what each
- * register function returned.
+ * `providers` maps each register function's name to the provider it was given, with the provider's metadata.
+ * `registrations` lists what each register function returned. `commands` maps each command's id to its handler.
+ * `models` maps each created model's URI to the model. `opener` is the registered editor opener.
  */
 export function installMonacoLanguageStub() {
     const providers = {};
     const registrations = [];
+    const commands = {};
+    const models = new Map();
+    const state = { opener: null };
 
     const languages = {
         CompletionItemKind: namedEnum(),
@@ -66,8 +75,8 @@ export function installMonacoLanguageStub() {
     };
 
     for (const name of registerFunctionNames) {
-        languages[name] = vi.fn((language, provider) => {
-            providers[name] = { language, provider };
+        languages[name] = vi.fn((language, provider, metadata) => {
+            providers[name] = { language, provider, metadata };
             const registration = { name, dispose: vi.fn() };
             registrations.push(registration);
             return registration;
@@ -80,7 +89,33 @@ export function installMonacoLanguageStub() {
         MarkerTag: namedEnum(),
         languages,
         editor: {
-            setModelMarkers: vi.fn()
+            setModelMarkers: vi.fn(),
+            registerEditorOpener: vi.fn((opener) => {
+                state.opener = opener;
+                const registration = { name: 'registerEditorOpener', dispose: vi.fn() };
+                registrations.push(registration);
+                return registration;
+            }),
+            registerCommand: vi.fn((id, handler) => {
+                commands[id] = handler;
+                const registration = { name: 'registerCommand', dispose: vi.fn() };
+                registrations.push(registration);
+                return registration;
+            }),
+            getModel: vi.fn((uri) => models.get(uri.toString()) ?? null),
+            createModel: vi.fn((text, language, uri) => {
+                const model = {
+                    uri,
+                    text,
+                    language,
+                    setValue: vi.fn((value) => {
+                        model.text = value;
+                    }),
+                    dispose: vi.fn(() => models.delete(uri.toString()))
+                };
+                models.set(uri.toString(), model);
+                return model;
+            })
         },
         typescript: {
             typescriptDefaults: { setModeConfiguration: vi.fn() },
@@ -90,7 +125,16 @@ export function installMonacoLanguageStub() {
 
     globalThis.monaco = monaco;
 
-    return { monaco, providers, registrations };
+    return {
+        monaco,
+        providers,
+        registrations,
+        commands,
+        models,
+        get opener() {
+            return state.opener;
+        }
+    };
 }
 
 /**
@@ -107,6 +151,11 @@ export function createModelStub({ filePath, language = 'typescript', text = '' }
         getValue: () => model.text,
         getVersionId: () => model.versionId,
         getWordUntilPosition: (position) => ({ word: '', startColumn: position.column, endColumn: position.column }),
+        // Returns the text of a range on one line.
+        getValueInRange: (range) => {
+            const line = model.text.split('\n')[range.startLineNumber - 1] ?? '';
+            return line.substring(range.startColumn - 1, range.endColumn - 1);
+        },
         onDidChangeContent: (listener) => {
             listeners.push(listener);
             return {

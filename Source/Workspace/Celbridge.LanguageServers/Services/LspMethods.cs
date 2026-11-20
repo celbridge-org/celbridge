@@ -1,7 +1,8 @@
 namespace Celbridge.LanguageServers.Services;
 
 /// <summary>
-/// The Language Server Protocol's method names. The language client handles or sends each of these methods.
+/// The Language Server Protocol's method names. The language client handles or sends each of these methods. A page
+/// and a server both send workspace/applyEdit.
 /// </summary>
 internal static class LspMethods
 {
@@ -30,6 +31,10 @@ internal static class LspMethods
     public const string RegisterCapability = "client/registerCapability";
     public const string UnregisterCapability = "client/unregisterCapability";
     public const string WorkDoneProgressCreate = "window/workDoneProgress/create";
+    public const string ApplyEdit = "workspace/applyEdit";
+
+        // Requests from a page, answered by the language client itself
+    public const string ShowDocument = "window/showDocument";
 
     // Messages from a server
     public const string LogMessage = "window/logMessage";

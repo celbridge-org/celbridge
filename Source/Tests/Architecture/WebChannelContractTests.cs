@@ -161,7 +161,7 @@ public class WebChannelContractTests
     {
         var sentMethods = new HashSet<string>(StringComparer.Ordinal);
         var sourceFolder = ArchitectureHelpers.FindSourceFolder();
-        var pattern = $@"(?:NotifyAsync|NotifyWithParameterObjectAsync|InvokeAsync)(?:<[^>]*>)?\s*\(\s*(?:""({WireNamePattern})""|([\w.]+))";
+        var pattern = $@"(?:NotifyAsync|NotifyWithParameterObjectAsync|InvokeAsync|InvokeWithParameterObjectAsync)(?:<[^>]*>)?\s*\(\s*(?:""({WireNamePattern})""|([\w.]+))";
 
         foreach (var filePath in ArchitectureHelpers.EnumerateProductionSourceFiles(sourceFolder))
         {

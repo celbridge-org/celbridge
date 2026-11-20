@@ -15,6 +15,7 @@ public static class ServiceConfiguration
         services.AddTransient<ILanguageServerService, LanguageServerService>();
         services.AddSingleton<ILanguageServerLauncher, LanguageServerLauncher>();
         services.AddSingleton<ICustomEditorChannelProvider, LanguageChannelProvider>();
+        services.AddSingleton<ILanguageServerWorkspace, LanguageServerWorkspace>();
 
         //
         // Register the TypeScript language server

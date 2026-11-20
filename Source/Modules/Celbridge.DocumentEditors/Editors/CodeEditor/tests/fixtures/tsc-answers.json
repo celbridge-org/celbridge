@@ -1,5 +1,6 @@
 {
   "mainText": "import { area, Circle } from './shapes';\n\nclass Wheel implements Circle {\n    radius = 2;\n}\n\nconst wheel = new Wheel();\nconst size: string = area(wheel);\nconst total = area(wheel) + wheel.radius;\nconsole.log(size, total);\n",
+  "formatText": "export function   scaled( a:number ){return a*2}\n",
   "answers": {
     "capabilities": {
       "positionEncoding": "utf-16",
@@ -736,6 +737,267 @@
         "code": -32600,
         "message": "InvalidRequest"
       }
-    }
+    },
+    "prepareRename": {
+      "range": {
+        "start": {
+          "line": 8,
+          "character": 34
+        },
+        "end": {
+          "line": 8,
+          "character": 40
+        }
+      },
+      "placeholder": "radius"
+    },
+    "rename": {
+      "changes": {
+        "file:///d%3A/Projects/Acme/src/shapes.ts": [
+          {
+            "range": {
+              "start": {
+                "line": 3,
+                "character": 4
+              },
+              "end": {
+                "line": 3,
+                "character": 10
+              }
+            },
+            "newText": "size"
+          },
+          {
+            "range": {
+              "start": {
+                "line": 10,
+                "character": 28
+              },
+              "end": {
+                "line": 10,
+                "character": 34
+              }
+            },
+            "newText": "size"
+          },
+          {
+            "range": {
+              "start": {
+                "line": 10,
+                "character": 44
+              },
+              "end": {
+                "line": 10,
+                "character": 50
+              }
+            },
+            "newText": "size"
+          }
+        ],
+        "file:///d%3A/Projects/Acme/src/main.ts": [
+          {
+            "range": {
+              "start": {
+                "line": 3,
+                "character": 4
+              },
+              "end": {
+                "line": 3,
+                "character": 10
+              }
+            },
+            "newText": "size"
+          },
+          {
+            "range": {
+              "start": {
+                "line": 8,
+                "character": 34
+              },
+              "end": {
+                "line": 8,
+                "character": 40
+              }
+            },
+            "newText": "size"
+          }
+        ]
+      }
+    },
+    "codeActionDiagnostic": {
+      "range": {
+        "start": {
+          "line": 7,
+          "character": 6
+        },
+        "end": {
+          "line": 7,
+          "character": 10
+        }
+      },
+      "severity": 1,
+      "code": 2322,
+      "source": "ts",
+      "message": "Type 'number' is not assignable to type 'string'."
+    },
+    "organizeImports": [
+      {
+        "title": "Organize Imports",
+        "kind": "source.organizeImports",
+        "edit": {
+          "changes": {
+            "file:///d%3A/Projects/Acme/src/main.ts": [
+              {
+                "range": {
+                  "start": {
+                    "line": 0,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 1,
+                    "character": 0
+                  }
+                },
+                "newText": "import { area, Circle } from './shapes';\n"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "formatting": [
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 15
+          },
+          "end": {
+            "line": 0,
+            "character": 18
+          }
+        },
+        "newText": " "
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 25
+          },
+          "end": {
+            "line": 0,
+            "character": 26
+          }
+        },
+        "newText": ""
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 28
+          },
+          "end": {
+            "line": 0,
+            "character": 28
+          }
+        },
+        "newText": " "
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 34
+          },
+          "end": {
+            "line": 0,
+            "character": 35
+          }
+        },
+        "newText": ""
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 36
+          },
+          "end": {
+            "line": 0,
+            "character": 36
+          }
+        },
+        "newText": " "
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 37
+          },
+          "end": {
+            "line": 0,
+            "character": 37
+          }
+        },
+        "newText": " "
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 45
+          },
+          "end": {
+            "line": 0,
+            "character": 45
+          }
+        },
+        "newText": " "
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 46
+          },
+          "end": {
+            "line": 0,
+            "character": 46
+          }
+        },
+        "newText": " "
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 47
+          },
+          "end": {
+            "line": 0,
+            "character": 47
+          }
+        },
+        "newText": " "
+      }
+    ],
+    "rangeFormatting": [
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 15
+          },
+          "end": {
+            "line": 0,
+            "character": 18
+          }
+        },
+        "newText": " "
+      }
+    ]
   }
 }

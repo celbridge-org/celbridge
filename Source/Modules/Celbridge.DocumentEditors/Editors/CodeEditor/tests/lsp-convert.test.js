@@ -336,3 +336,68 @@ describe('toLinks', () => {
         }]);
     });
 });
+
+describe('toRenameLocation', () => {
+    const position = { lineNumber: 9, column: 35 };
+    const model = { getValueInRange: () => 'radius' };
+
+    it('reads a range with a placeholder, and a bare range from the model\'s text', () => {
+        const withPlaceholder = convert.toRenameLocation(answers.prepareRename, model, position, 'refused');
+        const bareRange = convert.toRenameLocation(answers.prepareRename.range, model, position, 'refused');
+
+        expect(withPlaceholder.text).toBe('radius');
+        expect(bareRange).toEqual({
+            range: { startLineNumber: 9, startColumn: 35, endLineNumber: 9, endColumn: 41 },
+            text: 'radius'
+        });
+    });
+
+    it('rejects the rename when the server refuses, and leaves the default behavior to Monaco', () => {
+        const refused = convert.toRenameLocation(null, model, position, 'refused');
+
+        expect(refused.rejectReason).toBe('refused');
+        expect(refused.range.startLineNumber).toBe(9);
+        expect(convert.toRenameLocation({ defaultBehavior: true }, model, position, 'refused')).toBeNull();
+    });
+});
+
+describe('findDiagnostics', () => {
+    it('returns the server\'s diagnostic for each marker that matches one by range and message', () => {
+        const diagnostic = answers.codeActionDiagnostic;
+        const matching = { startLineNumber: 8, startColumn: 7, endLineNumber: 8, endColumn: 11, message: diagnostic.message };
+        const otherMessage = { ...matching, message: 'Another message.' };
+
+        expect(convert.findDiagnostics([matching, otherMessage], [diagnostic])).toEqual([diagnostic]);
+        expect(convert.findDiagnostics(undefined, [diagnostic])).toEqual([]);
+    });
+});
+
+describe('toCodeActionList', () => {
+    const edit = answers.organizeImports[0].edit;
+
+    it('runs the page\'s command with the server\'s action, and gives Monaco no edit', () => {
+        const disabled = { title: 'Extract', kind: 'refactor.extract', edit, disabled: { reason: 'Select an expression' } };
+
+        const list = convert.toCodeActionList([answers.organizeImports[0], disabled], 'apply', false);
+
+        expect(list.actions).toHaveLength(2);
+        expect(list.actions[0]).toEqual({
+            title: 'Organize Imports',
+            kind: 'source.organizeImports',
+            isPreferred: false,
+            command: { id: 'apply', title: 'Organize Imports', arguments: [answers.organizeImports[0]] }
+        });
+        expect(list.actions[1].disabled).toBe('Select an expression');
+    });
+
+    it('leaves out commands, and an action without an edit unless the server resolves actions', () => {
+        const bareCommand = { title: 'Run', command: 'acme.run' };
+        const actionWithCommand = { title: 'Fix and run', edit, command: { title: 'Run', command: 'acme.run' } };
+        const resolvable = { title: 'Fix later', kind: 'quickfix', data: { id: 1 } };
+
+        const items = [bareCommand, actionWithCommand, resolvable];
+
+        expect(convert.toCodeActionList(items, 'apply', false).actions).toEqual([]);
+        expect(convert.toCodeActionList(items, 'apply', true).actions.map((action) => action.title)).toEqual(['Fix later']);
+    });
+});

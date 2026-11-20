@@ -218,6 +218,9 @@ async function initialize() {
         editorController.insertText(params?.text ?? '');
     });
 
+    // The host edits an open document through its editor, so the edit joins the document's undo history.
+    celbridge.onRequest('editor/applyEdits', (params) => editorController.applyEdits(params?.edits ?? []));
+
     if (previewPipeline) {
         previewPipeline.attachRenderer(options.previewRendererUrl);
     }

@@ -149,6 +149,35 @@ internal sealed record DiagnosticParams(
 internal sealed partial record CancelParams(long Id);
 
 //
+// Positions, ranges and edits, in a server's coordinates. Lines and characters count from zero.
+//
+
+internal sealed record LspPosition(int Line, int Character);
+
+internal sealed record LspRange(LspPosition Start, LspPosition End);
+
+internal sealed record LspTextEdit(LspRange? Range, string? NewText);
+
+internal sealed record OptionalVersionedTextDocumentIdentifier(string? Uri, int? Version);
+
+internal sealed record TextDocumentEdit(
+    OptionalVersionedTextDocumentIdentifier? TextDocument,
+    IReadOnlyList<LspTextEdit>? Edits);
+
+/// <summary>
+/// A workspace edit. Changes lists the text edits for each file. DocumentChanges lists them with each document's
+/// version, and an item there can also create, rename or delete a file. So the language client reads
+/// DocumentChanges one item at a time.
+/// </summary>
+internal sealed record WorkspaceEditBody(
+    Dictionary<string, IReadOnlyList<LspTextEdit>>? Changes,
+    JsonArray? DocumentChanges);
+
+internal sealed record ApplyWorkspaceEditParams(string? Label, JsonNode? Edit);
+
+internal sealed record ApplyWorkspaceEditResult(bool Applied, string? FailureReason = null);
+
+//
 // Messages from a server to the language client
 //
 
@@ -189,3 +218,15 @@ internal sealed partial record PageCancelParams(JsonNode? Id);
 internal sealed record ServerReadyParams(string ServerId, JsonNode Capabilities);
 
 internal sealed record PageDiagnosticsParams(JsonNode Diagnostics);
+
+internal sealed record ShowDocumentParams(string? Uri, LspRange? Selection);
+
+internal sealed record ShowDocumentResult(bool Success);
+
+internal sealed record FileTextParams(string? Uri, string? Stamp);
+
+/// <summary>
+/// The answer to a page's request for the text of a file. The page sends the stamp of its copy. Text is absent
+/// while the file still has that stamp.
+/// </summary>
+internal sealed record FileTextResult(string Stamp, string? Text);

@@ -1,3 +1,6 @@
+using Celbridge.LanguageServers.Helpers;
+using Celbridge.Utilities;
+
 namespace Celbridge.LanguageServers.Services;
 
 /// <summary>
@@ -12,10 +15,16 @@ internal sealed class PageConnection : ILanguagePageConnection
     {
         _session = session;
         DocumentUri = documentUri;
+        DocumentPath = LspUri.ToPath(documentUri);
         LanguageId = languageId;
     }
 
     public string DocumentUri { get; }
+
+    /// <summary>
+    /// The absolute path of the page's document.
+    /// </summary>
+    public string DocumentPath { get; }
 
     public string LanguageId { get; }
 
@@ -25,6 +34,17 @@ internal sealed class PageConnection : ILanguagePageConnection
     /// True once the server has the document open. The session reads and writes the value under its lock.
     /// </summary>
     public bool IsOpen { get; set; }
+
+    /// <summary>
+    /// The version of the document's text last sent by the page to the server.
+    /// </summary>
+    public int Version { get; set; }
+
+    /// <summary>
+    /// The absolute paths of the files named by a server's answers to the page. The page may ask about
+    /// these files, and about its own document. The session reads and writes the set under its lock.
+    /// </summary>
+    public HashSet<string> NamedFilePaths { get; } = new(PathComparison.Comparer);
 
     /// <summary>
     /// The result id of the document's last diagnostics, or empty before the first set.
@@ -89,11 +109,12 @@ internal sealed class RefusedPageConnection : ILanguagePageConnection
 }
 
 /// <summary>
-/// The names of the language client's own messages to a page, outside the Language Server Protocol's methods.
-/// Mirrored by language-client.js in the code editor.
+/// The names of the language client's own messages, outside the Language Server Protocol's methods. Mirrored by
+/// language-client.js and language-features.js in the code editor.
 /// </summary>
 internal static class PageMessages
 {
     public const string ServerReadyMethod = "celbridge/serverReady";
     public const string ServerUnavailableMethod = "celbridge/serverUnavailable";
+    public const string FileTextMethod = "celbridge/fileText";
 }

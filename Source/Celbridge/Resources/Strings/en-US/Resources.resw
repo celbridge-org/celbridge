@@ -854,13 +854,13 @@ This file could not be saved</value>
   <data name="Documents_OpenDocumentFailedGeneric" xml:space="preserve">
     <value>An error occurred while attempting to open '{0}'.</value>
   </data>
-  <data name="Documents_ApplyRangeEditsFailedTitle" xml:space="preserve">
+  <data name="Documents_ApplyFileEditsFailedTitle" xml:space="preserve">
     <value>Text Replace Failed</value>
   </data>
-  <data name="Documents_ApplyRangeEditsFailedSingle" xml:space="preserve">
+  <data name="Documents_ApplyFileEditsFailedSingle" xml:space="preserve">
     <value>An error occurred while attempting to apply text replacements to '{0}'.</value>
   </data>
-  <data name="Documents_ApplyRangeEditsFailedMultiple" xml:space="preserve">
+  <data name="Documents_ApplyFileEditsFailedMultiple" xml:space="preserve">
     <value>An error occurred while attempting to apply text replacements to {0} file(s).</value>
   </data>
   <data name="Documents_UnsupportedFileFormatTitle" xml:space="preserve">

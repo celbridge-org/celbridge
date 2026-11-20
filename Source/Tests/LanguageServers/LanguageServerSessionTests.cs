@@ -1,6 +1,8 @@
 using System.Text.Json.Nodes;
 using Celbridge.LanguageServers;
+using Celbridge.LanguageServers.Helpers;
 using Celbridge.LanguageServers.Services;
+using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Tests.Helpers;
 using Microsoft.Extensions.Time.Testing;
@@ -27,6 +29,7 @@ public class LanguageServerSessionTests
     private static readonly TimeSpan ReadTimeout = TimeSpan.FromSeconds(5);
 
     private FakeLanguageServer _server = null!;
+    private FakeLanguageServerWorkspace _workspace = null!;
     private ILanguageServerDefinition _definition = null!;
     private FakeTimeProvider _timeProvider = null!;
     private TaskCompletionSource<bool> _ended = null!;
@@ -35,6 +38,7 @@ public class LanguageServerSessionTests
     public void Setup()
     {
         _server = new FakeLanguageServer();
+        _workspace = new FakeLanguageServerWorkspace();
         _timeProvider = new FakeTimeProvider();
         _ended = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -68,6 +72,9 @@ public class LanguageServerSessionTests
         capabilities["textDocument"]!["diagnostic"].Should().NotBeNull();
         capabilities["textDocument"]!["completion"].Should().NotBeNull();
         capabilities["workspace"]!["didChangeWatchedFiles"].Should().BeNull("the server watches the files itself");
+        ((bool)capabilities["workspace"]!["applyEdit"]!).Should().BeTrue();
+        ((bool)capabilities["textDocument"]!["rename"]!["prepareSupport"]!).Should().BeTrue();
+        capabilities["textDocument"]!["codeAction"]!["codeActionLiteralSupport"].Should().NotBeNull();
     }
 
     [Test]
@@ -568,11 +575,148 @@ public class LanguageServerSessionTests
         (await _ended.Task.WaitAsync(ReadTimeout)).Should().BeFalse();
     }
 
+    [Test]
+    public async Task PageEdit_ReachesTheWorkspaceAsRangeEditsForEachFile_AndThePageGetsTheResult()
+    {
+        var session = await StartReadySessionAsync();
+        var page = await OpenPageAsync(session, MainUri);
+        await NameFileToPageAsync(page, OtherUri);
+
+        page.Receive(CreatePageEditRequest(9, CreateChanges(MainUri, OtherUri)));
+        var edits = await _workspace.WaitForEditAsync();
+        var answer = await ReadPageAsync(page);
+
+        edits.Select(edit => edit.FilePath).Should().Equal(LspUri.ToPath(MainUri), LspUri.ToPath(OtherUri));
+        edits[1].Edits.Should().Equal(new RangeEdit(4, 5, 4, 11, "size"));
+        ((int)answer["id"]!).Should().Be(9);
+        ((bool)answer["result"]!["applied"]!).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task PageEdit_AFileThatNoAnswerNamed_IsRefused()
+    {
+        var session = await StartReadySessionAsync();
+        var page = await OpenPageAsync(session, MainUri);
+
+        page.Receive(CreatePageEditRequest(9, CreateChanges(OtherUri)));
+        var answer = await ReadPageAsync(page);
+
+        ((bool)answer["result"]!["applied"]!).Should().BeFalse();
+        ((string?)answer["result"]!["failureReason"]).Should().Contain("has not named");
+        _workspace.WaitForEditAsync().IsCompleted.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task PageEdit_AVersionThatDiffersFromThePagesLastVersion_IsRefused()
+    {
+        var session = await StartReadySessionAsync();
+        var page = await OpenPageAsync(session, MainUri);
+        page.Receive("""{"method":"textDocument/didChange","params":{"version":5,"contentChanges":[{"text":"let b = 2;"}]}}""");
+        await _server.ReadMethodAsync("textDocument/didChange");
+
+        page.Receive(CreatePageEditRequest(9, CreateDocumentChanges(MainUri, 4)));
+        var refused = await ReadPageAsync(page);
+        page.Receive(CreatePageEditRequest(10, CreateDocumentChanges(MainUri, 5)));
+        var applied = await ReadPageAsync(page);
+
+        ((bool)refused["result"]!["applied"]!).Should().BeFalse();
+        ((string?)refused["result"]!["failureReason"]).Should().Contain("changed");
+        ((bool)applied["result"]!["applied"]!).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task PageEdit_TheWorkspaceFails_ThePageGetsTheReason()
+    {
+        _workspace.ApplyResult = Result.Fail("The editor refused the edits");
+        var session = await StartReadySessionAsync();
+        var page = await OpenPageAsync(session, MainUri);
+
+        page.Receive(CreatePageEditRequest(9, CreateChanges(MainUri)));
+        var answer = await ReadPageAsync(page);
+
+        ((bool)answer["result"]!["applied"]!).Should().BeFalse();
+        ((string?)answer["result"]!["failureReason"]).Should().Be("The editor refused the edits");
+    }
+
+    [Test]
+    public async Task ServerApplyEdit_ReachesTheWorkspace_AndTheServerGetsTheResult()
+    {
+        await StartReadySessionAsync();
+
+        var parameters = new JsonObject
+        {
+            ["edit"] = CreateChanges(OtherUri)
+        };
+        var request = new JsonObject
+        {
+            ["id"] = 30,
+            ["method"] = "workspace/applyEdit",
+            ["params"] = parameters
+        };
+        await _server.SendAsync(request);
+        var edits = await _workspace.WaitForEditAsync();
+        var response = await _server.ReadAsync();
+
+        edits.Single().FilePath.Should().Be(LspUri.ToPath(OtherUri));
+        ((int)response["id"]!).Should().Be(30);
+        ((bool)response["result"]!["applied"]!).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task FileText_ANamedFile_ReturnsTheText_AndAnUnchangedStampReturnsNoText()
+    {
+        _workspace.Files[LspUri.ToPath(OtherUri)] = ("stamp-1", "export const other = 1;");
+        var session = await StartReadySessionAsync();
+        var page = await OpenPageAsync(session, MainUri);
+        await NameFileToPageAsync(page, OtherUri);
+
+        page.Receive($$$"""{"id":11,"method":"celbridge/fileText","params":{"uri":"{{{OtherUri}}}"}}""");
+        var first = await ReadPageAsync(page);
+        page.Receive($$$"""{"id":12,"method":"celbridge/fileText","params":{"uri":"{{{OtherUri}}}","stamp":"stamp-1"}}""");
+        var second = await ReadPageAsync(page);
+
+        ((string?)first["result"]!["text"]).Should().Be("export const other = 1;");
+        ((string?)first["result"]!["stamp"]).Should().Be("stamp-1");
+        second["result"]!["text"].Should().BeNull();
+        _workspace.ReadCount.Should().Be(1);
+    }
+
+    [Test]
+    public async Task FileText_AFileThatNoAnswerNamed_IsRefused()
+    {
+        _workspace.Files[LspUri.ToPath(OtherUri)] = ("stamp-1", "export const other = 1;");
+        var session = await StartReadySessionAsync();
+        var page = await OpenPageAsync(session, MainUri);
+
+        page.Receive($$$"""{"id":11,"method":"celbridge/fileText","params":{"uri":"{{{OtherUri}}}"}}""");
+        var answer = await ReadPageAsync(page);
+
+        ((int)answer["error"]!["code"]!).Should().Be(-32803);
+        _workspace.ReadCount.Should().Be(0);
+    }
+
+    [Test]
+    public async Task ShowDocument_ANamedFile_OpensTheDocumentAtTheSelection()
+    {
+        var session = await StartReadySessionAsync();
+        var page = await OpenPageAsync(session, MainUri);
+        await NameFileToPageAsync(page, OtherUri);
+
+        page.Receive(CreateShowDocumentRequest(13, OtherUri));
+        var shown = await _workspace.WaitForShownDocumentAsync();
+        var answer = await ReadPageAsync(page);
+
+        shown.FilePath.Should().Be(LspUri.ToPath(OtherUri));
+        shown.Selection.Should().Be(new DocumentRange(10, 17, 10, 21));
+        ((bool)answer["result"]!["success"]!).Should().BeTrue();
+    }
+
     private LanguageServerSession CreateSession()
     {
         return new LanguageServerSession(
             _definition,
             _server,
+            _workspace,
             ProjectFolderPath,
             "1.8.0",
             new NullLogger<LanguageServerSession>(),
@@ -678,6 +822,120 @@ public class LanguageServerSessionTests
         };
 
         return _server.SendAsync(request);
+    }
+
+    // Makes the server's answer to a page's request name a file, so the page may then ask about the file.
+    private async Task NameFileToPageAsync(ILanguagePageConnection page, string fileUri)
+    {
+        page.Receive("""{"id":"names","method":"textDocument/references","params":{"position":{"line":0,"character":0}}}""");
+        var request = await _server.ReadMethodAsync("textDocument/references");
+        var range = CreateRange(3, 4, 3, 10);
+        var location = new JsonObject
+        {
+            ["uri"] = fileUri,
+            ["range"] = range
+        };
+        await _server.RespondAsync(request, new JsonArray(location));
+        await ReadPageAsync(page);
+    }
+
+    // A request to open a file with the name on line 10 selected.
+    private static string CreateShowDocumentRequest(int requestId, string fileUri)
+    {
+        var parameters = new JsonObject
+        {
+            ["uri"] = fileUri,
+            ["takeFocus"] = true,
+            ["selection"] = CreateRange(9, 16, 9, 20)
+        };
+        var request = new JsonObject
+        {
+            ["id"] = requestId,
+            ["method"] = "window/showDocument",
+            ["params"] = parameters
+        };
+
+        return request.ToJsonString();
+    }
+
+    private static string CreatePageEditRequest(int requestId, JsonObject edit)
+    {
+        var parameters = new JsonObject
+        {
+            ["edit"] = edit
+        };
+        var request = new JsonObject
+        {
+            ["id"] = requestId,
+            ["method"] = "workspace/applyEdit",
+            ["params"] = parameters
+        };
+
+        return request.ToJsonString();
+    }
+
+    // A workspace edit that renames a name on line 4 of each file.
+    private static JsonObject CreateChanges(params string[] fileUris)
+    {
+        var changes = new JsonObject();
+        foreach (var fileUri in fileUris)
+        {
+            changes[fileUri] = new JsonArray(CreateTextEdit());
+        }
+
+        return new JsonObject
+        {
+            ["changes"] = changes
+        };
+    }
+
+    // A workspace edit that names the document's version.
+    private static JsonObject CreateDocumentChanges(string fileUri, int version)
+    {
+        var textDocument = new JsonObject
+        {
+            ["uri"] = fileUri,
+            ["version"] = version
+        };
+        var documentEdit = new JsonObject
+        {
+            ["textDocument"] = textDocument,
+            ["edits"] = new JsonArray(CreateTextEdit())
+        };
+
+        return new JsonObject
+        {
+            ["documentChanges"] = new JsonArray(documentEdit)
+        };
+    }
+
+    private static JsonObject CreateTextEdit()
+    {
+        return new JsonObject
+        {
+            ["range"] = CreateRange(3, 4, 3, 10),
+            ["newText"] = "size"
+        };
+    }
+
+    private static JsonObject CreateRange(int line, int character, int endLine, int endCharacter)
+    {
+        var start = new JsonObject
+        {
+            ["line"] = line,
+            ["character"] = character
+        };
+        var end = new JsonObject
+        {
+            ["line"] = endLine,
+            ["character"] = endCharacter
+        };
+
+        return new JsonObject
+        {
+            ["start"] = start,
+            ["end"] = end
+        };
     }
 
     private static JsonObject CreateHoverResult(string? contents)

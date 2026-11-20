@@ -82,6 +82,7 @@ public class LanguageServerServiceTests
         _service = new LanguageServerService(
             definitions,
             _launcher,
+            new FakeLanguageServerWorkspace(),
             _featureFlags,
             projectService,
             workspaceWrapper,

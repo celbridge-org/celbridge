@@ -18,6 +18,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
 
     private readonly IReadOnlyList<ILanguageServerDefinition> _definitions;
     private readonly ILanguageServerLauncher _launcher;
+    private readonly ILanguageServerWorkspace _workspace;
     private readonly IFeatureFlags _featureFlags;
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -42,6 +43,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
         : this(
             definitions,
             serviceProvider.GetRequiredService<ILanguageServerLauncher>(),
+            serviceProvider.GetRequiredService<ILanguageServerWorkspace>(),
             featureFlags,
             projectService,
             workspaceWrapper,
@@ -54,6 +56,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
     internal LanguageServerService(
         IEnumerable<ILanguageServerDefinition> definitions,
         ILanguageServerLauncher launcher,
+        ILanguageServerWorkspace workspace,
         IFeatureFlags featureFlags,
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
@@ -63,6 +66,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
     {
         _definitions = definitions.ToList();
         _launcher = launcher;
+        _workspace = workspace;
         _featureFlags = featureFlags;
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
@@ -173,13 +177,12 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
             }
             var filePath = resolveResult.Value;
 
-            // A server reads the project folder, so only a file inside the folder gets a server.
-            var projectFolderPath = Path.TrimEndingDirectorySeparator(project.ProjectFolderPath);
-            var projectFolderPrefix = projectFolderPath + Path.DirectorySeparatorChar;
-            if (!filePath.StartsWith(projectFolderPrefix, PathComparison.Comparison))
+            if (!ProjectFolder.Contains(project.ProjectFolderPath, filePath))
             {
                 return null;
             }
+
+            var projectFolderPath = Path.TrimEndingDirectorySeparator(project.ProjectFolderPath);
 
             return new ServedDocument(definition, filePath, languageId, projectFolderPath);
         }
@@ -203,6 +206,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
         var session = new LanguageServerSession(
             definition,
             process,
+            _workspace,
             projectFolderPath,
             clientVersion,
             _logger,

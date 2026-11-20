@@ -173,6 +173,13 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         return Result.Ok();
     }
 
+    public virtual async Task<Result> ApplyEdits(IReadOnlyList<RangeEdit> edits)
+    {
+        await Task.CompletedTask;
+
+        return Result.Fail("This editor does not edit text");
+    }
+
     public virtual async Task<bool> CanClose()
     {
         await Task.CompletedTask;

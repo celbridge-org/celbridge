@@ -226,6 +226,16 @@ function toTextEdit(edit) {
     return { range: toMonacoRange(edit.range), text: edit.newText };
 }
 
+// Returns Monaco's edits for a formatting answer, a list of text edits.
+export function toTextEdits(result) {
+    return (result ?? []).map(toTextEdit);
+}
+
+// Returns the protocol's formatting options for Monaco's.
+export function toFormattingOptions(options) {
+    return { tabSize: options.tabSize, insertSpaces: options.insertSpaces };
+}
+
 // Adds the details of a resolved item to Monaco's suggestion.
 export function applyResolvedCompletionItem(suggestion, resolvedItem) {
     if (!resolvedItem) {
@@ -406,4 +416,96 @@ export function toLink(documentLink) {
         // The server's link, for the resolve request.
         lspLink: documentLink
     };
+}
+
+// Returns Monaco's rename location for a prepare rename answer: a range, a range with a placeholder, or the
+// default behavior. Returns null for the default behavior, so Monaco renames the word at the position. Returns a
+// rejection when the server refused the rename.
+export function toRenameLocation(result, model, position, rejectReason) {
+    if (!result) {
+        const range = {
+            startLineNumber: position.lineNumber,
+            startColumn: position.column,
+            endLineNumber: position.lineNumber,
+            endColumn: position.column
+        };
+
+        return { range, text: '', rejectReason };
+    }
+
+    if (result.defaultBehavior) {
+        return null;
+    }
+
+    if (result.range) {
+        return { range: toMonacoRange(result.range), text: result.placeholder ?? '' };
+    }
+
+    const range = toMonacoRange(result);
+
+    return { range, text: model.getValueInRange(range) };
+}
+
+// Returns the server's diagnostic for each of Monaco's markers, so a code action request carries each diagnostic's
+// code and data. A marker matches the diagnostic it was made from by range and message.
+export function findDiagnostics(markers, diagnostics) {
+    const found = [];
+
+    for (const marker of markers ?? []) {
+        const diagnostic = (diagnostics ?? []).find((candidate) => {
+            const range = toMonacoRange(candidate.range);
+
+            return range.startLineNumber === marker.startLineNumber
+                && range.startColumn === marker.startColumn
+                && range.endLineNumber === marker.endLineNumber
+                && range.endColumn === marker.endColumn
+                && (candidate.message ?? '') === marker.message;
+        });
+
+        if (diagnostic) {
+            found.push(diagnostic);
+        }
+    }
+
+    return found;
+}
+
+// Returns Monaco's code actions for a code action answer. Each action runs the page's command, which gets the
+// server's action as its argument and hands the action's edit to the host. An action with an edit counts, and so
+// does an action that resolves to one. A bare command and an action with a command are left out, since the server
+// would have to run the command.
+export function toCodeActionList(result, commandId, canResolve) {
+    const actions = [];
+
+    for (const item of result ?? []) {
+        // A bare command names the server's command as a string, and an action names the command as an object.
+        if (item.command) {
+            continue;
+        }
+
+        const hasEdit = item.edit !== undefined
+            || (canResolve && item.data !== undefined);
+        if (!hasEdit) {
+            continue;
+        }
+
+        const action = {
+            title: item.title,
+            kind: item.kind,
+            isPreferred: item.isPreferred === true,
+            command: { id: commandId, title: item.title, arguments: [item] }
+        };
+
+        if (item.disabled?.reason) {
+            action.disabled = item.disabled.reason;
+        }
+
+        if (item.diagnostics?.length > 0) {
+            action.diagnostics = toMarkers(item.diagnostics);
+        }
+
+        actions.push(action);
+    }
+
+    return { actions, dispose: () => {} };
 }

@@ -54,6 +54,13 @@ export class EditorController {
             fixedOverflowWidgets: true
         });
 
+        // Monaco creates every later editor inside this one. A peek's editor is one, and it shows a copy of another
+        // file's text. Typing there would change only the copy, so these editors are read-only. Monaco reports an
+        // editor before the editor's constructor ends, and the option is set once the editor is ready.
+        monaco.editor.onDidCreateEditor((editor) => {
+            queueMicrotask(() => editor.updateOptions({ readOnly: true }));
+        });
+
         this.#attachModel();
         this.#setupScrollListener();
         this.#setupPendingScrollListener();
@@ -184,6 +191,24 @@ export class EditorController {
             inverseEditOperations.map(
                 (operation) => monaco.Selection.fromPositions(operation.range.getEndPosition())));
         this.#editor.focus();
+    }
+
+    /**
+     * Applies edits from the host to the document, as one step in the undo history. Each range refers to the text
+     * before any of the edits. Returns false when the editor is read-only.
+     * @param {Array<{range: Object, text: string}>} edits - Monaco ranges with their new text.
+     * @returns {boolean}
+     */
+    applyEdits(edits) {
+        if (!this.#editor) {
+            return false;
+        }
+
+        this.#editor.pushUndoStop();
+        const applied = this.#editor.executeEdits('celbridge-host', edits);
+        this.#editor.pushUndoStop();
+
+        return applied;
     }
 
     // The selection as text, which the host fetches for copy and cut. Every selection contributes, because

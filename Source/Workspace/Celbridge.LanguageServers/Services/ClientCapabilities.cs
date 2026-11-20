@@ -17,6 +17,10 @@ internal static class ClientCapabilities
             "workDoneProgress": false
           },
           "workspace": {
+            "applyEdit": true,
+            "workspaceEdit": {
+              "documentChanges": true
+            },
             "configuration": true,
             "workspaceFolders": true,
             "diagnostics": {
@@ -86,7 +90,31 @@ internal static class ClientCapabilities
               "foldingRangeKind": { "valueSet": ["comment", "imports", "region"] }
             },
             "selectionRange": {},
-            "documentLink": { "tooltipSupport": true }
+            "documentLink": { "tooltipSupport": true },
+            "rename": { "prepareSupport": true },
+            "codeAction": {
+              "codeActionLiteralSupport": {
+                "codeActionKind": {
+                  "valueSet": [
+                    "",
+                    "quickfix",
+                    "refactor",
+                    "refactor.extract",
+                    "refactor.inline",
+                    "refactor.rewrite",
+                    "source",
+                    "source.organizeImports",
+                    "source.fixAll"
+                  ]
+                }
+              },
+              "isPreferredSupport": true,
+              "disabledSupport": true,
+              "dataSupport": true,
+              "resolveSupport": { "properties": ["edit"] }
+            },
+            "formatting": {},
+            "rangeFormatting": {}
           }
         }
         """;
