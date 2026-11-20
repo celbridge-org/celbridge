@@ -9,6 +9,7 @@
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 import { isWindows } from '/assets/celbridge-client/platform.js';
+import { defineEditorThemes, getEditorThemeName } from './editor-themes.js';
 import { log } from './logger.js';
 
 // The smallest width and height, in pixels, at which the editor counts as laid out. Monaco lays out a
@@ -51,7 +52,9 @@ export class EditorController {
             // Render hovers, suggestions, and the find widget's toggle tooltips on a fixed layer attached to
             // the body rather than inside the editor, so they are not clipped by the container's overflow:hidden
             // when the find widget sits at the top edge.
-            fixedOverflowWidgets: true
+            fixedOverflowWidgets: true,
+            // Colors the semantic tokens from a language server. Monaco's own themes leave them uncolored.
+            'semanticHighlighting.enabled': true
         });
 
         // Monaco creates every later editor inside this one. A peek's editor is one, and it shows a copy of another
@@ -981,13 +984,14 @@ export class EditorController {
     }
 
     #setupThemeListener() {
-        // Drive Monaco's built-in theme from the celbridge client's effective theme (a host override,
-        // or the OS theme for the System setting). The client mirrors that theme onto html[data-theme],
-        // which the editor and preview CSS key off, so this only sets Monaco's theme. We deliberately
-        // do not read prefers-color-scheme here: it follows only the OS and would ignore an in-app
-        // override, and the @media query was unreliable on WebView2 theme swaps anyway.
+        // Sets the editor's theme from the celbridge client's effective theme: a host override, or the OS
+        // theme for the System setting. The client mirrors the theme onto html[data-theme] for the editor's
+        // and the preview's CSS. The OS's prefers-color-scheme ignores an in-app override, so the page never
+        // reads it.
+        defineEditorThemes();
+
         const applyMonacoTheme = (theme) => {
-            monaco.editor.setTheme(theme === 'Dark' ? 'vs-dark' : 'vs');
+            monaco.editor.setTheme(getEditorThemeName(theme));
         };
 
         applyMonacoTheme(celbridge.appState.current.theme);

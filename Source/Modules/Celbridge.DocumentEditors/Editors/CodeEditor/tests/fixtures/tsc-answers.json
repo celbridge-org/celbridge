@@ -76,8 +76,42 @@
       "linkedEditingRangeProvider": true,
       "semanticTokensProvider": {
         "legend": {
-          "tokenTypes": [],
-          "tokenModifiers": []
+          "tokenTypes": [
+            "namespace",
+            "class",
+            "enum",
+            "interface",
+            "struct",
+            "typeParameter",
+            "type",
+            "parameter",
+            "variable",
+            "property",
+            "enumMember",
+            "decorator",
+            "event",
+            "function",
+            "method",
+            "macro",
+            "comment",
+            "string",
+            "keyword",
+            "number",
+            "regexp",
+            "operator"
+          ],
+          "tokenModifiers": [
+            "declaration",
+            "definition",
+            "readonly",
+            "static",
+            "deprecated",
+            "abstract",
+            "async",
+            "modification",
+            "documentation",
+            "defaultLibrary"
+          ]
         },
         "range": true,
         "full": true
@@ -998,6 +1032,216 @@
         },
         "newText": " "
       }
-    ]
+    ],
+    "inlayHint": [
+      {
+        "position": {
+          "line": 3,
+          "character": 10
+        },
+        "label": [
+          {
+            "value": ": "
+          },
+          {
+            "value": "number"
+          }
+        ],
+        "kind": 1,
+        "paddingLeft": true
+      },
+      {
+        "position": {
+          "line": 7,
+          "character": 26
+        },
+        "label": [
+          {
+            "value": "circle",
+            "location": {
+              "uri": "file:///d%3A/Projects/Acme/src/shapes.ts",
+              "range": {
+                "start": {
+                  "line": 10,
+                  "character": 21
+                },
+                "end": {
+                  "line": 10,
+                  "character": 27
+                }
+              }
+            }
+          },
+          {
+            "value": ":"
+          }
+        ],
+        "kind": 2,
+        "paddingRight": true
+      },
+      {
+        "position": {
+          "line": 8,
+          "character": 11
+        },
+        "label": [
+          {
+            "value": ": "
+          },
+          {
+            "value": "number"
+          }
+        ],
+        "kind": 1,
+        "paddingLeft": true
+      },
+      {
+        "position": {
+          "line": 8,
+          "character": 19
+        },
+        "label": [
+          {
+            "value": "circle",
+            "location": {
+              "uri": "file:///d%3A/Projects/Acme/src/shapes.ts",
+              "range": {
+                "start": {
+                  "line": 10,
+                  "character": 21
+                },
+                "end": {
+                  "line": 10,
+                  "character": 27
+                }
+              }
+            }
+          },
+          {
+            "value": ":"
+          }
+        ],
+        "kind": 2,
+        "paddingRight": true
+      },
+      {
+        "position": {
+          "line": 9,
+          "character": 12
+        },
+        "label": [
+          {
+            "value": "...data",
+            "location": {
+              "uri": "file:///d%3A/Celbridge/Dependencies/LanguageServers/typescript/7.0.2/lib/lib.dom.d.ts",
+              "range": {
+                "start": {
+                  "line": 42863,
+                  "character": 11
+                },
+                "end": {
+                  "line": 42863,
+                  "character": 15
+                }
+              }
+            }
+          },
+          {
+            "value": ":"
+          }
+        ],
+        "kind": 2,
+        "paddingRight": true
+      }
+    ],
+    "semanticTokens": {
+      "data": [
+        2,
+        6,
+        5,
+        1,
+        1,
+        0,
+        17,
+        6,
+        3,
+        0,
+        1,
+        4,
+        6,
+        9,
+        1,
+        3,
+        6,
+        5,
+        8,
+        5,
+        0,
+        12,
+        5,
+        1,
+        0,
+        1,
+        6,
+        4,
+        8,
+        5,
+        0,
+        15,
+        4,
+        13,
+        0,
+        0,
+        5,
+        5,
+        8,
+        4,
+        1,
+        6,
+        5,
+        8,
+        5,
+        0,
+        8,
+        4,
+        13,
+        0,
+        0,
+        5,
+        5,
+        8,
+        4,
+        0,
+        9,
+        5,
+        8,
+        4,
+        0,
+        6,
+        6,
+        9,
+        0,
+        1,
+        0,
+        7,
+        8,
+        0,
+        0,
+        8,
+        3,
+        14,
+        0,
+        0,
+        4,
+        4,
+        8,
+        4,
+        0,
+        6,
+        5,
+        8,
+        4
+      ]
+    }
   }
 }

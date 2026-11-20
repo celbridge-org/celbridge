@@ -114,7 +114,52 @@ internal static class ClientCapabilities
               "resolveSupport": { "properties": ["edit"] }
             },
             "formatting": {},
-            "rangeFormatting": {}
+            "rangeFormatting": {},
+            "inlayHint": {},
+            "semanticTokens": {
+              "requests": { "full": true },
+              "tokenTypes": [
+                "namespace",
+                "type",
+                "class",
+                "enum",
+                "interface",
+                "struct",
+                "typeParameter",
+                "parameter",
+                "variable",
+                "property",
+                "enumMember",
+                "event",
+                "function",
+                "method",
+                "macro",
+                "keyword",
+                "modifier",
+                "comment",
+                "string",
+                "number",
+                "regexp",
+                "operator",
+                "decorator"
+              ],
+              "tokenModifiers": [
+                "declaration",
+                "definition",
+                "readonly",
+                "static",
+                "deprecated",
+                "abstract",
+                "async",
+                "modification",
+                "documentation",
+                "defaultLibrary"
+              ],
+              "formats": ["relative"],
+              "overlappingTokenSupport": false,
+              "multilineTokenSupport": false,
+              "augmentsSyntaxTokens": true
+            }
           }
         }
         """;

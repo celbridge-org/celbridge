@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { installMonacoLanguageStub } from './fixtures/monaco-language-stub.js';
+import { semanticTokenLegend } from '../js/editor-themes.js';
 import * as convert from '../js/lsp-convert.js';
 
 // The TypeScript language server's answers for main.ts of a two-file project.
@@ -24,6 +25,7 @@ describe('positions and ranges', () => {
         const range = convert.toMonacoRange({ start: { line: 7, character: 6 }, end: { line: 7, character: 10 } });
         expect(range).toEqual({ startLineNumber: 8, startColumn: 7, endLineNumber: 8, endColumn: 11 });
         expect(convert.toLspRange(range)).toEqual({ start: { line: 7, character: 6 }, end: { line: 7, character: 10 } });
+        expect(convert.toMonacoPosition({ line: 7, character: 21 })).toEqual({ lineNumber: 8, column: 22 });
     });
 });
 
@@ -399,5 +401,109 @@ describe('toCodeActionList', () => {
 
         expect(convert.toCodeActionList(items, 'apply', false).actions).toEqual([]);
         expect(convert.toCodeActionList(items, 'apply', true).actions.map((action) => action.title)).toEqual(['Fix later']);
+    });
+});
+
+describe('toInlayHints', () => {
+    // Recorded with every kind of hint on, since main.ts passes no literal argument.
+    it('turns a label made of parts into plain text, with the hint\'s kind and padding', () => {
+        const { hints } = convert.toInlayHints(answers.inlayHint);
+
+        expect(hints).toHaveLength(5);
+        expect(hints[0]).toEqual({
+            label: ': number',
+            position: { lineNumber: 4, column: 11 },
+            paddingLeft: true,
+            paddingRight: false,
+            kind: 'Type'
+        });
+        expect(hints[1]).toEqual({
+            label: 'circle:',
+            position: { lineNumber: 8, column: 27 },
+            paddingLeft: false,
+            paddingRight: true,
+            kind: 'Parameter'
+        });
+    });
+
+    it('keeps a label written as a string, a tooltip and the hint\'s edits', () => {
+        const hint = {
+            position: { line: 0, character: 5 },
+            label: '= 0',
+            tooltip: { kind: 'markdown', value: 'The value of **Red**' },
+            textEdits: [{ range: { start: { line: 0, character: 5 }, end: { line: 0, character: 5 } }, newText: ' = 0' }]
+        };
+
+        const [inlayHint] = convert.toInlayHints([hint]).hints;
+
+        expect(inlayHint.label).toBe('= 0');
+        expect(inlayHint.kind).toBeUndefined();
+        expect(inlayHint.tooltip).toEqual({ value: 'The value of **Red**' });
+        expect(inlayHint.textEdits).toEqual([{
+            range: { startLineNumber: 1, startColumn: 6, endLineNumber: 1, endColumn: 6 },
+            text: ' = 0'
+        }]);
+    });
+
+    it('returns no hints for an empty answer', () => {
+        expect(convert.toInlayHints(null).hints).toEqual([]);
+    });
+});
+
+describe('toSemanticTokens', () => {
+    const legend = answers.capabilities.semanticTokensProvider.legend;
+
+    // Returns each token of Monaco's data at its line and character, with the name of the page's token type.
+    function decode(data) {
+        const tokens = [];
+        let line = 0;
+        let character = 0;
+        for (let index = 0; index < data.length; index += 5) {
+            line += data[index];
+            character = data[index] === 0 ? character + data[index + 1] : data[index + 1];
+            tokens.push([line, character, data[index + 2], semanticTokenLegend.tokenTypes[data[index + 3]], data[index + 4]]);
+        }
+
+        return tokens;
+    }
+
+    it('gives each recorded token the page\'s type for its color, at the same place', () => {
+        const { data } = convert.toSemanticTokens(answers.semanticTokens, legend);
+
+        expect(data).toBeInstanceOf(Uint32Array);
+        const tokens = decode(data);
+        expect(tokens).toHaveLength(17);
+        expect(tokens.slice(0, 4)).toEqual([
+            [2, 6, 5, 'semantic-type', 0],
+            [2, 23, 6, 'semantic-type', 0],
+            [3, 4, 6, 'semantic-variable', 0],
+            [6, 6, 5, 'semantic-constant', 0]
+        ]);
+        expect(tokens[6]).toEqual([7, 21, 4, 'semantic-function', 0]);
+        expect(tokens[13]).toEqual([9, 0, 7, 'semantic-variable', 0]);
+        expect(tokens[14]).toEqual([9, 8, 3, 'semantic-function', 0]);
+    });
+
+    it('leaves out a token of a type without a color, and keeps the next token in place', () => {
+        const keyword = legend.tokenTypes.indexOf('keyword');
+        const variable = legend.tokenTypes.indexOf('variable');
+        const enumMember = legend.tokenTypes.indexOf('enumMember');
+        const data = [
+            0, 0, 6, keyword, 0,
+            0, 7, 5, variable, 0,
+            1, 2, 3, keyword, 0,
+            0, 4, 3, enumMember, 0
+        ];
+
+        const tokens = decode(convert.toSemanticTokens({ data }, legend).data);
+
+        expect(tokens).toEqual([
+            [0, 7, 5, 'semantic-variable', 0],
+            [1, 6, 3, 'semantic-constant', 0]
+        ]);
+    });
+
+    it('returns no tokens for an empty answer', () => {
+        expect(convert.toSemanticTokens({ data: [] }, legend).data).toHaveLength(0);
     });
 });

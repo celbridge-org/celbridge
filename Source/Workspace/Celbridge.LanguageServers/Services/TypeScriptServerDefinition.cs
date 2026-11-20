@@ -9,6 +9,20 @@ namespace Celbridge.LanguageServers.Services;
 /// </summary>
 public sealed class TypeScriptServerDefinition : ILanguageServerDefinition
 {
+    private const string TypeScriptSection = "typescript";
+    private const string JavaScriptSection = "javascript";
+
+    // The compiler's settings for TypeScript and JavaScript files. Inlay hints show parameter names for literal
+    // arguments and the values of enum members.
+    private const string LanguageSettingsJson = """
+        {
+          "inlayHints": {
+            "parameterNames": { "enabled": "literals" },
+            "enumMemberValues": { "enabled": true }
+          }
+        }
+        """;
+
     private readonly TypeScriptDependency _typeScriptDependency;
 
     public TypeScriptServerDefinition(TypeScriptDependency typeScriptDependency)
@@ -53,6 +67,12 @@ public sealed class TypeScriptServerDefinition : ILanguageServerDefinition
 
     public JsonNode? CreateConfiguration(string section)
     {
-        return null;
+        if (section != TypeScriptSection
+            && section != JavaScriptSection)
+        {
+            return null;
+        }
+
+        return JsonNode.Parse(LanguageSettingsJson);
     }
 }

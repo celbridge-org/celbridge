@@ -3,6 +3,8 @@
 //
 // The module expects the global `monaco` AMD namespace to be loaded before any function is called.
 
+import { SemanticTokenType } from './editor-themes.js';
+
 // The protocol numbers these kinds from one, in this order.
 const completionItemKindNames = [
     'Text', 'Method', 'Function', 'Constructor', 'Field', 'Variable', 'Class', 'Interface', 'Module', 'Property',
@@ -16,8 +18,23 @@ const symbolKindNames = [
     'EnumMember', 'Struct', 'Event', 'Operator', 'TypeParameter'
 ];
 
-const markerSeverityNames = ['Error', 'Warning', 'Info', 'Hint'];
-const highlightKindNames = ['Text', 'Read', 'Write'];
+const markerSeverityNames = [
+    'Error',
+    'Warning',
+    'Info',
+    'Hint'
+];
+
+const highlightKindNames = [
+    'Text',
+    'Read',
+    'Write'
+];
+
+const inlayHintKindNames = [
+    'Type',
+    'Parameter'
+];
 
 const foldingKindNames = {
     comment: 'Comment',
@@ -28,8 +45,34 @@ const foldingKindNames = {
 const snippetTextFormat = 2;
 const deprecatedTag = 1;
 
+// Maps each of the protocol's token types to the page's token type for its color. The editor leaves the other types
+// uncolored. A readonly variable is a constant.
+const semanticTokenTypes = new Map([
+    ['namespace', SemanticTokenType.Type],
+    ['type', SemanticTokenType.Type],
+    ['class', SemanticTokenType.Type],
+    ['enum', SemanticTokenType.Type],
+    ['interface', SemanticTokenType.Type],
+    ['struct', SemanticTokenType.Type],
+    ['typeParameter', SemanticTokenType.Type],
+    ['function', SemanticTokenType.Function],
+    ['method', SemanticTokenType.Function],
+    ['decorator', SemanticTokenType.Function],
+    ['variable', SemanticTokenType.Variable],
+    ['parameter', SemanticTokenType.Variable],
+    ['property', SemanticTokenType.Variable],
+    ['event', SemanticTokenType.Variable],
+    ['enumMember', SemanticTokenType.Constant]
+]);
+
+const pageTokenTypes = Object.values(SemanticTokenType);
+
 export function toLspPosition(position) {
     return { line: position.lineNumber - 1, character: position.column - 1 };
+}
+
+export function toMonacoPosition(position) {
+    return { lineNumber: position.line + 1, column: position.character + 1 };
 }
 
 export function toMonacoRange(range) {
@@ -508,4 +551,115 @@ export function toCodeActionList(result, commandId, canResolve) {
     }
 
     return { actions, dispose: () => {} };
+}
+
+// Returns Monaco's inlay hints for an inlay hint answer. A label made of parts becomes plain text.
+export function toInlayHints(result) {
+    return {
+        hints: (result ?? []).map(toInlayHint),
+        dispose: () => {}
+    };
+}
+
+function toInlayHint(hint) {
+    let label = hint.label;
+    if (Array.isArray(label)) {
+        label = label.map((part) => part.value).join('');
+    }
+
+    const inlayHint = {
+        label,
+        position: toMonacoPosition(hint.position),
+        paddingLeft: hint.paddingLeft === true,
+        paddingRight: hint.paddingRight === true
+    };
+
+    const kindName = inlayHintKindNames[hint.kind - 1];
+    if (kindName) {
+        inlayHint.kind = monaco.languages.InlayHintKind[kindName];
+    }
+
+    if (hint.tooltip !== undefined) {
+        inlayHint.tooltip = toDocumentation(hint.tooltip);
+    }
+
+    if (hint.textEdits?.length > 0) {
+        inlayHint.textEdits = hint.textEdits.map(toTextEdit);
+    }
+
+    return inlayHint;
+}
+
+// Returns Monaco's semantic tokens for a semantic tokens answer, in the page's legend. `legend` is the server's
+// legend. A token stays only when the page colors its type. The editor's own coloring shows for every other token.
+export function toSemanticTokens(result, legend) {
+    const readonlyIndex = legend.tokenModifiers.indexOf('readonly');
+
+    const pageTokens = [];
+    for (const token of decodeSemanticTokens(result?.data ?? [])) {
+        const typeName = legend.tokenTypes[token.type];
+        const isReadonly = readonlyIndex >= 0
+            && (token.modifiers & (1 << readonlyIndex)) !== 0;
+
+        let pageTokenType = semanticTokenTypes.get(typeName);
+        if (typeName === 'variable'
+            && isReadonly) {
+            pageTokenType = SemanticTokenType.Constant;
+        }
+
+        if (!pageTokenType) {
+            continue;
+        }
+
+        pageTokens.push({ ...token, type: pageTokenTypes.indexOf(pageTokenType), modifiers: 0 });
+    }
+
+    return { data: encodeSemanticTokens(pageTokens) };
+}
+
+// Returns each token of the protocol's relative encoding, at its line and character in the document. A token takes
+// five numbers: the line's offset from the previous token, the start's offset, the length, the type and the
+// modifiers. The start's offset is from the previous token's start on the same line, or from the line's start.
+function decodeSemanticTokens(data) {
+    const tokens = [];
+    let line = 0;
+    let character = 0;
+
+    for (let index = 0; index + 4 < data.length; index += 5) {
+        const lineOffset = data[index];
+        line += lineOffset;
+        character = lineOffset === 0 ? character + data[index + 1] : data[index + 1];
+
+        tokens.push({
+            line,
+            character,
+            length: data[index + 2],
+            type: data[index + 3],
+            modifiers: data[index + 4]
+        });
+    }
+
+    return tokens;
+}
+
+function encodeSemanticTokens(tokens) {
+    const data = new Uint32Array(tokens.length * 5);
+    let line = 0;
+    let character = 0;
+
+    tokens.forEach((token, tokenIndex) => {
+        const lineOffset = token.line - line;
+        const index = tokenIndex * 5;
+
+        data[index] = lineOffset;
+        data[index + 1] = lineOffset === 0 ? token.character - character : token.character;
+        data[index + 2] = token.length;
+        data[index + 3] = token.type;
+        data[index + 4] = token.modifiers;
+
+        line = token.line;
+        character = token.character;
+    });
+
+    return data;
 }

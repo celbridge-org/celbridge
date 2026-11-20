@@ -48,7 +48,9 @@ const registerFunctionNames = [
     'registerRenameProvider',
     'registerCodeActionProvider',
     'registerDocumentFormattingEditProvider',
-    'registerDocumentRangeFormattingEditProvider'
+    'registerDocumentRangeFormattingEditProvider',
+    'registerInlayHintsProvider',
+    'registerDocumentSemanticTokensProvider'
 ];
 
 /**
@@ -71,7 +73,8 @@ export function installMonacoLanguageStub() {
         DocumentHighlightKind: namedEnum(),
         SymbolKind: namedEnum(),
         SymbolTag: namedEnum(),
-        FoldingRangeKind: namedEnum()
+        FoldingRangeKind: namedEnum(),
+        InlayHintKind: namedEnum()
     };
 
     for (const name of registerFunctionNames) {

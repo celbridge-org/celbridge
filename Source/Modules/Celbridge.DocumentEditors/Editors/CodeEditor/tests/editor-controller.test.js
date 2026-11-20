@@ -60,6 +60,7 @@ function installMonacoStub(editor) {
             EndOfLineSequence: { CRLF: 1, LF: 0 },
             EditorOption: { emptySelectionClipboard: 38 },
             setModelLanguage: vi.fn(),
+            defineTheme: vi.fn(),
             setTheme: vi.fn(),
             onDidCreateEditor: vi.fn()
         },
@@ -90,18 +91,36 @@ describe('EditorController.create', () => {
         expect(container.classList.contains('monaco-component')).toBe(true);
     });
 
-    it('sets the Monaco theme that matches the app theme, and follows it when it changes', () => {
+    it('sets the editor theme that matches the app theme, and follows it when it changes', () => {
         installMonacoStub(createMockEditor(createMockModel()));
         celbridge.appState.current.theme = 'Light';
 
         new EditorController().create(document.createElement('div'));
-        expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('vs');
+        expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('celbridge-light');
 
         __capturedHandlers.onAppStateChanged({ theme: 'Dark' });
-        expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('vs-dark');
+        expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('celbridge-dark');
 
         __capturedHandlers.onAppStateChanged({ theme: 'Light' });
-        expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('vs');
+        expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('celbridge-light');
+    });
+
+    it('defines a light and a dark theme on Monaco\'s own, with a color for each semantic token type', () => {
+        installMonacoStub(createMockEditor(createMockModel()));
+
+        new EditorController().create(document.createElement('div'));
+
+        const themes = Object.fromEntries(monaco.editor.defineTheme.mock.calls);
+        expect(themes['celbridge-light'].base).toBe('vs');
+        expect(themes['celbridge-dark'].base).toBe('vs-dark');
+        expect(themes['celbridge-dark'].inherit).toBe(true);
+        expect(themes['celbridge-dark'].rules.map((rule) => rule.token)).toEqual([
+            'semantic-type',
+            'semantic-function',
+            'semantic-variable',
+            'semantic-constant'
+        ]);
+        expect(monaco.editor.create.mock.calls[0][1]['semanticHighlighting.enabled']).toBe(true);
     });
 });
 
