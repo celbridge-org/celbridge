@@ -94,7 +94,7 @@ public class UvDependencyTests
         result.IsSuccess.Should().BeTrue(result.MessageChain);
         var expectedDownload = new DependencyDownload(
             $"https://example.com/releases/{PinnedVersion}/uv-{platform}.tar.gz",
-            "abc123",
+            new DependencyHash(DependencyHashAlgorithm.Sha256, "abc123"),
             Path.Combine(_uvFolderPath, PinnedVersion))
         {
             ArchiveFolder = $"uv-{platform}"

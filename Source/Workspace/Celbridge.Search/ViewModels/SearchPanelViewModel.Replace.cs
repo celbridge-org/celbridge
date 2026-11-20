@@ -265,7 +265,7 @@ public partial class SearchPanelViewModel
 
     private async Task ApplyEditsAsync(List<FileRangeEdit> fileEdits)
     {
-        await _commandService.ExecuteAsync<IApplyRangeEditsCommand>(command =>
+        await _commandService.ExecuteAsync<IApplyFileEditsCommand>(command =>
         {
             command.Edits = fileEdits;
         });

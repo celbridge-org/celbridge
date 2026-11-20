@@ -118,6 +118,11 @@ public sealed partial class CustomDocumentView : DocumentView
         return await _controller.NavigateToLocationAsync(location);
     }
 
+    public override async Task<Result> ApplyEdits(IReadOnlyList<RangeEdit> edits)
+    {
+        return await _controller.ApplyEditsAsync(edits);
+    }
+
     public override async Task<string?> TrySaveEditorStateAsync()
     {
         return await _controller.TrySaveEditorStateAsync();

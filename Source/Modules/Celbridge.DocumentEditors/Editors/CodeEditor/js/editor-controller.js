@@ -9,6 +9,7 @@
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 import { isWindows } from '/assets/celbridge-client/platform.js';
+import { defineEditorThemes, getEditorThemeName } from './editor-themes.js';
 import { log } from './logger.js';
 
 // The smallest width and height, in pixels, at which the editor counts as laid out. Monaco lays out a
@@ -51,11 +52,19 @@ export class EditorController {
             // Render hovers, suggestions, and the find widget's toggle tooltips on a fixed layer attached to
             // the body rather than inside the editor, so they are not clipped by the container's overflow:hidden
             // when the find widget sits at the top edge.
-            fixedOverflowWidgets: true
+            fixedOverflowWidgets: true,
+            // Colors the semantic tokens from a language server. Monaco's own themes leave them uncolored.
+            'semanticHighlighting.enabled': true
         });
 
-        this.#setupLineEndings();
-        this.#setupContentChangeListener();
+        // Monaco creates every later editor inside this one. A peek's editor is one, and it shows a copy of another
+        // file's text. Typing there would change only the copy, so these editors are read-only. Monaco reports an
+        // editor before the editor's constructor ends, and the option is set once the editor is ready.
+        monaco.editor.onDidCreateEditor((editor) => {
+            queueMicrotask(() => editor.updateOptions({ readOnly: true }));
+        });
+
+        this.#attachModel();
         this.#setupScrollListener();
         this.#setupPendingScrollListener();
         this.#setupThemeListener();
@@ -64,6 +73,13 @@ export class EditorController {
 
     getValue() {
         return this.#editor ? this.#editor.getValue() : '';
+    }
+
+    /**
+     * The editor's Monaco model, or null before the editor exists.
+     */
+    getModel() {
+        return this.#editor ? this.#editor.getModel() : null;
     }
 
     layout() {
@@ -178,6 +194,24 @@ export class EditorController {
             inverseEditOperations.map(
                 (operation) => monaco.Selection.fromPositions(operation.range.getEndPosition())));
         this.#editor.focus();
+    }
+
+    /**
+     * Applies edits from the host to the document, as one step in the undo history. Each range refers to the text
+     * before any of the edits. Returns false when the editor is read-only.
+     * @param {Array<{range: Object, text: string}>} edits - Monaco ranges with their new text.
+     * @returns {boolean}
+     */
+    applyEdits(edits) {
+        if (!this.#editor) {
+            return false;
+        }
+
+        this.#editor.pushUndoStop();
+        const applied = this.#editor.executeEdits('celbridge-host', edits);
+        this.#editor.pushUndoStop();
+
+        return applied;
     }
 
     // The selection as text, which the host fetches for copy and cut. Every selection contributes, because
@@ -542,6 +576,9 @@ export class EditorController {
         await celbridge.initializeDocument({
             onContent: async (content, metadata) => {
                 log('editor: initial content received', { length: content ? content.length : 0 });
+                if (metadata?.filePath) {
+                    this.#nameModel(metadata.filePath);
+                }
                 if (content) {
                     this.#editor.setValue(content);
                 }
@@ -764,6 +801,22 @@ export class EditorController {
         this.#savedVersionId = this.getVersionId();
     }
 
+    // Replaces the editor's empty model with one named by the file's URI, which is how a language server names
+    // the document. A model's URI is fixed, so the model keeps this name when the file is renamed.
+    #nameModel(filePath) {
+        const unnamedModel = this.#editor.getModel();
+        const model = monaco.editor.createModel('', 'plaintext', monaco.Uri.file(filePath));
+
+        this.#editor.setModel(model);
+        unnamedModel?.dispose();
+        this.#attachModel();
+    }
+
+    #attachModel() {
+        this.#setupLineEndings();
+        this.#setupContentChangeListener();
+    }
+
     #shouldNotifyHost() {
         return celbridge.isHosted &&
             this.#isInitialized &&
@@ -931,13 +984,14 @@ export class EditorController {
     }
 
     #setupThemeListener() {
-        // Drive Monaco's built-in theme from the celbridge client's effective theme (a host override,
-        // or the OS theme for the System setting). The client mirrors that theme onto html[data-theme],
-        // which the editor and preview CSS key off, so this only sets Monaco's theme. We deliberately
-        // do not read prefers-color-scheme here: it follows only the OS and would ignore an in-app
-        // override, and the @media query was unreliable on WebView2 theme swaps anyway.
+        // Sets the editor's theme from the celbridge client's effective theme: a host override, or the OS
+        // theme for the System setting. The client mirrors the theme onto html[data-theme] for the editor's
+        // and the preview's CSS. The OS's prefers-color-scheme ignores an in-app override, so the page never
+        // reads it.
+        defineEditorThemes();
+
         const applyMonacoTheme = (theme) => {
-            monaco.editor.setTheme(theme === 'Dark' ? 'vs-dark' : 'vs');
+            monaco.editor.setTheme(getEditorThemeName(theme));
         };
 
         applyMonacoTheme(celbridge.appState.current.theme);

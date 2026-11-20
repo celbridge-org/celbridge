@@ -415,7 +415,7 @@ async function main() {
                 const result = await client.document.load();
                 settings.applyContent(result.content);
             } catch (error) {
-                console.error('[Console] Failed to reload config:', error);
+                client.log.error('[Console] Failed to reload config', error);
             }
             // Ack the reload so the host's external-change handshake does not time out.
             client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);

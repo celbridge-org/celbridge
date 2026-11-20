@@ -16,6 +16,7 @@ internal sealed class DependencyDownloader : IDependencyDownloader
     private const string ContentFolderName = "content";
     private const string ZipExtension = ".zip";
     private const string TarGzExtension = ".tar.gz";
+    private const string TgzExtension = ".tgz";
 
     // Covers the request and every read of the response. A slow connection takes minutes over an archive of tens of
     // megabytes.
@@ -50,7 +51,7 @@ internal sealed class DependencyDownloader : IDependencyDownloader
         var archiveExtension = GetArchiveExtension(download.Url);
         if (string.IsNullOrEmpty(archiveExtension))
         {
-            return Result.Fail($"The archive at '{download.Url}' is neither a .zip nor a .tar.gz archive");
+            return Result.Fail($"The archive at '{download.Url}' is not a .zip, .tar.gz or .tgz archive");
         }
 
         var folderPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(download.FolderPath));
@@ -96,16 +97,17 @@ internal sealed class DependencyDownloader : IDependencyDownloader
         }
 
         var archivePath = Path.Combine(temporaryFolderPath, $"archive{archiveExtension}");
-        var fetchResult = await FetchArchiveAsync(download.Url, archivePath);
+        var expectedHash = download.Hash;
+        var fetchResult = await FetchArchiveAsync(download.Url, archivePath, expectedHash.Algorithm);
         if (fetchResult.IsFailure)
         {
             return Result.Fail(fetchResult);
         }
         var archiveHash = fetchResult.Value;
 
-        if (!string.Equals(archiveHash, download.Sha256, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(archiveHash, expectedHash.Value, StringComparison.OrdinalIgnoreCase))
         {
-            return Result.Fail($"The archive's SHA-256 hash is '{archiveHash}', and the expected hash is '{download.Sha256}'");
+            return Result.Fail($"The archive's {expectedHash.Algorithm} hash is '{archiveHash}', and the expected hash is '{expectedHash.Value}'");
         }
 
         var contentFolderPath = Path.Combine(temporaryFolderPath, ContentFolderName);
@@ -145,8 +147,11 @@ internal sealed class DependencyDownloader : IDependencyDownloader
             .WithErrors(moveResult);
     }
 
-    // Writes the archive to the path, and returns the archive's SHA-256 hash as lowercase hex.
-    private async Task<Result<string>> FetchArchiveAsync(string url, string archivePath)
+    // Writes the archive to the path, and returns the archive's hash as lowercase hex.
+    private async Task<Result<string>> FetchArchiveAsync(
+        string url,
+        string archivePath,
+        DependencyHashAlgorithm hashAlgorithm)
     {
         using var timeoutSource = new CancellationTokenSource(DownloadTimeout);
         var cancellationToken = timeoutSource.Token;
@@ -164,7 +169,13 @@ internal sealed class DependencyDownloader : IDependencyDownloader
                 .WithErrors(openResult);
         }
 
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var hashAlgorithmName = HashAlgorithmName.SHA256;
+        if (hashAlgorithm == DependencyHashAlgorithm.Sha512)
+        {
+            hashAlgorithmName = HashAlgorithmName.SHA512;
+        }
+
+        using var hash = IncrementalHash.CreateHash(hashAlgorithmName);
         await using (var archiveStream = openResult.Value)
         await using (var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken))
         {
@@ -258,7 +269,9 @@ internal sealed class DependencyDownloader : IDependencyDownloader
             return ZipExtension;
         }
 
-        if (path.EndsWith(TarGzExtension, StringComparison.OrdinalIgnoreCase))
+        // A .tgz archive is a .tar.gz archive under a shorter name.
+        if (path.EndsWith(TarGzExtension, StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(TgzExtension, StringComparison.OrdinalIgnoreCase))
         {
             return TarGzExtension;
         }

@@ -10,11 +10,11 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Verifies that ApplyRangeEditsCommand writes edits directly to disk and never
+/// Verifies that ApplyFileEditsCommand writes edits directly to disk and never
 /// routes through any editor channel.
 /// </summary>
 [TestFixture]
-public class ApplyRangeEditsCommandTests
+public class ApplyFileEditsCommandTests
 {
     private string _tempFolder = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
@@ -22,7 +22,7 @@ public class ApplyRangeEditsCommandTests
     [SetUp]
     public void Setup()
     {
-        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(ApplyRangeEditsCommandTests), Guid.NewGuid().ToString("N"));
+        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(ApplyFileEditsCommandTests), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
         var resourceService = Substitute.For<IResourceService>();
@@ -48,10 +48,10 @@ public class ApplyRangeEditsCommandTests
         }
     }
 
-    private ApplyRangeEditsCommand CreateCommand()
+    private ApplyFileEditsCommand CreateCommand()
     {
-        return new ApplyRangeEditsCommand(
-            Substitute.For<ILogger<ApplyRangeEditsCommand>>(),
+        return new ApplyFileEditsCommand(
+            Substitute.For<ILogger<ApplyFileEditsCommand>>(),
             Substitute.For<IStringLocalizer>(),
             Substitute.For<IDialogService>(),
             _workspaceWrapper);

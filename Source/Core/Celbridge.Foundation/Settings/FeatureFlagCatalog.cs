@@ -65,6 +65,15 @@ public static class FeatureFlagCatalog
         "ProjectSettings_FeatureFlag_Python_Description");
 
     /// <summary>
+    /// Code editor support for TypeScript and JavaScript files, from the TypeScript language server. Loading a
+    /// project with the feature on installs TypeScript.
+    /// </summary>
+    public static readonly FeatureFlagDescriptor TypeScript = new(
+        "typescript",
+        "ProjectSettings_FeatureFlag_TypeScript_Title",
+        "ProjectSettings_FeatureFlag_TypeScript_Description");
+
+    /// <summary>
     /// The groups of the Features section, in display order. Every flag above belongs to one group.
     /// </summary>
     public static readonly IReadOnlyList<FeatureFlagGroupDescriptor> Groups = new List<FeatureFlagGroupDescriptor>
@@ -82,6 +91,7 @@ public static class FeatureFlagCatalog
         new("ProjectSettings_FeatureFlagGroup_Languages_Title", new List<FeatureFlagDescriptor>
         {
             Python,
+            TypeScript,
         }),
     };
 }

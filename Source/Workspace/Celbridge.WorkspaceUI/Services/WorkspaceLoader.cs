@@ -195,18 +195,12 @@ public class WorkspaceLoader
 
     private void SendWorkspaceLoadedInSafeMode(IReadOnlyList<SafeModeCause> causes)
     {
-        // The project file is at the project root, so the file name is the resource key.
-        var projectFileName = Path.GetFileName(_projectService.CurrentProject!.ProjectFilePath);
-        if (!ResourceKey.TryCreate(projectFileName, out var projectFileResource))
-        {
-            _logger.LogWarning($"The project file name is not a valid resource key: '{projectFileName}'");
-            return;
-        }
+        var project = _projectService.CurrentProject!;
 
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
-        var message = new WorkspaceLoadedInSafeModeMessage(causes, projectFileResource)
+        var message = new WorkspaceLoadedInSafeModeMessage(causes, project.ProjectFileResource)
         {
-            DependencyInstallFailure = _projectService.CurrentProject!.DependencyInstallFailure
+            DependencyInstallFailure = project.DependencyInstallFailure
         };
         messengerService.Send(message);
     }

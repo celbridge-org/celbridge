@@ -21,8 +21,6 @@ namespace Celbridge.Tests.Documents;
 [TestFixture]
 public class UtilityServiceRegisterTests
 {
-    private const string ProjectFilePath = "C:/Projects/Acme/Acme.celbridge";
-
     private static readonly ResourceKey ProjectFileResource = new("Acme.celbridge");
     private static readonly ResourceKey CommunityResource = new("temp:community.browser");
 
@@ -35,7 +33,7 @@ public class UtilityServiceRegisterTests
     public void Setup()
     {
         var project = Substitute.For<IProject>();
-        project.ProjectFilePath.Returns(ProjectFilePath);
+        project.ProjectFileResource.Returns(ProjectFileResource);
 
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns(project);
@@ -151,7 +149,7 @@ public class UtilityServiceRegisterTests
         // A project that declares a shortcut of its own, which is the band the built-in shortcuts must
         // stay out of.
         var project = Substitute.For<IProject>();
-        project.ProjectFilePath.Returns(ProjectFilePath);
+        project.ProjectFileResource.Returns(ProjectFileResource);
         project.Config.Returns(new ProjectConfig
         {
             DocumentShortcuts = new List<DocumentShortcut>
@@ -189,7 +187,7 @@ public class UtilityServiceRegisterTests
     {
         // A shortcut that only opens its document on load takes no place on the rail.
         var project = Substitute.For<IProject>();
-        project.ProjectFilePath.Returns(ProjectFilePath);
+        project.ProjectFileResource.Returns(ProjectFileResource);
         project.Config.Returns(new ProjectConfig
         {
             DocumentShortcuts = new List<DocumentShortcut>
@@ -220,7 +218,7 @@ public class UtilityServiceRegisterTests
     {
         // The project has one shortcut, and a package contributes a utility.
         var project = Substitute.For<IProject>();
-        project.ProjectFilePath.Returns(ProjectFilePath);
+        project.ProjectFileResource.Returns(ProjectFileResource);
         project.Config.Returns(new ProjectConfig
         {
             DocumentShortcuts = new List<DocumentShortcut>

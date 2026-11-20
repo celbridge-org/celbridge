@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The TypeScript release that Celbridge downloads when a project needs TypeScript. Each Package names the npm
+  package for one platform and the package's hash. Integrity is the npm registry's dist.integrity value for the
+  version, copied as published.
+  Example: <Package Platform="darwin-arm64" Name="@typescript/typescript-darwin-arm64" Integrity="sha512-..." />
+-->
+<TypeScriptPinnedRelease Version="7.0.2" RegistryUrl="https://registry.npmjs.org">
+  <Package Platform="win32-x64" Name="@typescript/typescript-win32-x64" Integrity="sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g==" />
+  <Package Platform="win32-arm64" Name="@typescript/typescript-win32-arm64" Integrity="sha512-Gyl1Vy6OsWesLzmq+EP0Fb7b4Nid5232AvcA2SFcdYreldpNtYFFofPjnt62y9hQy7VTaZp65ICJjuAQRaVcIQ==" />
+  <Package Platform="darwin-arm64" Name="@typescript/typescript-darwin-arm64" Integrity="sha512-gowzar9MwS/aRWp6f3a4KUqzRjAZjOsmGNCM6LcTgXum+dBfgsBVMN+AgvOCCbguXyick6LJhpBszxMebJ8syA==" />
+  <Package Platform="darwin-x64" Name="@typescript/typescript-darwin-x64" Integrity="sha512-SZ9xZInqApNlNGc9s0W1VSsktYSOe9cFqNOIqmN1Gs8SmkjKZYFt017G4VwPxASInODuAdbTW7sXiFUf893RgA==" />
+  <Package Platform="linux-x64" Name="@typescript/typescript-linux-x64" Integrity="sha512-EYdf2cNg7rgCWJnxCdJ+F3V39O8ihb37eHAu1LK8oAFizgTQbPOK7zHHXbPt8rX24COqODXeI3sIf0fCXG7H/A==" />
+  <Package Platform="linux-arm64" Name="@typescript/typescript-linux-arm64" Integrity="sha512-Qh4eU4/y3yDjnfjjyPYihMj5/ODIlmt+Bzu17OI+fiSRDW57QmU5SiN63exPRNJPKUzcc1INa1NXdrJ+MqHjUQ==" />
+</TypeScriptPinnedRelease>

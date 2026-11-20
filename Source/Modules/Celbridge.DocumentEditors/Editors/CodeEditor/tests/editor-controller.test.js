@@ -39,7 +39,8 @@ function createMockEditor(model) {
         onDidChangeCursorSelection: vi.fn(),
         onDidFocusEditorText: vi.fn(),
         onDidBlurEditorText: vi.fn(),
-        executeEdits: vi.fn(),
+        executeEdits: vi.fn(() => true),
+        pushUndoStop: vi.fn(),
         hasTextFocus: vi.fn(() => true),
         getOption: vi.fn(() => true),
         getSelection: vi.fn(() => ({ isEmpty: () => true })),
@@ -59,7 +60,9 @@ function installMonacoStub(editor) {
             EndOfLineSequence: { CRLF: 1, LF: 0 },
             EditorOption: { emptySelectionClipboard: 38 },
             setModelLanguage: vi.fn(),
-            setTheme: vi.fn()
+            defineTheme: vi.fn(),
+            setTheme: vi.fn(),
+            onDidCreateEditor: vi.fn()
         },
         EditorOption: { lineHeight: 0 },
         Selection: {
@@ -88,18 +91,84 @@ describe('EditorController.create', () => {
         expect(container.classList.contains('monaco-component')).toBe(true);
     });
 
-    it('sets the Monaco theme that matches the app theme, and follows it when it changes', () => {
+    it('sets the editor theme that matches the app theme, and follows it when it changes', () => {
         installMonacoStub(createMockEditor(createMockModel()));
         celbridge.appState.current.theme = 'Light';
 
         new EditorController().create(document.createElement('div'));
-        expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('vs');
+        expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('celbridge-light');
 
         __capturedHandlers.onAppStateChanged({ theme: 'Dark' });
-        expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('vs-dark');
+        expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('celbridge-dark');
 
         __capturedHandlers.onAppStateChanged({ theme: 'Light' });
-        expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('vs');
+        expect(monaco.editor.setTheme).toHaveBeenLastCalledWith('celbridge-light');
+    });
+
+    it('defines a light and a dark theme on Monaco\'s own, with a color for each semantic token type', () => {
+        installMonacoStub(createMockEditor(createMockModel()));
+
+        new EditorController().create(document.createElement('div'));
+
+        const themes = Object.fromEntries(monaco.editor.defineTheme.mock.calls);
+        expect(themes['celbridge-light'].base).toBe('vs');
+        expect(themes['celbridge-dark'].base).toBe('vs-dark');
+        expect(themes['celbridge-dark'].inherit).toBe(true);
+        expect(themes['celbridge-dark'].rules.map((rule) => rule.token)).toEqual([
+            'semantic-type',
+            'semantic-function',
+            'semantic-variable',
+            'semantic-constant'
+        ]);
+        expect(monaco.editor.create.mock.calls[0][1]['semanticHighlighting.enabled']).toBe(true);
+    });
+});
+
+describe('EditorController editors inside the editor', () => {
+    it('makes each editor that Monaco creates later read-only, once the editor is ready', async () => {
+        installMonacoStub(createMockEditor(createMockModel()));
+        new EditorController().create(document.createElement('div'));
+
+        const peekEditor = { updateOptions: vi.fn() };
+        const [listener] = monaco.editor.onDidCreateEditor.mock.calls[0];
+        listener(peekEditor);
+
+        expect(peekEditor.updateOptions).not.toHaveBeenCalled();
+        await flushMicrotasks();
+        expect(peekEditor.updateOptions).toHaveBeenCalledWith({ readOnly: true });
+    });
+});
+
+describe('EditorController.applyEdits', () => {
+    it('applies the host\'s edits as one step in the undo history', () => {
+        const editor = createMockEditor(createMockModel());
+        installMonacoStub(editor);
+        const controller = new EditorController();
+        controller.create(document.createElement('div'));
+        const edits = [{
+            range: { startLineNumber: 4, startColumn: 5, endLineNumber: 4, endColumn: 11 },
+            text: 'size'
+        }];
+
+        const applied = controller.applyEdits(edits);
+
+        expect(applied).toBe(true);
+        expect(editor.executeEdits).toHaveBeenCalledWith('celbridge-host', edits);
+        const undoStops = editor.pushUndoStop.mock.invocationCallOrder;
+        const editOrder = editor.executeEdits.mock.invocationCallOrder[0];
+        expect(undoStops).toHaveLength(2);
+        expect(undoStops[0]).toBeLessThan(editOrder);
+        expect(undoStops[1]).toBeGreaterThan(editOrder);
+    });
+
+    it('reports a refusal when the editor is read-only', () => {
+        const editor = createMockEditor(createMockModel());
+        editor.executeEdits = vi.fn(() => false);
+        installMonacoStub(editor);
+        const controller = new EditorController();
+        controller.create(document.createElement('div'));
+
+        expect(controller.applyEdits([])).toBe(false);
     });
 });
 
@@ -320,6 +389,69 @@ describe('EditorController initial content', () => {
         finishHandling();
         await taking;
         expect(isContentTaken).toBe(true);
+    });
+});
+
+describe('EditorController model name', () => {
+    let controller;
+    let editor;
+    let unnamedModel;
+    let namedModel;
+    let steps;
+
+    beforeEach(() => {
+        for (const key of Object.keys(__capturedHandlers)) {
+            delete __capturedHandlers[key];
+        }
+
+        steps = [];
+        unnamedModel = createMockModel();
+        unnamedModel.dispose = vi.fn();
+        namedModel = createMockModel();
+
+        editor = createMockEditor(unnamedModel);
+        editor.setModel = vi.fn((model) => {
+            steps.push('setModel');
+            editor.getModel = vi.fn(() => model);
+        });
+        editor.setValue = vi.fn(() => steps.push('setValue'));
+
+        installMonacoStub(editor);
+        monaco.Uri = { file: vi.fn((path) => `uri of ${path}`) };
+        monaco.editor.createModel = vi.fn(() => namedModel);
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+    });
+
+    it('names the model by the file\'s URI before the first content arrives', async () => {
+        await controller.initializeHost();
+
+        await __capturedHandlers.onContent('let a = 1;', { fileName: 'main.ts', filePath: 'D:\\Projects\\Acme\\main.ts' });
+
+        expect(monaco.Uri.file).toHaveBeenCalledWith('D:\\Projects\\Acme\\main.ts');
+        expect(monaco.editor.createModel).toHaveBeenCalledWith('', 'plaintext', 'uri of D:\\Projects\\Acme\\main.ts');
+        expect(steps).toEqual(['setModel', 'setValue']);
+        expect(unnamedModel.dispose).toHaveBeenCalledTimes(1);
+        expect(controller.getModel()).toBe(namedModel);
+    });
+
+    it('follows the named model\'s changes and sets its line endings', async () => {
+        await controller.initializeHost();
+
+        await __capturedHandlers.onContent('let a = 1;', { fileName: 'main.ts', filePath: '/Projects/Acme/main.ts' });
+
+        expect(namedModel.setEOL).toHaveBeenCalledTimes(1);
+        expect(namedModel.onDidChangeContent).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the editor\'s own model for a document with no file path', async () => {
+        await controller.initializeHost();
+
+        await __capturedHandlers.onContent('<p>Page</p>', { fileName: 'page.html' });
+
+        expect(monaco.editor.createModel).not.toHaveBeenCalled();
+        expect(controller.getModel()).toBe(unnamedModel);
     });
 });
 

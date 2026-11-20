@@ -52,6 +52,13 @@ public interface IDocumentView : IWorkspaceItem
     Task<Result> NavigateToLocation(string location);
 
     /// <summary>
+    /// Applies edits to the document's text in its editor, as one step in the document's undo history. The
+    /// document saves the edits the way it saves typing. Fails for an editor that edits no text, or a read-only
+    /// document.
+    /// </summary>
+    Task<Result> ApplyEdits(IReadOnlyList<RangeEdit> edits);
+
+    /// <summary>
     /// What Edit commands act on while this document has focus.
     /// </summary>
     IEditTarget EditTarget { get; }

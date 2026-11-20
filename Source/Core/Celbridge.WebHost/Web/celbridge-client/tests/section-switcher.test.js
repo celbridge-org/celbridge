@@ -198,10 +198,46 @@ describe('attachSectionSwitcher', () => {
 
         switcher.setNotice('The file would not parse.');
         expect(notice.hidden).toBe(false);
-        expect(notice.textContent).toBe('The file would not parse.');
+        expect(notice.querySelector('.cel-info-bar-message').textContent).toBe('The file would not parse.');
 
         switcher.setNotice('');
         expect(notice.hidden).toBe(true);
+    });
+
+    it('makes the notice slot a warning info bar', () => {
+        attachSectionSwitcher(root, { onChange });
+        const notice = root.querySelector('.cel-section-notice');
+
+        expect(notice.classList.contains('cel-info-bar')).toBe(true);
+        expect(notice.dataset.severity).toBe('warning');
+    });
+
+    it('shows a button in the notice while the notice has an action', () => {
+        const switcher = attachSectionSwitcher(root, { onChange });
+        const action = root.querySelector('.cel-info-bar-action');
+        const onClick = vi.fn();
+
+        switcher.setNotice('The feature is disabled.', { label: 'Open Settings', onClick });
+        expect(action.hidden).toBe(false);
+        expect(action.textContent).toBe('Open Settings');
+
+        action.click();
+        expect(onClick).toHaveBeenCalledTimes(1);
+
+        switcher.setNotice('The file would not parse.');
+        expect(action.hidden).toBe(true);
+
+        action.click();
+        expect(onClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves the notice button enabled while read-only', () => {
+        const switcher = attachSectionSwitcher(root, { onChange });
+
+        switcher.setNotice('The feature is disabled.', { label: 'Open Settings', onClick() { } });
+        switcher.setReadOnly(true);
+
+        expect(root.querySelector('.cel-info-bar-action').disabled).toBe(false);
     });
 
     it('disables the controls inside its sections when read-only, leaving the footer action alone', () => {

@@ -52,6 +52,7 @@ const generateBtn = document.getElementById('generate-btn');
 const glyphCount = document.getElementById('glyph-count');
 const statusEl = document.getElementById('status');
 const noticeEl = document.getElementById('notice');
+const noticeTextEl = document.getElementById('notice-text');
 const resultsEl = document.getElementById('results');
 
 let state = { version: STATE_VERSION, selectedId: null, sets: [] };
@@ -77,7 +78,7 @@ function showNotice(key, ...args) {
 
 function renderMessages() {
     statusEl.textContent = status ? t(status.key, ...status.args) : '';
-    noticeEl.textContent = notice ? t(notice.key, ...notice.args) : '';
+    noticeTextEl.textContent = notice ? t(notice.key, ...notice.args) : '';
     noticeEl.hidden = !notice;
 }
 

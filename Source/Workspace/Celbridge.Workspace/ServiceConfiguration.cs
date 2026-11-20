@@ -15,6 +15,7 @@ public static class ServiceConfiguration
         Console.ServiceConfiguration.ConfigureServices(services);
         Documents.ServiceConfiguration.ConfigureServices(services);
         Explorer.ServiceConfiguration.ConfigureServices(services);
+        LanguageServers.ServiceConfiguration.ConfigureServices(services);
         Packages.ServiceConfiguration.ConfigureServices(services);
         ProjectSettings.ServiceConfiguration.ConfigureServices(services);
         Python.ServiceConfiguration.ConfigureServices(services);

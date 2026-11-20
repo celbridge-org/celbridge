@@ -59,7 +59,7 @@ public class CustomDocumentRpcHandlerWatchTests
         _monitor = new FakeResourceMonitor();
         _sent = new List<SentChanges>();
 
-        var metadata = new DocumentMetadata("C:/Projects/Acme/notes.md", "notes.md", "notes.md", "en");
+        var metadata = new DocumentMetadata("C:/Projects/Acme/notes.md", "notes.md", "notes.md", "en", "");
 
         _handler = new CustomDocumentRpcHandler(
             _viewModel,

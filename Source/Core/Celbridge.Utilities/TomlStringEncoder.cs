@@ -10,6 +10,40 @@ namespace Celbridge.Utilities;
 public static class TomlStringEncoder
 {
     /// <summary>
+    /// Encodes a TOML key. A key made of ASCII letters, digits, hyphens and underscores is written bare. Any other
+    /// key is written as a quoted basic string.
+    /// </summary>
+    public static string EncodeKey(string key)
+    {
+        if (IsBareKey(key))
+        {
+            return key;
+        }
+
+        return EncodeBasicString(key);
+    }
+
+    private static bool IsBareKey(string key)
+    {
+        if (key.Length == 0)
+        {
+            return false;
+        }
+
+        foreach (var character in key)
+        {
+            if (!char.IsAsciiLetterOrDigit(character)
+                && character != '-'
+                && character != '_')
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Encodes a value as a quoted TOML basic string. Characters with a named escape take it, so the escape
     /// reads as itself in a diff; any other control character is emitted as \uXXXX, which the form requires.
     /// </summary>

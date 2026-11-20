@@ -5,6 +5,7 @@ import {
     parseExtensionList,
     normalizeConfig,
     configsEqual,
+    needsReopen,
     buildStartConfig,
 } from '../console-config.js';
 
@@ -108,6 +109,31 @@ describe('configsEqual', () => {
         const runnersX = { type: 'python', runners: [{ extensions: ['.py'], command: 'x' }] };
         const runnersY = { type: 'python', runners: [{ extensions: ['.py'], command: 'y' }] };
         expect(configsEqual(runnersX, runnersY)).toBe(false);
+    });
+});
+
+describe('needsReopen', () => {
+    const shell = { type: 'shell' };
+    const python = { type: 'python' };
+
+    it('is true when the config changed since the session launched', () => {
+        expect(needsReopen(shell, python, null)).toBe(true);
+    });
+
+    it('is false when the config matches the one the session launched from', () => {
+        expect(needsReopen(shell, shell, null)).toBe(false);
+    });
+
+    it('is true when the config changed since the session failed to start', () => {
+        expect(needsReopen(shell, null, python)).toBe(true);
+    });
+
+    it('is false when the config matches the one that failed to start', () => {
+        expect(needsReopen(python, null, python)).toBe(false);
+    });
+
+    it('is false while no session has launched or failed', () => {
+        expect(needsReopen(shell, null, null)).toBe(false);
     });
 });
 

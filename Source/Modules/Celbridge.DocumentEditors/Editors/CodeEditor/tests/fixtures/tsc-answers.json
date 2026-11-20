@@ -1,0 +1,1247 @@
+{
+  "mainText": "import { area, Circle } from './shapes';\n\nclass Wheel implements Circle {\n    radius = 2;\n}\n\nconst wheel = new Wheel();\nconst size: string = area(wheel);\nconst total = area(wheel) + wheel.radius;\nconsole.log(size, total);\n",
+  "formatText": "export function   scaled( a:number ){return a*2}\n",
+  "answers": {
+    "capabilities": {
+      "positionEncoding": "utf-16",
+      "textDocumentSync": {
+        "openClose": true,
+        "change": 2,
+        "save": true
+      },
+      "completionProvider": {
+        "triggerCharacters": [
+          ".",
+          "\"",
+          "'",
+          "`",
+          "/",
+          "@",
+          "<",
+          "#",
+          " ",
+          "*"
+        ],
+        "resolveProvider": true,
+        "completionItem": {
+          "labelDetailsSupport": true
+        }
+      },
+      "hoverProvider": true,
+      "signatureHelpProvider": {
+        "triggerCharacters": [
+          "(",
+          ",",
+          "<"
+        ],
+        "retriggerCharacters": [
+          ")"
+        ]
+      },
+      "definitionProvider": true,
+      "typeDefinitionProvider": true,
+      "implementationProvider": true,
+      "referencesProvider": true,
+      "documentHighlightProvider": true,
+      "documentSymbolProvider": true,
+      "codeActionProvider": {
+        "codeActionKinds": [
+          "quickfix",
+          "source.organizeImports",
+          "source.removeUnusedImports",
+          "source.sortImports",
+          "source.fixAll"
+        ]
+      },
+      "codeLensProvider": {
+        "resolveProvider": true
+      },
+      "workspaceSymbolProvider": true,
+      "documentFormattingProvider": true,
+      "documentRangeFormattingProvider": true,
+      "documentOnTypeFormattingProvider": {
+        "firstTriggerCharacter": "{",
+        "moreTriggerCharacter": [
+          "}",
+          ";",
+          "\n"
+        ]
+      },
+      "renameProvider": {
+        "prepareProvider": true
+      },
+      "foldingRangeProvider": true,
+      "selectionRangeProvider": true,
+      "callHierarchyProvider": true,
+      "linkedEditingRangeProvider": true,
+      "semanticTokensProvider": {
+        "legend": {
+          "tokenTypes": [
+            "namespace",
+            "class",
+            "enum",
+            "interface",
+            "struct",
+            "typeParameter",
+            "type",
+            "parameter",
+            "variable",
+            "property",
+            "enumMember",
+            "decorator",
+            "event",
+            "function",
+            "method",
+            "macro",
+            "comment",
+            "string",
+            "keyword",
+            "number",
+            "regexp",
+            "operator"
+          ],
+          "tokenModifiers": [
+            "declaration",
+            "definition",
+            "readonly",
+            "static",
+            "deprecated",
+            "abstract",
+            "async",
+            "modification",
+            "documentation",
+            "defaultLibrary"
+          ]
+        },
+        "range": true,
+        "full": true
+      },
+      "inlayHintProvider": true,
+      "diagnosticProvider": {
+        "identifier": "typescript",
+        "interFileDependencies": true,
+        "workspaceDiagnostics": false
+      },
+      "workspace": {
+        "fileOperations": {
+          "willRename": {
+            "filters": [
+              {
+                "scheme": "file",
+                "pattern": {
+                  "glob": "**/*.{ts,tsx,js,jsx,cts,cjs,mts,mjs,json}"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "experimental": {
+        "customSourceDefinitionProvider": true,
+        "customMultiDocumentHighlightProvider": true
+      },
+      "_vs_onAutoInsertProvider": {
+        "_vs_triggerCharacters": [
+          ">"
+        ]
+      },
+      "_vs_referencesProvider": true
+    },
+    "diagnostic": {
+      "kind": "full",
+      "items": [
+        {
+          "range": {
+            "start": {
+              "line": 7,
+              "character": 6
+            },
+            "end": {
+              "line": 7,
+              "character": 10
+            }
+          },
+          "severity": 1,
+          "code": 2322,
+          "source": "ts",
+          "message": "Type 'number' is not assignable to type 'string'."
+        }
+      ]
+    },
+    "completion": {
+      "isIncomplete": false,
+      "itemDefaults": {
+        "commitCharacters": [
+          ".",
+          ",",
+          ";"
+        ],
+        "editRange": {
+          "insert": {
+            "start": {
+              "line": 8,
+              "character": 34
+            },
+            "end": {
+              "line": 8,
+              "character": 34
+            }
+          },
+          "replace": {
+            "start": {
+              "line": 8,
+              "character": 34
+            },
+            "end": {
+              "line": 8,
+              "character": 40
+            }
+          }
+        }
+      },
+      "items": [
+        {
+          "label": "radius",
+          "kind": 5,
+          "sortText": "11",
+          "data": {
+            "fileName": "d:/Projects/Acme/src/main.ts",
+            "position": 188,
+            "name": "radius"
+          }
+        }
+      ]
+    },
+    "completionResolve": {
+      "label": "radius",
+      "kind": 5,
+      "detail": "(property) Wheel.radius: number",
+      "sortText": "11",
+      "data": {
+        "fileName": "d:/Projects/Acme/src/main.ts",
+        "position": 188,
+        "name": "radius"
+      }
+    },
+    "hover": {
+      "contents": {
+        "kind": "markdown",
+        "value": "```typescript\n(alias) function area(circle: Circle): number\n```\nReturns the area of a circle.\n\n*@param* `circle` — The circle to measure."
+      },
+      "range": {
+        "start": {
+          "line": 7,
+          "character": 21
+        },
+        "end": {
+          "line": 7,
+          "character": 25
+        }
+      }
+    },
+    "signatureHelp": {
+      "signatures": [
+        {
+          "label": "area(circle: Circle): number",
+          "documentation": {
+            "kind": "markdown",
+            "value": "Returns the area of a circle."
+          },
+          "parameters": [
+            {
+              "label": "circle: Circle",
+              "documentation": {
+                "kind": "markdown",
+                "value": "The circle to measure."
+              }
+            }
+          ],
+          "activeParameter": 0
+        }
+      ],
+      "activeSignature": 0
+    },
+    "definitionOwn": [
+      {
+        "originSelectionRange": {
+          "start": {
+            "line": 6,
+            "character": 18
+          },
+          "end": {
+            "line": 6,
+            "character": 23
+          }
+        },
+        "targetUri": "file:///d%3A/Projects/Acme/src/main.ts",
+        "targetRange": {
+          "start": {
+            "line": 2,
+            "character": 0
+          },
+          "end": {
+            "line": 4,
+            "character": 1
+          }
+        },
+        "targetSelectionRange": {
+          "start": {
+            "line": 2,
+            "character": 6
+          },
+          "end": {
+            "line": 2,
+            "character": 11
+          }
+        }
+      }
+    ],
+    "definitionOther": [
+      {
+        "originSelectionRange": {
+          "start": {
+            "line": 7,
+            "character": 21
+          },
+          "end": {
+            "line": 7,
+            "character": 25
+          }
+        },
+        "targetUri": "file:///d%3A/Projects/Acme/src/shapes.ts",
+        "targetRange": {
+          "start": {
+            "line": 9,
+            "character": 0
+          },
+          "end": {
+            "line": 11,
+            "character": 1
+          }
+        },
+        "targetSelectionRange": {
+          "start": {
+            "line": 9,
+            "character": 16
+          },
+          "end": {
+            "line": 9,
+            "character": 20
+          }
+        }
+      }
+    ],
+    "declaration": {
+      "error": {
+        "code": -32600,
+        "message": "InvalidRequest"
+      }
+    },
+    "typeDefinition": [
+      {
+        "originSelectionRange": {
+          "start": {
+            "line": 8,
+            "character": 28
+          },
+          "end": {
+            "line": 8,
+            "character": 33
+          }
+        },
+        "targetUri": "file:///d%3A/Projects/Acme/src/main.ts",
+        "targetRange": {
+          "start": {
+            "line": 2,
+            "character": 0
+          },
+          "end": {
+            "line": 4,
+            "character": 1
+          }
+        },
+        "targetSelectionRange": {
+          "start": {
+            "line": 2,
+            "character": 6
+          },
+          "end": {
+            "line": 2,
+            "character": 11
+          }
+        }
+      }
+    ],
+    "implementation": [
+      {
+        "targetUri": "file:///d%3A/Projects/Acme/src/main.ts",
+        "targetRange": {
+          "start": {
+            "line": 2,
+            "character": 0
+          },
+          "end": {
+            "line": 4,
+            "character": 1
+          }
+        },
+        "targetSelectionRange": {
+          "start": {
+            "line": 2,
+            "character": 6
+          },
+          "end": {
+            "line": 2,
+            "character": 11
+          }
+        }
+      }
+    ],
+    "references": [
+      {
+        "uri": "file:///d%3A/Projects/Acme/src/main.ts",
+        "range": {
+          "start": {
+            "line": 6,
+            "character": 6
+          },
+          "end": {
+            "line": 6,
+            "character": 11
+          }
+        }
+      },
+      {
+        "uri": "file:///d%3A/Projects/Acme/src/main.ts",
+        "range": {
+          "start": {
+            "line": 7,
+            "character": 26
+          },
+          "end": {
+            "line": 7,
+            "character": 31
+          }
+        }
+      },
+      {
+        "uri": "file:///d%3A/Projects/Acme/src/main.ts",
+        "range": {
+          "start": {
+            "line": 8,
+            "character": 19
+          },
+          "end": {
+            "line": 8,
+            "character": 24
+          }
+        }
+      },
+      {
+        "uri": "file:///d%3A/Projects/Acme/src/main.ts",
+        "range": {
+          "start": {
+            "line": 8,
+            "character": 28
+          },
+          "end": {
+            "line": 8,
+            "character": 33
+          }
+        }
+      }
+    ],
+    "referencesOther": [
+      {
+        "uri": "file:///d%3A/Projects/Acme/src/main.ts",
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 9
+          },
+          "end": {
+            "line": 0,
+            "character": 13
+          }
+        }
+      },
+      {
+        "uri": "file:///d%3A/Projects/Acme/src/main.ts",
+        "range": {
+          "start": {
+            "line": 7,
+            "character": 21
+          },
+          "end": {
+            "line": 7,
+            "character": 25
+          }
+        }
+      },
+      {
+        "uri": "file:///d%3A/Projects/Acme/src/main.ts",
+        "range": {
+          "start": {
+            "line": 8,
+            "character": 14
+          },
+          "end": {
+            "line": 8,
+            "character": 18
+          }
+        }
+      },
+      {
+        "uri": "file:///d%3A/Projects/Acme/src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 9,
+            "character": 16
+          },
+          "end": {
+            "line": 9,
+            "character": 20
+          }
+        }
+      }
+    ],
+    "documentHighlight": [],
+    "documentSymbol": [
+      {
+        "name": "area",
+        "kind": 13,
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 9
+          },
+          "end": {
+            "line": 0,
+            "character": 13
+          }
+        },
+        "selectionRange": {
+          "start": {
+            "line": 0,
+            "character": 9
+          },
+          "end": {
+            "line": 0,
+            "character": 13
+          }
+        },
+        "children": []
+      },
+      {
+        "name": "Circle",
+        "kind": 13,
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 15
+          },
+          "end": {
+            "line": 0,
+            "character": 21
+          }
+        },
+        "selectionRange": {
+          "start": {
+            "line": 0,
+            "character": 15
+          },
+          "end": {
+            "line": 0,
+            "character": 21
+          }
+        },
+        "children": []
+      },
+      {
+        "name": "Wheel",
+        "kind": 5,
+        "range": {
+          "start": {
+            "line": 2,
+            "character": 0
+          },
+          "end": {
+            "line": 4,
+            "character": 1
+          }
+        },
+        "selectionRange": {
+          "start": {
+            "line": 2,
+            "character": 6
+          },
+          "end": {
+            "line": 2,
+            "character": 11
+          }
+        },
+        "children": [
+          {
+            "name": "radius",
+            "kind": 7,
+            "range": {
+              "start": {
+                "line": 3,
+                "character": 4
+              },
+              "end": {
+                "line": 3,
+                "character": 15
+              }
+            },
+            "selectionRange": {
+              "start": {
+                "line": 3,
+                "character": 4
+              },
+              "end": {
+                "line": 3,
+                "character": 10
+              }
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "name": "wheel",
+        "kind": 13,
+        "range": {
+          "start": {
+            "line": 6,
+            "character": 6
+          },
+          "end": {
+            "line": 6,
+            "character": 25
+          }
+        },
+        "selectionRange": {
+          "start": {
+            "line": 6,
+            "character": 6
+          },
+          "end": {
+            "line": 6,
+            "character": 11
+          }
+        },
+        "children": []
+      },
+      {
+        "name": "size",
+        "kind": 13,
+        "range": {
+          "start": {
+            "line": 7,
+            "character": 6
+          },
+          "end": {
+            "line": 7,
+            "character": 32
+          }
+        },
+        "selectionRange": {
+          "start": {
+            "line": 7,
+            "character": 6
+          },
+          "end": {
+            "line": 7,
+            "character": 10
+          }
+        },
+        "children": []
+      },
+      {
+        "name": "total",
+        "kind": 13,
+        "range": {
+          "start": {
+            "line": 8,
+            "character": 6
+          },
+          "end": {
+            "line": 8,
+            "character": 40
+          }
+        },
+        "selectionRange": {
+          "start": {
+            "line": 8,
+            "character": 6
+          },
+          "end": {
+            "line": 8,
+            "character": 11
+          }
+        },
+        "children": []
+      }
+    ],
+    "foldingRange": [
+      {
+        "startLine": 2,
+        "startCharacter": 29,
+        "endLine": 3,
+        "endCharacter": 1
+      }
+    ],
+    "selectionRange": [
+      {
+        "range": {
+          "start": {
+            "line": 8,
+            "character": 34
+          },
+          "end": {
+            "line": 8,
+            "character": 40
+          }
+        },
+        "parent": {
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 28
+            },
+            "end": {
+              "line": 8,
+              "character": 40
+            }
+          },
+          "parent": {
+            "range": {
+              "start": {
+                "line": 8,
+                "character": 14
+              },
+              "end": {
+                "line": 8,
+                "character": 40
+              }
+            },
+            "parent": {
+              "range": {
+                "start": {
+                  "line": 8,
+                  "character": 0
+                },
+                "end": {
+                  "line": 8,
+                  "character": 41
+                }
+              },
+              "parent": {
+                "range": {
+                  "start": {
+                    "line": 0,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 9,
+                    "character": 25
+                  }
+                },
+                "parent": {
+                  "range": {
+                    "start": {
+                      "line": 0,
+                      "character": 0
+                    },
+                    "end": {
+                      "line": 10,
+                      "character": 0
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ],
+    "documentLink": {
+      "error": {
+        "code": -32600,
+        "message": "InvalidRequest"
+      }
+    },
+    "prepareRename": {
+      "range": {
+        "start": {
+          "line": 8,
+          "character": 34
+        },
+        "end": {
+          "line": 8,
+          "character": 40
+        }
+      },
+      "placeholder": "radius"
+    },
+    "rename": {
+      "changes": {
+        "file:///d%3A/Projects/Acme/src/shapes.ts": [
+          {
+            "range": {
+              "start": {
+                "line": 3,
+                "character": 4
+              },
+              "end": {
+                "line": 3,
+                "character": 10
+              }
+            },
+            "newText": "size"
+          },
+          {
+            "range": {
+              "start": {
+                "line": 10,
+                "character": 28
+              },
+              "end": {
+                "line": 10,
+                "character": 34
+              }
+            },
+            "newText": "size"
+          },
+          {
+            "range": {
+              "start": {
+                "line": 10,
+                "character": 44
+              },
+              "end": {
+                "line": 10,
+                "character": 50
+              }
+            },
+            "newText": "size"
+          }
+        ],
+        "file:///d%3A/Projects/Acme/src/main.ts": [
+          {
+            "range": {
+              "start": {
+                "line": 3,
+                "character": 4
+              },
+              "end": {
+                "line": 3,
+                "character": 10
+              }
+            },
+            "newText": "size"
+          },
+          {
+            "range": {
+              "start": {
+                "line": 8,
+                "character": 34
+              },
+              "end": {
+                "line": 8,
+                "character": 40
+              }
+            },
+            "newText": "size"
+          }
+        ]
+      }
+    },
+    "codeActionDiagnostic": {
+      "range": {
+        "start": {
+          "line": 7,
+          "character": 6
+        },
+        "end": {
+          "line": 7,
+          "character": 10
+        }
+      },
+      "severity": 1,
+      "code": 2322,
+      "source": "ts",
+      "message": "Type 'number' is not assignable to type 'string'."
+    },
+    "organizeImports": [
+      {
+        "title": "Organize Imports",
+        "kind": "source.organizeImports",
+        "edit": {
+          "changes": {
+            "file:///d%3A/Projects/Acme/src/main.ts": [
+              {
+                "range": {
+                  "start": {
+                    "line": 0,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 1,
+                    "character": 0
+                  }
+                },
+                "newText": "import { area, Circle } from './shapes';\n"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "formatting": [
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 15
+          },
+          "end": {
+            "line": 0,
+            "character": 18
+          }
+        },
+        "newText": " "
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 25
+          },
+          "end": {
+            "line": 0,
+            "character": 26
+          }
+        },
+        "newText": ""
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 28
+          },
+          "end": {
+            "line": 0,
+            "character": 28
+          }
+        },
+        "newText": " "
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 34
+          },
+          "end": {
+            "line": 0,
+            "character": 35
+          }
+        },
+        "newText": ""
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 36
+          },
+          "end": {
+            "line": 0,
+            "character": 36
+          }
+        },
+        "newText": " "
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 37
+          },
+          "end": {
+            "line": 0,
+            "character": 37
+          }
+        },
+        "newText": " "
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 45
+          },
+          "end": {
+            "line": 0,
+            "character": 45
+          }
+        },
+        "newText": " "
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 46
+          },
+          "end": {
+            "line": 0,
+            "character": 46
+          }
+        },
+        "newText": " "
+      },
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 47
+          },
+          "end": {
+            "line": 0,
+            "character": 47
+          }
+        },
+        "newText": " "
+      }
+    ],
+    "rangeFormatting": [
+      {
+        "range": {
+          "start": {
+            "line": 0,
+            "character": 15
+          },
+          "end": {
+            "line": 0,
+            "character": 18
+          }
+        },
+        "newText": " "
+      }
+    ],
+    "inlayHint": [
+      {
+        "position": {
+          "line": 3,
+          "character": 10
+        },
+        "label": [
+          {
+            "value": ": "
+          },
+          {
+            "value": "number"
+          }
+        ],
+        "kind": 1,
+        "paddingLeft": true
+      },
+      {
+        "position": {
+          "line": 7,
+          "character": 26
+        },
+        "label": [
+          {
+            "value": "circle",
+            "location": {
+              "uri": "file:///d%3A/Projects/Acme/src/shapes.ts",
+              "range": {
+                "start": {
+                  "line": 10,
+                  "character": 21
+                },
+                "end": {
+                  "line": 10,
+                  "character": 27
+                }
+              }
+            }
+          },
+          {
+            "value": ":"
+          }
+        ],
+        "kind": 2,
+        "paddingRight": true
+      },
+      {
+        "position": {
+          "line": 8,
+          "character": 11
+        },
+        "label": [
+          {
+            "value": ": "
+          },
+          {
+            "value": "number"
+          }
+        ],
+        "kind": 1,
+        "paddingLeft": true
+      },
+      {
+        "position": {
+          "line": 8,
+          "character": 19
+        },
+        "label": [
+          {
+            "value": "circle",
+            "location": {
+              "uri": "file:///d%3A/Projects/Acme/src/shapes.ts",
+              "range": {
+                "start": {
+                  "line": 10,
+                  "character": 21
+                },
+                "end": {
+                  "line": 10,
+                  "character": 27
+                }
+              }
+            }
+          },
+          {
+            "value": ":"
+          }
+        ],
+        "kind": 2,
+        "paddingRight": true
+      },
+      {
+        "position": {
+          "line": 9,
+          "character": 12
+        },
+        "label": [
+          {
+            "value": "...data",
+            "location": {
+              "uri": "file:///d%3A/Celbridge/Dependencies/LanguageServers/typescript/7.0.2/lib/lib.dom.d.ts",
+              "range": {
+                "start": {
+                  "line": 42863,
+                  "character": 11
+                },
+                "end": {
+                  "line": 42863,
+                  "character": 15
+                }
+              }
+            }
+          },
+          {
+            "value": ":"
+          }
+        ],
+        "kind": 2,
+        "paddingRight": true
+      }
+    ],
+    "semanticTokens": {
+      "data": [
+        2,
+        6,
+        5,
+        1,
+        1,
+        0,
+        17,
+        6,
+        3,
+        0,
+        1,
+        4,
+        6,
+        9,
+        1,
+        3,
+        6,
+        5,
+        8,
+        5,
+        0,
+        12,
+        5,
+        1,
+        0,
+        1,
+        6,
+        4,
+        8,
+        5,
+        0,
+        15,
+        4,
+        13,
+        0,
+        0,
+        5,
+        5,
+        8,
+        4,
+        1,
+        6,
+        5,
+        8,
+        5,
+        0,
+        8,
+        4,
+        13,
+        0,
+        0,
+        5,
+        5,
+        8,
+        4,
+        0,
+        9,
+        5,
+        8,
+        4,
+        0,
+        6,
+        6,
+        9,
+        0,
+        1,
+        0,
+        7,
+        8,
+        0,
+        0,
+        8,
+        3,
+        14,
+        0,
+        0,
+        4,
+        4,
+        8,
+        4,
+        0,
+        6,
+        5,
+        8,
+        4
+      ]
+    }
+  }
+}

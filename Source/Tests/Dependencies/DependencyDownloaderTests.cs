@@ -10,15 +10,17 @@ using Celbridge.Tests.Helpers;
 namespace Celbridge.Tests.Dependencies;
 
 /// <summary>
-/// Covers the download of a dependency's archive into a real folder. The cases are a matching hash, a mismatched
-/// hash, a failed extraction, a failed request, and a folder from another copy of Celbridge. A download that fails
-/// leaves neither the final folder nor the temporary folder.
+/// Covers the download of a dependency's archive into a real folder. The cases are a matching hash and a mismatched
+/// hash of each algorithm, and each kind of archive. They also cover a failed extraction, a failed request, and a
+/// folder already installed by another copy of Celbridge. A download that fails leaves neither the final folder nor
+/// the temporary folder.
 /// </summary>
 [TestFixture]
 public class DependencyDownloaderTests
 {
     private const string ZipUrl = "https://example.com/releases/1.2.3/tool-windows.zip";
     private const string TarGzUrl = "https://example.com/releases/1.2.3/tool-macos.tar.gz";
+    private const string TgzUrl = "https://example.com/tool-macos/-/tool-macos-1.2.3.tgz";
 
     private string _parentFolderPath = null!;
     private string _folderPath = null!;
@@ -76,16 +78,62 @@ public class DependencyDownloaderTests
     }
 
     [Test]
+    public async Task Download_ATgzWithAMatchingSha512Hash_InstallsTheArchiveFolder()
+    {
+        var archive = CreateTarGz("package", "tool");
+        var downloader = CreateDownloader(TgzUrl, archive);
+        var download = new DependencyDownload(TgzUrl, Sha512HashOf(archive), _folderPath)
+        {
+            ArchiveFolder = "package"
+        };
+
+        var result = await downloader.DownloadAsync(download);
+
+        result.IsSuccess.Should().BeTrue(result.MessageChain);
+        ListFolder(_folderPath).Should().Equal("tool");
+        ListFolder(_parentFolderPath).Should().Equal("1.2.3");
+    }
+
+    [Test]
     public async Task Download_AMismatchedHash_FailsAndLeavesNoFolder()
     {
         var archive = CreateZip("tool.exe");
         var downloader = CreateDownloader(ZipUrl, archive);
         var wrongHash = new string('0', 64);
+        var download = new DependencyDownload(ZipUrl, new DependencyHash(DependencyHashAlgorithm.Sha256, wrongHash), _folderPath);
 
-        var result = await downloader.DownloadAsync(new DependencyDownload(ZipUrl, wrongHash, _folderPath));
+        var result = await downloader.DownloadAsync(download);
 
         result.IsFailure.Should().BeTrue();
         result.MessageChain.Should().Contain(wrongHash);
+        ListFolder(_parentFolderPath).Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task Download_AMismatchedSha512Hash_FailsAndLeavesNoFolder()
+    {
+        var archive = CreateTarGz("package", "tool");
+        var downloader = CreateDownloader(TgzUrl, archive);
+        var wrongHash = new string('0', 128);
+        var download = new DependencyDownload(TgzUrl, new DependencyHash(DependencyHashAlgorithm.Sha512, wrongHash), _folderPath);
+
+        var result = await downloader.DownloadAsync(download);
+
+        result.IsFailure.Should().BeTrue();
+        result.MessageChain.Should().Contain(wrongHash);
+        ListFolder(_parentFolderPath).Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task Download_AnArchiveWithAnotherExtension_Fails()
+    {
+        var url = "https://example.com/releases/1.2.3/tool.7z";
+        var archive = CreateZip("tool.exe");
+        var downloader = CreateDownloader(url, archive);
+
+        var result = await downloader.DownloadAsync(new DependencyDownload(url, HashOf(archive), _folderPath));
+
+        result.IsFailure.Should().BeTrue();
         ListFolder(_parentFolderPath).Should().BeEmpty();
     }
 
@@ -109,7 +157,7 @@ public class DependencyDownloaderTests
     {
         var downloader = CreateDownloader("https://example.com/elsewhere.zip", CreateZip("tool.exe"));
 
-        var result = await downloader.DownloadAsync(new DependencyDownload(ZipUrl, new string('0', 64), _folderPath));
+        var result = await downloader.DownloadAsync(new DependencyDownload(ZipUrl, new DependencyHash(DependencyHashAlgorithm.Sha256, new string('0', 64)), _folderPath));
 
         result.IsFailure.Should().BeTrue();
         result.MessageChain.Should().Contain("404");
@@ -139,9 +187,18 @@ public class DependencyDownloaderTests
         return new DependencyDownloader(fileSystem, new NullLogger<DependencyDownloader>(), handler);
     }
 
-    private static string HashOf(byte[] bytes)
+    private static DependencyHash HashOf(byte[] bytes)
     {
-        return Convert.ToHexStringLower(SHA256.HashData(bytes));
+        var hashText = Convert.ToHexStringLower(SHA256.HashData(bytes));
+
+        return new DependencyHash(DependencyHashAlgorithm.Sha256, hashText);
+    }
+
+    private static DependencyHash Sha512HashOf(byte[] bytes)
+    {
+        var hashText = Convert.ToHexStringLower(SHA512.HashData(bytes));
+
+        return new DependencyHash(DependencyHashAlgorithm.Sha512, hashText);
     }
 
     private static IReadOnlyList<string> ListFolder(string folderPath)

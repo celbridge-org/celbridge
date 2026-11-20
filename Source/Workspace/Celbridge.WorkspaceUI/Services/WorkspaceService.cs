@@ -2,6 +2,7 @@ using Celbridge.Console;
 using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Explorer;
+using Celbridge.LanguageServers;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Projects;
@@ -24,6 +25,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IDocumentsService DocumentsService { get; }
     public IUtilityService UtilityService { get; }
     public IConsoleService ConsoleService { get; }
+    public ILanguageServerService LanguageServerService { get; }
     public ISearchService SearchService { get; }
     public IDataTransferService DataTransferService { get; }
 
@@ -57,6 +59,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
         UtilityService = serviceProvider.GetRequiredService<IUtilityService>();
         ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
+        LanguageServerService = serviceProvider.GetRequiredService<ILanguageServerService>();
         SearchService = serviceProvider.GetRequiredService<ISearchService>();
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
 
@@ -204,6 +207,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 (ResourceService as IDisposable)?.Dispose();
                 (WorkspaceSettings as IDisposable)!.Dispose();
                 (ConsoleService as IDisposable)!.Dispose();
+                (LanguageServerService as IDisposable)!.Dispose();
                 (DocumentsService as IDisposable)!.Dispose();
                 (UtilityService as IDisposable)!.Dispose();
                 (ExplorerService as IDisposable)!.Dispose();

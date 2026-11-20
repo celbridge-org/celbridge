@@ -4,8 +4,8 @@ namespace Celbridge.Resources;
 
 /// <summary>
 /// A single coordinate-based edit to apply to a file. Uses 1-based line and
-/// column numbers (Monaco editor convention) rather than text-match anchoring,
-/// to distinguish it from the snippet-match edits used by the MCP file tools.
+/// column numbers, the Monaco editor's convention. The MCP file tools' edits
+/// anchor on matched text.
 ///
 /// Edit operations:
 /// - Replace: Specify a range spanning existing text. The range is replaced with NewText.
@@ -52,11 +52,12 @@ public record FileRangeEdit(
 
 /// <summary>
 /// Applies coordinate-based batch edits across one or more files by writing
-/// directly to disk. Any open document reloads its buffer from disk after the
-/// write completes. The snippet-match counterparts for single-file edits are
-/// IEditFileCommand and IMultiEditFileCommand.
+/// directly to disk. Each edit's range refers to the file's text on disk. Any
+/// open document reloads its buffer from disk after the write completes, which
+/// clears the document's undo history. The snippet-match counterparts for
+/// single-file edits are IEditFileCommand and IMultiEditFileCommand.
 /// </summary>
-public interface IApplyRangeEditsCommand : IExecutableCommand
+public interface IApplyFileEditsCommand : IExecutableCommand
 {
     /// <summary>
     /// The list of file edits to apply. Each entry pairs a resource key with

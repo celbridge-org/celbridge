@@ -117,9 +117,7 @@ public partial class WorkspaceViewModel : ObservableObject
 
     public async Task LoadWorkspaceAsync()
     {
-        // Show the progress dialog with the project name
-        var projectName = _projectService.CurrentProject?.ProjectName ?? string.Empty;
-        var loadingProjectString = _stringLocalizer.GetString("Workspace_LoadingProject", projectName);
+        var loadingProjectString = _stringLocalizer.GetString("Workspace_LoadingProject");
         using var progressDialogToken = _dialogService.AcquireProgressDialog(loadingProjectString);
 
         // Time how long it takes to open the workspace

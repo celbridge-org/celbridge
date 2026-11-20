@@ -105,7 +105,7 @@ public class CelbridgeHostTests
     public async Task NotifyRenamedAsync_SendsTheNewNameAndPath()
     {
         _host.StartListening();
-        var metadata = new DocumentMetadata(@"C:\Acme\site\renamed.html", "project:site/renamed.html", "renamed.html", "en");
+        var metadata = new DocumentMetadata(@"C:\Acme\site\renamed.html", "project:site/renamed.html", "renamed.html", "en", "");
 
         await _host.NotifyRenamedAsync(metadata);
 

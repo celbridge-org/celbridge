@@ -533,7 +533,7 @@ internal class ProjectLoader : IProjectLoader
 
         // The token covers the rest of the load. The progress dialog then stays up from a dependency's install
         // until the workspace takes a second token, once the workspace's page has loaded.
-        var loadingTitle = _stringLocalizer.GetString("Workspace_LoadingProject", project.ProjectName);
+        var loadingTitle = _stringLocalizer.GetString("Workspace_LoadingProject");
         using var progressToken = _dialogService.AcquireProgressDialog(loadingTitle);
 
         await InstallDependenciesAsync(project);

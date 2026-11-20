@@ -1,10 +1,30 @@
 namespace Celbridge.Host;
 
 /// <summary>
-/// Metadata about the document being edited.
-/// Includes the locale for JS-side localization loading.
+/// Metadata about the document being edited. Includes the locale for JS-side localization loading. LanguageServer
+/// is the id of the language server that covers the document, and is empty when no server covers the document.
 /// </summary>
-public record DocumentMetadata(string FilePath, string ResourceKey, string FileName, string Locale);
+public record DocumentMetadata(
+    string FilePath,
+    string ResourceKey,
+    string FileName,
+    string Locale,
+    string LanguageServer);
+
+/// <summary>
+/// A range in an editor's text. Lines and columns count from 1.
+/// </summary>
+public record EditorRange(int StartLineNumber, int StartColumn, int EndLineNumber, int EndColumn);
+
+/// <summary>
+/// One edit to an editor's text: the range to replace and the new text.
+/// </summary>
+public record EditorTextEdit(EditorRange Range, string Text);
+
+/// <summary>
+/// Parameters of the editor/applyEdits request.
+/// </summary>
+public record ApplyEditsParams(IReadOnlyList<EditorTextEdit> Edits);
 
 /// <summary>
 /// Result of the document/initialize request.

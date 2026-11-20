@@ -171,7 +171,32 @@ Most editors can ignore `--cel-page-zoom`. On Windows the web engine folds the a
 
 The stylesheet also imports the Cascadia Mono face and applies the UI font, base text color, and content background to `body`. It gives common form controls — `<button>`, `<select>`, `<textarea>`, text `<input>`, checkboxes/radios, and range sliders — an approximate native Fluent look with no markup beyond the plain element; add `class="cel-accent"` to a button for the filled accent (primary) variant. Text-level elements are themed too: `<a>` links take the accent color, `<code>`/`<pre>`/`<kbd>` use the mono font, and placeholders, `::selection`, and `<hr>` follow the theme. These are bare-element rules with the lowest specificity, so an editor overrides any of them by id or class. Larger components (tables, dialogs, cards) are intentionally not pre-styled — build them from the tokens. Icons are opt-in: link `/assets/bootstrap-icons/bootstrap-icons.css` and use the `bi` classes (the same icon font the native chrome uses).
 
-Shared components sit above the bare-element rules, each mirroring a native control so a WebView surface reads as a peer of the XAML panels beside it: `.cel-expander` (a collapsible card), `.cel-splitter` (a draggable divider, driven by `attachSplitter()` from `ui/splitter.js`), `.field` (a settings form row, covered below), and the section switcher below. `celbridge.css` links all of them, and each is also `ui/<component>.css` on its own, importing whatever its component is built on so that one link is enough. What a sheet on its own cannot carry is the native look of a form control inside the component, because that look is the bare-element rules themselves. The console editor's settings surface is the reference for the rest — a real settings panel with real settings in it, built from these components and nothing else.
+Shared components sit above the bare-element rules. Each component mirrors a native control, so a WebView surface reads as a peer of the XAML panels beside the surface. The components are:
+
+- `.cel-expander`, a collapsible card.
+- `.cel-splitter`, a draggable divider, driven by `attachSplitter()` from `ui/splitter.js`.
+- `.cel-info-bar`, a message with an icon that shows how severe the message is, covered below.
+- `.field`, a settings form row, covered below.
+- The section switcher, covered below.
+
+`celbridge.css` links all of them. Each component is also served alone as `ui/<component>.css`. That sheet imports whatever the component is built on, so one link is enough. A component's sheet cannot carry the native look of a form control inside the component, because that look comes from the bare-element rules. The console editor's settings surface is the reference for the rest. The surface is a real settings panel with real settings in it, built from these components and nothing else.
+
+### Info bars
+
+To show the user a message about the editor, use `.cel-info-bar`. The info bar mirrors the native `InfoBar`. The two take their colors from the same tokens, so an editor's info bar matches the native ones in the rest of Celbridge.
+
+```html
+<div class="cel-info-bar" data-severity="warning">
+  <span class="cel-info-bar-title">Title</span>
+  <span class="cel-info-bar-message">What happened, and what the user can do about it.</span>
+  <button class="cel-info-bar-action" type="button">Action</button>
+  <button class="cel-icon-button cel-info-bar-close" type="button" title="Close" aria-label="Close">
+    <i class="bi bi-x-lg"></i>
+  </button>
+</div>
+```
+
+`data-severity` is `informational`, `success`, `warning` or `error`. A bar without `data-severity` is informational. Use `error` for something that failed, `warning` for something the editor had to ignore or cannot do, and `success` for an operation that finished. The bar draws the severity's icon itself. Only the message is required. The title, the message and the action share a row while they fit, and wrap onto more rows when they do not. The `hidden` attribute hides the bar. The editor wires the action and the close. The close's glyph needs the icon font linked.
 
 ### The settings surface
 
@@ -213,7 +238,8 @@ const switcher = attachSectionSwitcher(document.getElementById('switcher'));
 
 switcher.select('environment');   // e.g. when restoring view state
 switcher.selected();              // persist this in onRequestState(), with switcher.scrollTop()
-switcher.setNotice(message);      // show the notice slot, or hide it with an empty message
+switcher.setNotice(message);      // show the notice as a warning info bar. An empty message hides the notice.
+switcher.setNotice(message, { label, onClick });   // the notice with a button
 switcher.setReadOnly(true);       // disable every control inside the sections
 ```
 
@@ -221,7 +247,7 @@ The surface around the switcher supplies its height and its margin: `--cel-setti
 
 **Two layouts.** The switcher picks one from its own width and writes it to `data-layout` on the root. `inline` is the native layout: a labelled nav column beside the carved section. `stacked` puts the nav above the content as an icon strip, over a section that drops its border, and pins the footer below the content instead. The markup is the same in both — a row carries a glyph and a label, and `stacked` drops the label to the tooltip the row needs either way — so a panel written once survives being docked into a document tab and undocked back into a 300px utility panel. Write `data-layout="inline"` or `data-layout="stacked"` on the root to hold one of them.
 
-**The slots.** `.cel-section-notice` is pinned below the header and above the scrolling content, so what it says stays visible from whichever section is showing: a file that would not parse, a setting that cannot be honoured. `.cel-section-footer` carries an action belonging to the whole surface rather than to one section. It sits outside the sections and is deliberately not disabled by `setReadOnly()`, because a footer action operates on the surface, not on the file — which is what keeps the console's Reopen Console available on a read-only document.
+**The slots.** `.cel-section-notice` is pinned below the header and above the scrolling content. What the notice says stays visible from whichever section is showing. The switcher makes the notice a warning info bar. A surface can use the slot without the switcher. That surface marks the notice up as an info bar itself, and writes the message into a `.cel-info-bar-message` span. A notice reports a problem with the whole surface, for example a parse error in the file, or a setting the editor has to ignore. A notice can offer one button, for the action that resolves the problem. Pass `{ label, onClick }` as the second argument to `setNotice()`, and the button shows after the message. A later call without the argument hides the button. `.cel-section-footer` carries an action that belongs to the whole surface. The notice's button and the footer both sit outside the sections, and `setReadOnly()` leaves both enabled. These actions act on the surface, and leave the file alone. So the console's Reopen Console stays available on a read-only document.
 
 Add a `<span class="cel-section-nav-pip">` inside a row's `.cel-section-nav-icon` to flag that its section needs attention. Give a section its own row, header and section element, all carrying the same `data-section` id; a panel whose section set is not known ahead of time generates all three before attaching. The rows are named sections rather than icon tabs, so name them the way a settings category is named.
 

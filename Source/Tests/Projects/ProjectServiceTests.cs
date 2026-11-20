@@ -391,6 +391,14 @@ public class ProjectServiceTests
         project.IsProjectFile(new ResourceKey("temp:Newest.celbridge")).Should().BeFalse();
     }
 
+    [Test]
+    public void ProjectFileResource_IsTheProjectFileNameAtTheProjectRoot()
+    {
+        var project = LoadProjectNamed(NewestProject);
+
+        project.ProjectFileResource.Should().Be(new ResourceKey("Newest.celbridge"));
+    }
+
     // Loads a project through the real service so CurrentProject is populated the way the rename handler
     // finds it. The stubbed file system makes the config parse fail, which these tests do not care about.
     private IProject LoadProjectNamed(string projectFilePath)

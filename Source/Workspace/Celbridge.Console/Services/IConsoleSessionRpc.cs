@@ -6,8 +6,9 @@ namespace Celbridge.Console.Services;
 /// The outcome of a console/attach or console/reopen request: the session's run state
 /// ("starting" | "running" | "ended" | "failed"), the failure reason when failed, whether the startup
 /// phase is still pending (keep the starting veil up), the buffered output to replay, the terminal size
-/// that output was painted at, and the raw .console text the session launched from. The result also lists the
-/// session types that can start in the loaded project, with the built-in runners of each type.
+/// that output was painted at, and the raw .console text the session launched from. The result also lists every
+/// registered session type with the type's built-in runners. Each type says whether a console of the type can
+/// start in the loaded project.
 /// </summary>
 public sealed record ConsoleAttachResult(
     string State,

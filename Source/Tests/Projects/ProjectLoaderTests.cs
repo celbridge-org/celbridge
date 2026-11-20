@@ -137,7 +137,7 @@ public class ProjectLoaderTests
         result.IsSuccess.Should().BeTrue();
         Received.InOrder(() =>
         {
-            _dialogService.AcquireProgressDialog("Loading Acme");
+            _dialogService.AcquireProgressDialog("Loading Project");
             _dependencyService.InstallDependenciesAsync(features);
             _applicationShell.ShowWorkspaceAsync(Arg.Any<CancellationTokenSource>());
             progressToken.Dispose();

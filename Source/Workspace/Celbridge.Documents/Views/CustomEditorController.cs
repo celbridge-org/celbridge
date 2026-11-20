@@ -37,6 +37,10 @@ public sealed record CustomEditorFocusContext(FocusPanelId Panel, Action OnFocus
 public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarget
 {
     private const int SaveRequestTimeoutSeconds = 30;
+
+    // Edits change the document, so the wait for an editor to apply them matches a save's. The wait is bounded, so
+    // the serial command queue moves on from an editor that stays silent.
+    private const int EditRequestTimeoutSeconds = 30;
     private const int ReloadStateWaitSeconds = 5;
 
     // Editor-state capture/restore is best-effort (a user convenience, not data). Bound the wait so an
@@ -843,11 +847,16 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // Metadata is made only to send to the page, so this is the document the page is told it shows.
         _page.SetResource(_viewModel.FileResource);
 
+        var workspaceWrapper = _serviceProvider.GetRequiredService<IWorkspaceWrapper>();
+        var languageServerService = workspaceWrapper.WorkspaceService.LanguageServerService;
+        var languageServer = languageServerService.GetServerId(_viewModel.FileResource);
+
         var metaData = new DocumentMetadata(
             _viewModel.FilePath,
             _viewModel.FileResource.ToString(),
             Path.GetFileName(_viewModel.FilePath),
-            locale);
+            locale,
+            languageServer);
 
         return metaData;
     }
@@ -1190,6 +1199,59 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         catch (Exception ex)
         {
             return Result.Fail($"Failed to navigate to location: {location}")
+                .WithException(ex);
+        }
+    }
+
+    /// <summary>
+    /// Asks the editor to apply edits to the document's text, as one step in its undo history. Fails until the
+    /// editor has loaded the document. Also fails when the editor refuses the edits, or answers too late.
+    /// </summary>
+    public async Task<Result> ApplyEditsAsync(IReadOnlyList<RangeEdit> edits)
+    {
+        // Until the page reports its load, the page's text is not the document's, and the content load would
+        // replace any edit.
+        var host = Host;
+        if (host is null
+            || !_page.IsLoaded)
+        {
+            return Result.Fail("The editor has not loaded the document yet");
+        }
+
+        var editorEdits = new List<EditorTextEdit>();
+        foreach (var edit in edits)
+        {
+            // The editor clamps a column past the end of a line to the line's end.
+            var endColumn = edit.EndColumn == -1 ? int.MaxValue : edit.EndColumn;
+            var range = new EditorRange(edit.Line, edit.Column, edit.EndLine, endColumn);
+            editorEdits.Add(new EditorTextEdit(range, edit.NewText));
+        }
+
+        var parameters = new ApplyEditsParams(editorEdits);
+        var applyTask = host.Rpc.InvokeWithParameterObjectAsync<bool>(EditorRpcMethods.ApplyEdits, parameters);
+        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(EditRequestTimeoutSeconds));
+        var completedTask = await Task.WhenAny(applyTask, timeoutTask);
+
+        if (completedTask != applyTask)
+        {
+            AbandonedTaskObserver.Observe(applyTask);
+
+            return Result.Fail($"The editor did not apply the edits within {EditRequestTimeoutSeconds} seconds. File: {_viewModel.FilePath}");
+        }
+
+        try
+        {
+            var applied = await applyTask;
+            if (!applied)
+            {
+                return Result.Fail("The editor refused the edits");
+            }
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail("Failed to apply edits in the editor")
                 .WithException(ex);
         }
     }

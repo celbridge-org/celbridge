@@ -16,7 +16,8 @@ namespace Celbridge.Tests.Console;
 
 /// <summary>
 /// Covers a session type that needs a project feature. A console of the type starts only while the loaded project
-/// has the feature enabled. While the feature is disabled, the service leaves the type out of the types it reports.
+/// has the feature enabled. While the feature is disabled, the service still reports the type, marked as
+/// unavailable.
 /// </summary>
 [TestFixture]
 public class ConsoleSessionFeatureTests
@@ -89,18 +90,18 @@ public class ConsoleSessionFeatureTests
     }
 
     [Test]
-    public async Task FeatureOff_TheConsoleFailsWithTheTypesNotice()
+    public async Task FeatureDisabled_TheConsoleFailsWithTheDisabledNotice()
     {
         _featureFlags.IsEnabled(FeatureFlagCatalog.Python).Returns(false);
 
         var snapshot = await AttachAsync();
 
         snapshot.State.Should().Be(ConsoleSessionRunState.Failed);
-        snapshot.Error.Should().Be(new TestLocalizerService().GetString("Console_Disabled_Python"));
+        snapshot.Error.Should().Be(new TestLocalizerService().GetString("Console_TypeDisabled"));
     }
 
     [Test]
-    public async Task FeatureOff_TheProviderNeverRuns()
+    public async Task FeatureDisabled_TheProviderNeverRuns()
     {
         _featureFlags.IsEnabled(FeatureFlagCatalog.Python).Returns(false);
 
@@ -110,7 +111,7 @@ public class ConsoleSessionFeatureTests
     }
 
     [Test]
-    public async Task FeatureOff_TheConsoleLogsNoWarning()
+    public async Task FeatureDisabled_TheConsoleLogsNoWarning()
     {
         _featureFlags.IsEnabled(FeatureFlagCatalog.Python).Returns(false);
 
@@ -121,7 +122,7 @@ public class ConsoleSessionFeatureTests
     }
 
     [Test]
-    public async Task FeatureOn_TheProviderBuildsTheStartup()
+    public async Task FeatureEnabled_TheProviderBuildsTheStartup()
     {
         var snapshot = await AttachAsync();
 
@@ -130,22 +131,44 @@ public class ConsoleSessionFeatureTests
     }
 
     [Test]
-    public void GetSessionTypes_LeavesOutATypeWhoseFeatureIsDisabled()
+    public void GetSessionTypes_ListsATypeWhoseFeatureIsDisabled()
     {
-        SessionTypeIds().Should().Equal("shell", "python");
-
         _featureFlags.IsEnabled(FeatureFlagCatalog.Python).Returns(false);
 
-        SessionTypeIds().Should().Equal("shell");
-    }
-
-    private IReadOnlyList<string> SessionTypeIds()
-    {
         var typeIds = _sessionService.GetSessionTypes()
             .Select(sessionType => sessionType.TypeId)
             .ToList();
 
-        return typeIds;
+        typeIds.Should().Equal("shell", "python");
+    }
+
+    [Test]
+    public void GetSessionTypes_MarksATypeWhoseFeatureIsDisabledAsUnavailable()
+    {
+        _featureFlags.IsEnabled(FeatureFlagCatalog.Python).Returns(false);
+
+        var availability = Availability();
+
+        availability["shell"].Should().BeTrue();
+        availability["python"].Should().BeFalse();
+    }
+
+    [Test]
+    public void GetSessionTypes_MarksEveryTypeAvailableWhileTheFeatureIsEnabled()
+    {
+        var availability = Availability();
+
+        availability.Values.Should().AllSatisfy(isAvailable => isAvailable.Should().BeTrue());
+    }
+
+    private IReadOnlyDictionary<string, bool> Availability()
+    {
+        var availability = _sessionService.GetSessionTypes()
+            .ToDictionary(
+                sessionType => sessionType.TypeId,
+                sessionType => sessionType.IsAvailable);
+
+        return availability;
     }
 
     private static IConsoleSessionProvider CreateProvider(string typeId, FeatureFlagDescriptor? feature)

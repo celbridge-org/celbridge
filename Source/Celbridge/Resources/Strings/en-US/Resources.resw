@@ -854,13 +854,13 @@ This file could not be saved</value>
   <data name="Documents_OpenDocumentFailedGeneric" xml:space="preserve">
     <value>An error occurred while attempting to open '{0}'.</value>
   </data>
-  <data name="Documents_ApplyRangeEditsFailedTitle" xml:space="preserve">
+  <data name="Documents_ApplyFileEditsFailedTitle" xml:space="preserve">
     <value>Text Replace Failed</value>
   </data>
-  <data name="Documents_ApplyRangeEditsFailedSingle" xml:space="preserve">
+  <data name="Documents_ApplyFileEditsFailedSingle" xml:space="preserve">
     <value>An error occurred while attempting to apply text replacements to '{0}'.</value>
   </data>
-  <data name="Documents_ApplyRangeEditsFailedMultiple" xml:space="preserve">
+  <data name="Documents_ApplyFileEditsFailedMultiple" xml:space="preserve">
     <value>An error occurred while attempting to apply text replacements to {0} file(s).</value>
   </data>
   <data name="Documents_UnsupportedFileFormatTitle" xml:space="preserve">
@@ -1060,7 +1060,7 @@ Open with default application instead?</value>
     <value>Project settings cannot be shown until the file is valid. Open it as text to repair it, then reload the project.</value>
   </data>
   <data name="ProjectSettings_SafeModeCaption" xml:space="preserve">
-    <value>Safe Mode is on. Most features are switched off.</value>
+    <value>Safe Mode is on. Most features are disabled.</value>
   </data>
   <data name="ProjectSettings_SafeModeHeader" xml:space="preserve">
     <value>Safe Mode</value>
@@ -1210,7 +1210,7 @@ Open with default application instead?</value>
     <value>Opens the file every time the project loads, even if it was closed in the last session.</value>
   </data>
   <data name="ProjectSettings_ShortcutOpenOnLoadTooltip" xml:space="preserve">
-    <value>Off by default</value>
+    <value>Disabled by default</value>
   </data>
   <data name="ProjectSettings_ShortcutRailButtonLabel" xml:space="preserve">
     <value>Show Utility Button</value>
@@ -1219,7 +1219,7 @@ Open with default application instead?</value>
     <value>Adds a Utility button that opens the file.</value>
   </data>
   <data name="ProjectSettings_ShortcutRailButtonTooltip" xml:space="preserve">
-    <value>On by default</value>
+    <value>Enabled by default</value>
   </data>
   <data name="ProjectSettings_WorkspaceArea_Main" xml:space="preserve">
     <value>Main Panel</value>
@@ -1234,13 +1234,13 @@ Open with default application instead?</value>
     <value>Features</value>
   </data>
   <data name="ProjectSettings_FeatureFlagsDescription" xml:space="preserve">
-    <value>Turn advanced features on or off.</value>
+    <value>Enable or disable advanced features.</value>
   </data>
   <data name="ProjectSettings_FeatureFlagDefaultOnTooltip" xml:space="preserve">
-    <value>On by default</value>
+    <value>Enabled by default</value>
   </data>
   <data name="ProjectSettings_FeatureFlagDefaultOffTooltip" xml:space="preserve">
-    <value>Off by default</value>
+    <value>Disabled by default</value>
   </data>
   <data name="ProjectSettings_FeatureFlagsResetButton" xml:space="preserve">
     <value>Reset to Defaults</value>
@@ -1286,6 +1286,12 @@ Open with default application instead?</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_Python_Description" xml:space="preserve">
     <value>Python consoles, for running Python scripts that call Celbridge. Celbridge downloads Python the first time a project needs it.</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_TypeScript_Title" xml:space="preserve">
+    <value>TypeScript and JavaScript</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_TypeScript_Description" xml:space="preserve">
+    <value>Code editor support for TypeScript and JavaScript files that understands the whole project. Celbridge downloads TypeScript the first time a project needs it.</value>
   </data>
   <data name="ProjectSettings_CelbridgeVersionLabel" xml:space="preserve">
     <value>Celbridge Version</value>
@@ -1752,7 +1758,7 @@ Open with default application instead?</value>
     <value>A file name is required</value>
   </data>
   <data name="Workspace_LoadingProject" xml:space="preserve">
-    <value>Loading {0}</value>
+    <value>Loading Project</value>
   </data>
   <data name="Dependency_Uv_Name" xml:space="preserve">
     <value>uv</value>
@@ -1760,14 +1766,20 @@ Open with default application instead?</value>
   <data name="Dependency_Uv_ProgressTitle" xml:space="preserve">
     <value>Downloading uv</value>
   </data>
+  <data name="Dependency_TypeScript_Name" xml:space="preserve">
+    <value>TypeScript</value>
+  </data>
+  <data name="Dependency_TypeScript_ProgressTitle" xml:space="preserve">
+    <value>Downloading TypeScript</value>
+  </data>
   <data name="Dependency_CelbridgeWheel_Name" xml:space="preserve">
     <value>Python support</value>
   </data>
   <data name="Dependency_CelbridgeWheel_ProgressTitle" xml:space="preserve">
-    <value>Installing Python support</value>
+    <value>Installing Python Support</value>
   </data>
-  <data name="Console_Disabled_Python" xml:space="preserve">
-    <value>Python is disabled in this project. The Python setting is in the Features section of Project Settings.</value>
+  <data name="Console_TypeDisabled" xml:space="preserve">
+    <value>This console type is disabled in this project. The setting is in the Features section of Project Settings.</value>
   </data>
   <data name="Template_Empty_Name" xml:space="preserve">
     <value>Empty Project</value>

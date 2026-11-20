@@ -237,6 +237,13 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         return Result.Ok();
     }
 
+    public async Task<Result> ApplyEdits(IReadOnlyList<RangeEdit> edits)
+    {
+        await Task.CompletedTask;
+
+        return Result.Fail("Project Settings does not edit text");
+    }
+
     public IEditTarget EditTarget { get; } = new DisabledEditTarget();
 
     public void FocusDocument()

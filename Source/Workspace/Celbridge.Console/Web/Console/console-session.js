@@ -20,6 +20,7 @@ export function createConsoleSession({ client, term, settings, fitTerminal, wait
     const sessionFailed = document.getElementById('session-failed');
     const sessionFailedMessage = document.getElementById('session-failed-message');
     const reopenTerminalButton = document.getElementById('reopen-terminal');
+    const openProjectSettingsButton = document.getElementById('open-project-settings');
 
     let veilTimeout = null;
     let veilFadeTimer = null;
@@ -85,6 +86,18 @@ export function createConsoleSession({ client, term, settings, fitTerminal, wait
         sessionFailedMessage.textContent = message;
         sessionFailed.classList.remove('hidden');
         settings.setSessionFailure(message);
+        applyDisabledTypeActions();
+    }
+
+    // The loaded project can disable a session's type. A session of that type fails to start. A reopen would fail
+    // the same way, because a change to the type's feature applies only when the project reloads. The reload also
+    // restarts the session. So for a disabled type, the overlay shows Open Project Settings and hides Reopen Console.
+    // To start the console with another type, the user changes the type in the settings. The Reopen button in the
+    // settings then takes the accent.
+    function applyDisabledTypeActions() {
+        const isTypeDisabled = settings.isSessionTypeDisabled();
+        openProjectSettingsButton.classList.toggle('hidden', !isTypeDisabled);
+        reopenTerminalButton.classList.toggle('hidden', isTypeDisabled);
     }
 
     function hideSessionFailed() {
@@ -153,7 +166,7 @@ export function createConsoleSession({ client, term, settings, fitTerminal, wait
     // Renders an attach or reopen outcome: the launched config drives the pip, the replay fills the
     // terminal, and the state decides between the veil, the failed overlay, and a live prompt.
     function applyAttachResult(result) {
-        // The session types that can start in the loaded project ride along with the attach.
+        // The attach result lists every registered session type, with the type's availability in the loaded project.
         if (result && Array.isArray(result.sessionTypes)) {
             settings.setSessionTypes(result.sessionTypes);
         }
@@ -230,7 +243,7 @@ export function createConsoleSession({ client, term, settings, fitTerminal, wait
             try {
                 await settings.save();
             } catch (error) {
-                console.error('[Console] Failed to flush the config before reopen:', error);
+                client.log.error('[Console] Failed to flush the config before reopen', error);
             }
 
             const isSized = fitTerminal();
@@ -246,6 +259,8 @@ export function createConsoleSession({ client, term, settings, fitTerminal, wait
     }
 
     reopenTerminalButton.addEventListener('click', () => { reopen(); });
+
+    openProjectSettingsButton.addEventListener('click', () => { settings.openProjectSettings(); });
 
     return {
         attach,

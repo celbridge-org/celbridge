@@ -31,10 +31,9 @@
 
         <div id="about-popover" class="about-popover" popover data-loc-key="SFX_About"></div>
 
-        <div id="notice" class="notice" hidden>
-            <i class="bi bi-info-circle"></i>
-            <span id="notice-text"></span>
-            <button id="notice-dismiss" class="cel-icon-button" type="button" hidden
+        <div id="notice" class="notice cel-info-bar" data-severity="warning" hidden>
+            <span id="notice-text" class="cel-info-bar-message"></span>
+            <button id="notice-dismiss" class="cel-icon-button cel-info-bar-close" type="button" hidden
                     data-loc-key="SFX_Dismiss" data-loc-attr="title,aria-label"><i class="bi bi-x-lg"></i></button>
         </div>
 
