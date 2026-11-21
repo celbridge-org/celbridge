@@ -12,7 +12,7 @@ namespace Celbridge.LanguageServers.Services;
 /// One running language server and the pages connected to it. The session is the server's one Language Server
 /// Protocol client, and every page reaches the server through the session.
 /// </summary>
-internal sealed class LanguageServerSession
+internal sealed class LanguageServerSession : IFileChangeReceiver
 {
     private enum SessionState
     {
@@ -86,6 +86,9 @@ internal sealed class LanguageServerSession
     private readonly Lock _lock = new();
     private readonly List<PageConnection> _pages = new();
     private readonly Dictionary<long, PendingRequest> _pendingRequests = new();
+
+    // The file changes reported before the server is ready.
+    private readonly List<FileEvent> _waitingFileEvents = new();
 
     private SessionState _state = SessionState.Starting;
     private long _nextRequestId = 1;
@@ -263,6 +266,26 @@ internal sealed class LanguageServerSession
                 // documents may change.
                 RequestDiagnosticsRound();
             }
+        }
+    }
+
+    public void ReportFileChanges(IReadOnlyList<FileEvent> fileEvents)
+    {
+        lock (_lock)
+        {
+            if (_state == SessionState.Starting)
+            {
+                // A server accepts notifications only after the server has answered initialize.
+                _waitingFileEvents.AddRange(fileEvents);
+                return;
+            }
+
+            if (_state != SessionState.Ready)
+            {
+                return;
+            }
+
+            SendNotification(LspMethods.DidChangeWatchedFiles, new DidChangeWatchedFilesParams(fileEvents));
         }
     }
 
@@ -597,6 +620,13 @@ internal sealed class LanguageServerSession
 
         SendNotification(LspMethods.Initialized, new JsonObject());
         _state = SessionState.Ready;
+
+        if (_waitingFileEvents.Count > 0)
+        {
+            var waitingFileEvents = new List<FileEvent>(_waitingFileEvents);
+            _waitingFileEvents.Clear();
+            SendNotification(LspMethods.DidChangeWatchedFiles, new DidChangeWatchedFilesParams(waitingFileEvents));
+        }
 
         _logger.LogInformation("The language server '{ServerId}' is ready", ServerId);
 

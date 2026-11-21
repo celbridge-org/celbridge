@@ -18,6 +18,8 @@ public static class ServiceConfiguration
 
         services.AddSingleton<UvDependency>();
         services.AddSingleton<CelbridgeWheelDependency>();
+        services.AddSingleton<BasedpyrightDependency>();
+        services.AddSingleton<IPythonLanguageServerEnvironment, PythonLanguageServerEnvironment>();
         services.AddSingleton<IFeatureDependencies, PythonFeatureDependencies>();
     }
 

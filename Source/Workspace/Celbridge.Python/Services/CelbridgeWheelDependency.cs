@@ -18,8 +18,6 @@ public sealed class CelbridgeWheelDependency : IDependency
 {
     private const string WheelFilePattern = "celbridge-*.whl";
     private const string PythonModuleFolder = "Celbridge.Python";
-    private const string PythonExecutableNameWindows = "python.exe";
-    private const string PyVenvHomeKey = "home";
 
     // The timeout is generous. The first install on a machine downloads an interpreter and the tool's packages
     // before publishing anything.
@@ -261,74 +259,30 @@ public sealed class CelbridgeWheelDependency : IDependency
     // still matches.
     private async Task<bool> IsToolInstalledAsync()
     {
-        var interpreterHomePath = await ReadToolInterpreterHomeAsync();
-        if (string.IsNullOrEmpty(interpreterHomePath))
-        {
-            _logger.LogDebug("The celbridge tool is not installed: '{Path}' is missing or has no home key",
-                _folders.CelbridgeToolConfigPath);
-            return false;
-        }
-
-        // On Windows the environment's own interpreter is a launcher, and the launcher outlives the interpreter it
-        // starts. A junction to a deleted folder also still reads as a folder. So the check looks for the
-        // interpreter itself.
-        var sharedInterpreter = OperatingSystem.IsWindows()
-            ? (Path.Combine(interpreterHomePath, PythonExecutableNameWindows), StorageItemKind.File)
-            : (interpreterHomePath, StorageItemKind.Folder);
-
         var requiredItems = new[]
         {
-            (_folders.CelbridgeToolCommandPath, StorageItemKind.File),
-            (_folders.CelbridgeToolInterpreterPath, StorageItemKind.File),
-            sharedInterpreter,
+            _folders.CelbridgeToolCommandPath,
+            _folders.CelbridgeToolInterpreterPath,
         };
 
-        foreach (var (path, kind) in requiredItems)
+        foreach (var path in requiredItems)
         {
-            if (await _fileSystem.GetKindAsync(path) != kind)
+            if (await _fileSystem.GetKindAsync(path) != StorageItemKind.File)
             {
                 _logger.LogDebug("The celbridge tool is not installed: '{Path}' is missing", path);
                 return false;
             }
         }
 
+        var toolInterpreter = new ToolEnvironmentInterpreter(_fileSystem);
+        if (!await toolInterpreter.ExistsAsync(_folders.CelbridgeToolConfigPath))
+        {
+            _logger.LogDebug("The celbridge tool is not installed: the interpreter named by '{Path}' is missing",
+                _folders.CelbridgeToolConfigPath);
+            return false;
+        }
+
         return true;
-    }
-
-    // Reads the folder of the tool environment's interpreter from the environment's pyvenv.cfg.
-    private async Task<string?> ReadToolInterpreterHomeAsync()
-    {
-        var readResult = await _fileSystem.ReadAllTextAsync(_folders.CelbridgeToolConfigPath);
-        if (readResult.IsFailure)
-        {
-            return null;
-        }
-        var configText = readResult.Value;
-
-        return ReadPyVenvHome(configText);
-    }
-
-    // Returns the value of the home key in the text of a pyvenv.cfg, or null when the text has no home key.
-    internal static string? ReadPyVenvHome(string configText)
-    {
-        foreach (var line in configText.Split('\n'))
-        {
-            var separatorIndex = line.IndexOf('=');
-            if (separatorIndex < 0)
-            {
-                continue;
-            }
-
-            var key = line[..separatorIndex].Trim();
-            if (!key.Equals(PyVenvHomeKey, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            return line[(separatorIndex + 1)..].Trim();
-        }
-
-        return null;
     }
 
     // Returns the content of the installed folder's version marker. The content lists every input of the install:
@@ -451,61 +405,15 @@ public sealed class CelbridgeWheelDependency : IDependency
             ["UV_CACHE_DIR"] = _folders.UvCacheFolderPath,
         };
 
-        var onlineInstall = new UvInvocation(arguments, variables, ToolInstallTimeout);
-        var onlineResult = await RunToolInstallAsync(onlineInstall);
-        if (onlineResult.IsFailure)
+        var installer = new UvToolInstaller(_uvRunner, _logger);
+        var installResult = await installer.InstallAsync(arguments, variables, ToolInstallTimeout);
+        if (installResult.IsFailure)
         {
-            // The install pins no package versions, so uv asks the package index for the newest ones. When the
-            // network is down, uv gives up after three retries. Offline, uv installs from its cache, which keeps the
-            // packages and the interpreter of an earlier install.
-            _logger.LogInformation("Running the uv tool install again offline");
-
-            var offlineInstall = onlineInstall with { Arguments = [.. arguments, "--offline"] };
-            var offlineResult = await RunToolInstallAsync(offlineInstall);
-            if (offlineResult.IsFailure)
-            {
-                return Result.Fail("The uv tool install failed online and offline")
-                    .WithErrors(onlineResult)
-                    .WithErrors(offlineResult);
-            }
+            return installResult;
         }
 
         _logger.LogInformation("celbridge tool installed successfully in {DurationMs}ms", installTimer.ElapsedMilliseconds);
         _automationService.LogEvent(new PythonToolInstalledEvent(installTimer.ElapsedMilliseconds));
-
-        return Result.Ok();
-    }
-
-    private async Task<Result> RunToolInstallAsync(UvInvocation invocation)
-    {
-        var runTimer = Stopwatch.StartNew();
-
-        var runResult = await _uvRunner.RunAsync(invocation);
-        if (runResult.IsFailure)
-        {
-            return Result.Fail("Failed to run the uv tool install")
-                .WithErrors(runResult);
-        }
-        var outcome = runResult.Value;
-        var standardError = outcome.StandardError.Trim();
-
-        if (outcome.TimedOut)
-        {
-            _logger.LogWarning("The uv tool install timed out after {Timeout} minutes. Stderr: {Stderr}. Stdout: {Stdout}",
-                invocation.Timeout.TotalMinutes, outcome.StandardError, outcome.StandardOutput);
-
-            return Result.Fail($"The uv tool install timed out after {invocation.Timeout.TotalMinutes} minutes. {standardError}");
-        }
-
-        if (outcome.ExitCode != 0)
-        {
-            _logger.LogWarning("The uv tool install exited with code {ExitCode} after {DurationMs}ms. Stderr: {Stderr}. Stdout: {Stdout}",
-                outcome.ExitCode, runTimer.ElapsedMilliseconds, outcome.StandardError, outcome.StandardOutput);
-
-            return Result.Fail($"The uv tool install exited with code {outcome.ExitCode}. {standardError}");
-        }
-
-        _logger.LogInformation("The uv tool install succeeded in {DurationMs}ms", runTimer.ElapsedMilliseconds);
 
         return Result.Ok();
     }

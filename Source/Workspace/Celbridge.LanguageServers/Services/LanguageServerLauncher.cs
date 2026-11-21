@@ -78,6 +78,11 @@ internal sealed class LanguageServerLauncher : ILanguageServerLauncher, IDisposa
             startInfo.ArgumentList.Add(argument);
         }
 
+        foreach (var name in invocation.RemovedEnvironmentVariables)
+        {
+            startInfo.Environment.Remove(name);
+        }
+
         foreach (var (name, value) in invocation.EnvironmentVariables)
         {
             startInfo.Environment[name] = value;

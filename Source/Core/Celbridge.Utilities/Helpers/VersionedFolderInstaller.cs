@@ -53,47 +53,9 @@ public sealed class VersionedFolderInstaller
                 .WithErrors(downloadResult);
         }
 
-        await DeleteOtherVersionsAsync(folderPath);
+        var cleaner = new VersionedFolderCleaner(_fileSystem, _logger);
+        await cleaner.DeleteOtherVersionsAsync(folderPath);
 
         return Result.Ok();
-    }
-
-    // Deletes only the folders named by a version, so another copy of Celbridge keeps the temporary folder of a
-    // download in progress. A folder that fails to delete is logged and stays in place.
-    private async Task DeleteOtherVersionsAsync(string installedFolderPath)
-    {
-        var versionsFolderPath = Path.GetDirectoryName(installedFolderPath);
-        if (string.IsNullOrEmpty(versionsFolderPath))
-        {
-            return;
-        }
-        var installedVersion = Path.GetFileName(installedFolderPath);
-
-        var enumerateResult = await _fileSystem.EnumerateAsync(versionsFolderPath, "*", recursive: false);
-        if (enumerateResult.IsFailure)
-        {
-            _logger.LogWarning(enumerateResult, $"Failed to list the versions in '{versionsFolderPath}'");
-            return;
-        }
-
-        foreach (var entry in enumerateResult.Value)
-        {
-            var folderName = Path.GetFileName(entry.FullPath);
-            if (!entry.IsFolder
-                || folderName == installedVersion
-                || !SemanticVersion.TryParse(folderName, out _))
-            {
-                continue;
-            }
-
-            var deleteResult = await _fileSystem.DeleteFolderAsync(entry.FullPath, recursive: true);
-            if (deleteResult.IsFailure)
-            {
-                _logger.LogWarning(deleteResult, $"Failed to delete the folder '{entry.FullPath}'");
-                continue;
-            }
-
-            _logger.LogInformation("Deleted the folder '{Folder}'", entry.FullPath);
-        }
     }
 }

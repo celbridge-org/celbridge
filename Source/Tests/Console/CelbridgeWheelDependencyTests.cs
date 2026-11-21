@@ -84,7 +84,7 @@ public class CelbridgeWheelDependencyTests
             "implementation = CPython\r\n" +
             "version_info = 3.13.12\r\n";
 
-        var home = CelbridgeWheelDependency.ReadPyVenvHome(configText);
+        var home = ToolEnvironmentInterpreter.ReadPyVenvHome(configText);
 
         home.Should().Be(@"C:\Store\cpython-3.13-windows-x86_64-none");
     }
@@ -96,7 +96,7 @@ public class CelbridgeWheelDependencyTests
             "implementation = CPython\n" +
             "extends-environment = /store/cpython-3.13-macos-aarch64-none/bin\n";
 
-        var home = CelbridgeWheelDependency.ReadPyVenvHome(configText);
+        var home = ToolEnvironmentInterpreter.ReadPyVenvHome(configText);
 
         home.Should().BeNull();
     }

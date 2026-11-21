@@ -4,13 +4,22 @@ using Celbridge.Settings;
 namespace Celbridge.LanguageServers.Services;
 
 /// <summary>
-/// How to start a language server: the executable's absolute path, the arguments and the environment variables
-/// added to Celbridge's own.
+/// How to start a language server: the executable's absolute path and the arguments. The server's environment is
+/// Celbridge's own, with the added variables set and the removed variables left out.
 /// </summary>
 public sealed record LanguageServerInvocation(
     string ExecutablePath,
     IReadOnlyList<string> Arguments,
-    IReadOnlyDictionary<string, string> EnvironmentVariables);
+    IReadOnlyDictionary<string, string> EnvironmentVariables,
+    IReadOnlyList<string> RemovedEnvironmentVariables);
+
+/// <summary>
+/// Names files by extension and by name. The language client reports each change on disk to one of the files to a
+/// server. An extension is lowercase and starts with a dot, and a name is lowercase.
+/// </summary>
+public sealed record ReportedFiles(
+    IReadOnlySet<string> Extensions,
+    IReadOnlySet<string> FileNames);
 
 /// <summary>
 /// A language server for Celbridge to run.
@@ -32,6 +41,12 @@ public interface ILanguageServerDefinition
     /// extension. An extension is lowercase and starts with a dot.
     /// </summary>
     IReadOnlyDictionary<string, string> LanguageIds { get; }
+
+    /// <summary>
+    /// Returns the files to report to the server when one of them changes on disk. Returns null for a server that
+    /// watches the project's files itself.
+    /// </summary>
+    ReportedFiles? ReportedFiles { get; }
 
     /// <summary>
     /// Returns how to start the server over stdio.

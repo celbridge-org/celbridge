@@ -24,6 +24,8 @@ public class LanguageServerServiceTests
         : "/Projects/Acme";
 
     private FakeLauncher _launcher = null!;
+    private FakeResourceMonitor _monitor = null!;
+    private ILanguageServerDefinition _definition = null!;
     private IFeatureFlags _featureFlags = null!;
     private FakeTimeProvider _timeProvider = null!;
     private LanguageServerService _service = null!;
@@ -60,6 +62,14 @@ public class LanguageServerServiceTests
         workspaceWrapper.HasWorkspaceService.Returns(true);
         workspaceWrapper.WorkspaceService.ResourceService.RootHandlers.Returns(rootHandlers);
 
+        // The project's folders are empty, so a file change reporter lists nothing.
+        _monitor = new FakeResourceMonitor();
+        var walker = Substitute.For<IResourceWalker>();
+        walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IReadOnlyList<WalkedItem>>.Ok(new List<WalkedItem>()));
+        workspaceWrapper.WorkspaceService.ResourceService.Monitor.Returns(_monitor);
+        workspaceWrapper.WorkspaceService.ResourceService.Walker.Returns(walker);
+
         var appEnvironment = Substitute.For<IAppEnvironment>();
         appEnvironment.GetEnvironmentInfo().Returns(new EnvironmentInfo("1.8.0", "Windows", "Debug"));
 
@@ -72,7 +82,9 @@ public class LanguageServerServiceTests
             [".tsx"] = "typescriptreact",
         });
         definition.CreateInvocation().Returns(
-            new LanguageServerInvocation("fake-server", new List<string>(), new Dictionary<string, string>()));
+            new LanguageServerInvocation("fake-server", new List<string>(), new Dictionary<string, string>(), new List<string>()));
+
+        _definition = definition;
 
         var definitions = new List<ILanguageServerDefinition>
         {
@@ -159,6 +171,60 @@ public class LanguageServerServiceTests
         _launcher.WorkingFolderPaths.Should().Equal(ProjectFolderPath);
         ((string?)mainReady["method"]).Should().Be("celbridge/serverReady");
         ((string?)viewReady["method"]).Should().Be("celbridge/serverReady");
+    }
+
+    [Test]
+    public void ConnectPage_ADefinitionWithoutReportedFiles_FollowsNoFileChanges()
+    {
+        using var page = _service.ConnectPage(new ResourceKey("src/main.ts"));
+
+        _launcher.Servers.Should().HaveCount(1);
+        _monitor.MatcherSubscriptions.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task ConnectPage_ADefinitionWithReportedFiles_ReportsAFileChangeToTheServer()
+    {
+        SetReportedFiles();
+        using var page = _service.ConnectPage(new ResourceKey("src/main.ts"));
+        var server = _launcher.Servers[0];
+        await server.CompleteInitializeAsync(new JsonObject());
+
+        _monitor.MatcherSubscriptions.Should().HaveCount(1);
+        _monitor.DeliverChange("src/other.ts", ResourceItemState.File);
+        var notification = await server.ReadMethodAsync("workspace/didChangeWatchedFiles");
+
+        var changes = notification["params"]!["changes"]!.AsArray();
+        changes.Should().HaveCount(1);
+        ((string?)changes[0]!["uri"]).Should().EndWith("/src/other.ts");
+    }
+
+    [Test]
+    public async Task AServerThatEnds_StopsFollowingFileChanges()
+    {
+        SetReportedFiles();
+        using var page = _service.ConnectPage(new ResourceKey("src/main.ts"));
+        var server = _launcher.Servers[0];
+        await server.CompleteInitializeAsync(new JsonObject());
+        await ReadPageAsync(page);
+
+        server.Exit();
+        var lastMessage = await page.ReadNextAsync(CancellationToken.None).AsTask().WaitAsync(ReadTimeout);
+
+        lastMessage.Should().BeNull();
+        _monitor.MatcherSubscriptions.Should().BeEmpty();
+    }
+
+    [Test]
+    public void Dispose_StopsFollowingFileChanges()
+    {
+        SetReportedFiles();
+        using var page = _service.ConnectPage(new ResourceKey("src/main.ts"));
+        _monitor.MatcherSubscriptions.Should().HaveCount(1);
+
+        _service.Dispose();
+
+        _monitor.MatcherSubscriptions.Should().BeEmpty();
     }
 
     [Test]
@@ -294,6 +360,12 @@ public class LanguageServerServiceTests
         message.Should().NotBeNull("the page should get another message");
 
         return JsonNode.Parse(message!)!.AsObject();
+    }
+
+    private void SetReportedFiles()
+    {
+        var reportedFiles = new ReportedFiles(new HashSet<string> { ".ts" }, new HashSet<string>());
+        _definition.ReportedFiles.Returns(reportedFiles);
     }
 
     private sealed class FakeLauncher : ILanguageServerLauncher

@@ -97,6 +97,39 @@ public class LanguageServerSessionTests
     }
 
     [Test]
+    public async Task ReportFileChanges_AfterTheServerIsReady_SendsAWatchedFilesNotification()
+    {
+        var session = await StartReadySessionAsync();
+
+        session.ReportFileChanges(new[] { new FileEvent(MainUri, 1), new FileEvent(OtherUri, 3) });
+        var notification = await _server.ReadMethodAsync("workspace/didChangeWatchedFiles");
+
+        var changes = notification["params"]!["changes"]!.AsArray();
+        changes.Should().HaveCount(2);
+        ((string?)changes[0]!["uri"]).Should().Be(MainUri);
+        ((int)changes[0]!["type"]!).Should().Be(1);
+        ((string?)changes[1]!["uri"]).Should().Be(OtherUri);
+        ((int)changes[1]!["type"]!).Should().Be(3);
+    }
+
+    [Test]
+    public async Task ReportFileChanges_BeforeTheServerIsReady_WaitsForTheServersAnswer()
+    {
+        var session = CreateSession();
+        session.Start();
+
+        session.ReportFileChanges(new[] { new FileEvent(MainUri, 1) });
+        session.ReportFileChanges(new[] { new FileEvent(OtherUri, 1) });
+        await _server.CompleteInitializeAsync(new JsonObject());
+        var notification = await _server.ReadMethodAsync("workspace/didChangeWatchedFiles");
+
+        var changes = notification["params"]!["changes"]!.AsArray();
+        changes.Should().HaveCount(2);
+        ((string?)changes[0]!["uri"]).Should().Be(MainUri);
+        ((string?)changes[1]!["uri"]).Should().Be(OtherUri);
+    }
+
+    [Test]
     public async Task AddPage_AfterTheServerIsReady_GetsTheCapabilitiesAtOnce()
     {
         var session = await StartReadySessionAsync();

@@ -20,6 +20,9 @@ internal static class LspMethods
     public const string WillSave = "textDocument/willSave";
     public const string WillSaveWaitUntil = "textDocument/willSaveWaitUntil";
 
+    // Changes to files on disk
+    public const string DidChangeWatchedFiles = "workspace/didChangeWatchedFiles";
+
     // Diagnostics
     public const string Diagnostic = "textDocument/diagnostic";
     public const string PublishDiagnostics = "textDocument/publishDiagnostics";

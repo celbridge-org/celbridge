@@ -46,6 +46,9 @@ public sealed class TypeScriptServerDefinition : ILanguageServerDefinition
         [".jsx"] = "javascriptreact",
     };
 
+    // The compiler watches the project's files itself.
+    public ReportedFiles? ReportedFiles => null;
+
     public LanguageServerInvocation CreateInvocation()
     {
         var arguments = new List<string>
@@ -57,7 +60,8 @@ public sealed class TypeScriptServerDefinition : ILanguageServerDefinition
         return new LanguageServerInvocation(
             _typeScriptDependency.ExecutablePath,
             arguments,
-            new Dictionary<string, string>());
+            new Dictionary<string, string>(),
+            new List<string>());
     }
 
     public JsonNode? CreateInitializationOptions()

@@ -28,6 +28,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
 
     private readonly Lock _lock = new();
     private readonly Dictionary<string, LanguageServerSession> _sessions = new();
+    private readonly Dictionary<LanguageServerSession, FileChangeReporter> _fileChangeReporters = new();
     private readonly Dictionary<string, List<DateTimeOffset>> _crashTimes = new();
     private readonly HashSet<string> _stoppedServerIds = new();
     private bool _disposed;
@@ -216,13 +217,46 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
         session.Start();
         _logger.LogInformation("Started the language server '{ServerId}'", definition.Id);
 
+        if (definition.ReportedFiles is not null)
+        {
+            StartFileChangeReporter(session, definition.ReportedFiles, projectFolderPath);
+        }
+
         return session;
+    }
+
+    // The server keeps running when the reporter fails to start. The server then misses the changes on disk.
+    private void StartFileChangeReporter(LanguageServerSession session, ReportedFiles reportedFiles, string projectFolderPath)
+    {
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var reporter = new FileChangeReporter(
+            resourceService.Monitor,
+            resourceService.Walker,
+            reportedFiles,
+            projectFolderPath,
+            session,
+            _logger);
+
+        var startResult = reporter.Start();
+        if (startResult.IsFailure)
+        {
+            _logger.LogWarning(startResult, $"Failed to report file changes to the language server '{session.ServerId}'");
+            reporter.Dispose();
+            return;
+        }
+
+        _fileChangeReporters[session] = reporter;
     }
 
     private void OnSessionEnded(LanguageServerSession session, bool crashed)
     {
         lock (_lock)
         {
+            if (_fileChangeReporters.Remove(session, out var reporter))
+            {
+                reporter.Dispose();
+            }
+
             if (_sessions.TryGetValue(session.ServerId, out var currentSession)
                 && currentSession == session)
             {
@@ -274,6 +308,12 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
 
             _disposed = true;
             sessions = _sessions.Values.ToList();
+
+            foreach (var reporter in _fileChangeReporters.Values)
+            {
+                reporter.Dispose();
+            }
+            _fileChangeReporters.Clear();
         }
 
         // A server takes time to exit, so each stop runs off the calling thread.

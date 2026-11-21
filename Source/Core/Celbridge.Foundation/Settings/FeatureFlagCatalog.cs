@@ -56,8 +56,8 @@ public static class FeatureFlagCatalog
         "ProjectSettings_FeatureFlag_NoteEditor_Description");
 
     /// <summary>
-    /// Python consoles and scripts. The project load installs uv and the celbridge wheel for a project with the
-    /// feature on.
+    /// Python consoles and scripts, and the code editor's language server for Python. The project load installs uv,
+    /// the celbridge wheel and basedpyright for a project with the feature on.
     /// </summary>
     public static readonly FeatureFlagDescriptor Python = new(
         "python",
