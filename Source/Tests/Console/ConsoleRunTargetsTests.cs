@@ -217,53 +217,19 @@ public class ConsoleRunTargetsTests
     }
 
     [Test]
-    public void FindEnvironmentFolder_ReturnsTheFolderOfTheFirstTargetWithTheSessionType()
+    public void Resolve_ATargetGivesTheSessionsTypeAndTheReportedEnvironment()
     {
-        var candidates = new List<ConsoleRunCandidate>
+        var candidates = new[]
         {
-            MakeCandidate("zebra.console", temporaryEnvironmentFolder: "/cache/zebra"),
             MakeCandidate("alpha.console", sessionTypeId: "shell"),
             MakeCandidate("beta.console", temporaryEnvironmentFolder: "/cache/beta"),
         };
 
-        var folder = ConsoleRunTargets.FindEnvironmentFolder(candidates, ".py", "python");
+        var targets = ConsoleRunTargets.Resolve(candidates, ".py");
 
-        folder.Should().Be("/cache/beta");
-    }
-
-    [Test]
-    public void FindEnvironmentFolder_TheFirstTargetReportedNoEnvironment_ReturnsAnEmptyString()
-    {
-        var candidates = new List<ConsoleRunCandidate>
-        {
-            MakeCandidate("alpha.console"),
-            MakeCandidate("beta.console", temporaryEnvironmentFolder: "/cache/beta"),
-        };
-
-        var folder = ConsoleRunTargets.FindEnvironmentFolder(candidates, ".py", "python");
-
-        folder.Should().BeEmpty();
-    }
-
-    [Test]
-    public void FindEnvironmentFolder_ATargetWithStaleRunners_IsSkipped()
-    {
-        var candidates = new List<ConsoleRunCandidate>
-        {
-            MakeCandidate("alpha.console", hasStaleRunners: true, temporaryEnvironmentFolder: "/cache/alpha"),
-            MakeCandidate("beta.console", temporaryEnvironmentFolder: "/cache/beta"),
-        };
-
-        var folder = ConsoleRunTargets.FindEnvironmentFolder(candidates, ".py", "python");
-
-        folder.Should().Be("/cache/beta");
-    }
-
-    [Test]
-    public void FindEnvironmentFolder_NoTargets_ReturnsAnEmptyString()
-    {
-        var folder = ConsoleRunTargets.FindEnvironmentFolder(new List<ConsoleRunCandidate>(), ".py", "python");
-
-        folder.Should().BeEmpty();
+        targets[0].SessionTypeId.Should().Be("shell");
+        targets[0].TemporaryEnvironmentFolder.Should().BeEmpty();
+        targets[1].SessionTypeId.Should().Be("python");
+        targets[1].TemporaryEnvironmentFolder.Should().Be("/cache/beta");
     }
 }

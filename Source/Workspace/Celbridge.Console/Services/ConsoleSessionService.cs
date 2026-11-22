@@ -406,13 +406,6 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         return ConsoleRunTargets.Resolve(candidates, fileExtension);
     }
 
-    public string GetRunEnvironmentFolder(string fileExtension, string sessionTypeId)
-    {
-        var candidates = GetRunCandidates();
-
-        return ConsoleRunTargets.FindEnvironmentFolder(candidates, fileExtension, sessionTypeId);
-    }
-
     private List<ConsoleRunCandidate> GetRunCandidates()
     {
         var runningSessions = new List<ConsoleSession>();

@@ -57,7 +57,7 @@ public sealed class PythonLanguageServerEnvironment : IPythonLanguageServerEnvir
     }
 
     // The first Python console in the Run menu's list for a Python file runs in an environment with the
-    // console's packages. Returns an empty string when no such console runs.
+    // console's packages. Returns that environment's folder. Returns an empty string in every other case.
     private string GetConsoleEnvironmentFolder()
     {
         if (!_workspaceWrapper.IsWorkspaceLoaded)
@@ -66,7 +66,16 @@ public sealed class PythonLanguageServerEnvironment : IPythonLanguageServerEnvir
         }
 
         var sessions = _workspaceWrapper.WorkspaceService.ConsoleService.Sessions;
+        var runTargets = sessions.GetRunTargets(PythonFileExtension);
 
-        return sessions.GetRunEnvironmentFolder(PythonFileExtension, PythonSessionTypeId);
+        foreach (var runTarget in runTargets)
+        {
+            if (runTarget.SessionTypeId == PythonSessionTypeId)
+            {
+                return runTarget.TemporaryEnvironmentFolder;
+            }
+        }
+
+        return string.Empty;
     }
 }

@@ -58,39 +58,6 @@ public static class ConsoleRunTargets
     /// </summary>
     public static IReadOnlyList<ConsoleRunTarget> Resolve(IEnumerable<ConsoleRunCandidate> candidates, string fileExtension)
     {
-        var targets = ResolveOrdered(candidates, fileExtension)
-            .Select(match => match.Target)
-            .ToList();
-
-        return targets;
-    }
-
-    /// <summary>
-    /// Finds the first Run menu target with the session type, for a file extension. Returns the target's
-    /// temporary environment folder. Returns an empty string unless such a target exists and has reported an
-    /// environment.
-    /// </summary>
-    public static string FindEnvironmentFolder(
-        IReadOnlyList<ConsoleRunCandidate> candidates,
-        string fileExtension,
-        string sessionTypeId)
-    {
-        foreach (var (candidate, _) in ResolveOrdered(candidates, fileExtension))
-        {
-            if (candidate.SessionTypeId == sessionTypeId)
-            {
-                return candidate.TemporaryEnvironmentFolder;
-            }
-        }
-
-        return string.Empty;
-    }
-
-    // The Run menu's targets in the menu's order, each with the candidate the target came from.
-    private static List<(ConsoleRunCandidate Candidate, ConsoleRunTarget Target)> ResolveOrdered(
-        IEnumerable<ConsoleRunCandidate> candidates,
-        string fileExtension)
-    {
         var matches = new List<ConsoleRunCandidate>();
         foreach (var candidate in candidates)
         {
@@ -109,18 +76,23 @@ public static class ConsoleRunTargets
 
         var displayNames = BuildDisplayNames(matches);
 
-        var targets = new List<(ConsoleRunCandidate Candidate, ConsoleRunTarget Target)>();
+        var targets = new List<ConsoleRunTarget>();
         foreach (var candidate in matches)
         {
-            var target = new ConsoleRunTarget(candidate.SessionId, candidate.ResourceKey, displayNames[candidate.SessionId]);
-            targets.Add((candidate, target));
+            var target = new ConsoleRunTarget(
+                candidate.SessionId,
+                candidate.ResourceKey,
+                displayNames[candidate.SessionId],
+                candidate.SessionTypeId,
+                candidate.TemporaryEnvironmentFolder);
+            targets.Add(target);
         }
 
         // Sorted by the name the menu shows, so the order is one the user can predict. The resource key
         // breaks the remaining ties, since the sessions arrive in dictionary order.
         var ordered = targets
-            .OrderBy(match => match.Target.DisplayName, StringComparer.CurrentCultureIgnoreCase)
-            .ThenBy(match => match.Target.ResourceKey.Path, StringComparer.Ordinal)
+            .OrderBy(target => target.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(target => target.ResourceKey.Path, StringComparer.Ordinal)
             .ToList();
 
         return ordered;

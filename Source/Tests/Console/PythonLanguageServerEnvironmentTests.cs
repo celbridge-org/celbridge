@@ -1,3 +1,4 @@
+using Celbridge.Console;
 using Celbridge.FileSystem.Services;
 using Celbridge.Localization;
 using Celbridge.Platform;
@@ -50,7 +51,10 @@ public class PythonLanguageServerEnvironmentTests
     [Test]
     public void InterpreterPath_TheFirstPythonConsoleRuns_IsTheConsolesInterpreter()
     {
-        SetConsoleEnvironmentFolder(ConsoleEnvironmentFolder);
+        SetRunTargets(
+            MakeRunTarget("alpha.console", "shell", string.Empty),
+            MakeRunTarget("beta.console", "python", ConsoleEnvironmentFolder),
+            MakeRunTarget("gamma.console", "python", "/cache/gamma"));
 
         var interpreterPath = _environment.InterpreterPath;
 
@@ -61,9 +65,21 @@ public class PythonLanguageServerEnvironmentTests
     }
 
     [Test]
-    public void InterpreterPath_NoConsoleEnvironment_IsTheToolEnvironmentsInterpreter()
+    public void InterpreterPath_TheFirstPythonConsoleReportedNoEnvironment_IsTheToolEnvironmentsInterpreter()
     {
-        SetConsoleEnvironmentFolder(string.Empty);
+        SetRunTargets(
+            MakeRunTarget("alpha.console", "python", string.Empty),
+            MakeRunTarget("beta.console", "python", ConsoleEnvironmentFolder));
+
+        var interpreterPath = _environment.InterpreterPath;
+
+        interpreterPath.Should().Be(_folders.CelbridgeToolInterpreterPath);
+    }
+
+    [Test]
+    public void InterpreterPath_NoPythonConsoleRuns_IsTheToolEnvironmentsInterpreter()
+    {
+        SetRunTargets(MakeRunTarget("alpha.console", "shell", string.Empty));
 
         var interpreterPath = _environment.InterpreterPath;
 
@@ -86,10 +102,21 @@ public class PythonLanguageServerEnvironmentTests
         _environment.ServerExecutablePath.Should().StartWith(Path.Combine(DataFolderPath, "Dependencies"));
     }
 
-    private void SetConsoleEnvironmentFolder(string folderPath)
+    private static ConsoleRunTarget MakeRunTarget(string resourcePath, string sessionTypeId, string environmentFolder)
+    {
+        return new ConsoleRunTarget(
+            Guid.NewGuid(),
+            new ResourceKey(resourcePath),
+            resourcePath,
+            sessionTypeId,
+            environmentFolder);
+    }
+
+    // The Run menu's targets for a Python file, in the menu's order.
+    private void SetRunTargets(params ConsoleRunTarget[] runTargets)
     {
         _workspaceWrapper.WorkspaceService.ConsoleService.Sessions
-            .GetRunEnvironmentFolder(".py", "python")
-            .Returns(folderPath);
+            .GetRunTargets(".py")
+            .Returns(runTargets);
     }
 }

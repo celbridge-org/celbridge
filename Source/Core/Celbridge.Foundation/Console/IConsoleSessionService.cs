@@ -28,13 +28,17 @@ public sealed record ConsoleAttachSnapshot(
     string? LaunchedConfigToml);
 
 /// <summary>
-/// A console that can run a clicked file, addressed by its session id. The display name is its file name,
-/// carrying as much of the parent path as it takes to tell it apart from the other targets.
+/// A console that can run a clicked file, addressed by its session id. The display name is the console's file
+/// name, with enough of the parent path to tell the console apart from the other targets. The target also gives
+/// the session's type. The session's client may have reported a temporary environment, and the target gives the
+/// environment's folder, or an empty string.
 /// </summary>
 public sealed record ConsoleRunTarget(
     Guid SessionId,
     ResourceKey ResourceKey,
-    string DisplayName);
+    string DisplayName,
+    string SessionTypeId,
+    string TemporaryEnvironmentFolder);
 
 /// <summary>
 /// A console view, as the live session it is attached to sees it.
@@ -128,13 +132,6 @@ public interface IConsoleSessionService
     /// the shell prompt) is excluded until a client reconnects or the console reopens.
     /// </summary>
     IReadOnlyList<ConsoleRunTarget> GetRunTargets(string fileExtension);
-
-    /// <summary>
-    /// Finds the first Run menu target of a session type, for a file extension. Returns the folder of the
-    /// temporary environment reported by the target's client. Returns an empty string unless such a target exists
-    /// and has reported an environment.
-    /// </summary>
-    string GetRunEnvironmentFolder(string fileExtension, string sessionTypeId);
 
     /// <summary>
     /// Returns the invocation that runs a file in a session, built from the first runner whose extensions
