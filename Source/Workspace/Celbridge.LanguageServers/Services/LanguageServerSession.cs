@@ -299,7 +299,7 @@ internal sealed class LanguageServerSession : IFileChangeReceiver
             var hasChanged = false;
             foreach (var section in _serverSettings.Keys.ToList())
             {
-                var settingsText = ToSettingsText(_definition.CreateConfiguration(section));
+                var settingsText = SerializeSettings(_definition.CreateConfiguration(section));
                 if (settingsText != _serverSettings[section])
                 {
                     // The server gets these settings, or newer ones, when the server asks again.
@@ -323,7 +323,7 @@ internal sealed class LanguageServerSession : IFileChangeReceiver
     }
 
     // An empty string stands for no settings.
-    private static string ToSettingsText(JsonNode? settings)
+    private static string SerializeSettings(JsonNode? settings)
     {
         return settings?.ToJsonString() ?? string.Empty;
     }
@@ -759,7 +759,7 @@ internal sealed class LanguageServerSession : IFileChangeReceiver
                     {
                         var section = item?.Section ?? string.Empty;
                         var sectionSettings = _definition.CreateConfiguration(section);
-                        _serverSettings[section] = ToSettingsText(sectionSettings);
+                        _serverSettings[section] = SerializeSettings(sectionSettings);
                         settings.Add(sectionSettings);
                     }
                 }
