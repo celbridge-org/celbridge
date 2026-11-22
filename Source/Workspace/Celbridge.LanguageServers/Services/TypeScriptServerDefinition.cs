@@ -46,6 +46,11 @@ public sealed class TypeScriptServerDefinition : ILanguageServerDefinition
         [".jsx"] = "javascriptreact",
     };
 
+    // The compiler watches the project's files itself.
+    public ReportedFiles? ReportedFiles => null;
+
+    public bool UseConsoleEnvironment => false;
+
     public LanguageServerInvocation CreateInvocation()
     {
         var arguments = new List<string>
@@ -58,6 +63,11 @@ public sealed class TypeScriptServerDefinition : ILanguageServerDefinition
             _typeScriptDependency.ExecutablePath,
             arguments,
             new Dictionary<string, string>());
+    }
+
+    // The compiler runs with the inherited environment unchanged.
+    public void FilterInheritedEnvironment(IDictionary<string, string> inheritedEnvironment)
+    {
     }
 
     public JsonNode? CreateInitializationOptions()

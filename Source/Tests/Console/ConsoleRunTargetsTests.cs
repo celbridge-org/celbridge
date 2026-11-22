@@ -19,14 +19,18 @@ public class ConsoleRunTargetsTests
         string resourcePath = "scratch.console",
         bool hasStaleRunners = false,
         IReadOnlyList<ConsoleRunner>? runners = null,
-        string? filePath = null)
+        string? filePath = null,
+        string sessionTypeId = "python",
+        string temporaryEnvironmentFolder = "")
     {
         return new ConsoleRunCandidate(
             Guid.NewGuid(),
             new ResourceKey(resourcePath),
             filePath ?? $"{ProjectFolderPath}/{resourcePath}",
             runners ?? PythonRunners,
-            hasStaleRunners);
+            hasStaleRunners,
+            sessionTypeId,
+            temporaryEnvironmentFolder);
     }
 
     private static IReadOnlyList<ConsoleRunner> ResolveAgainstPythonBuiltIns(
@@ -210,5 +214,22 @@ public class ConsoleRunTargetsTests
     public void FindRunner_NoRunners_ReturnsNull()
     {
         ConsoleRunTargets.FindRunner(Array.Empty<ConsoleRunner>(), ".py").Should().BeNull();
+    }
+
+    [Test]
+    public void Resolve_ATargetGivesTheSessionsTypeAndTheReportedEnvironment()
+    {
+        var candidates = new[]
+        {
+            MakeCandidate("alpha.console", sessionTypeId: "shell"),
+            MakeCandidate("beta.console", temporaryEnvironmentFolder: "/cache/beta"),
+        };
+
+        var targets = ConsoleRunTargets.Resolve(candidates, ".py");
+
+        targets[0].SessionTypeId.Should().Be("shell");
+        targets[0].TemporaryEnvironmentFolder.Should().BeEmpty();
+        targets[1].SessionTypeId.Should().Be("python");
+        targets[1].TemporaryEnvironmentFolder.Should().Be("/cache/beta");
     }
 }

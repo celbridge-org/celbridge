@@ -9,7 +9,7 @@ using Celbridge.Tests.Helpers;
 namespace Celbridge.Tests.LanguageServers;
 
 /// <summary>
-/// Covers the settings of the TypeScript server.
+/// Covers the settings of the TypeScript server, and that the server asks for no file change reports.
 /// </summary>
 [TestFixture]
 public class TypeScriptServerDefinitionTests
@@ -35,6 +35,14 @@ public class TypeScriptServerDefinitionTests
         var settings = definition.CreateConfiguration("editor");
 
         settings.Should().BeNull();
+    }
+
+    [Test]
+    public void ReportedFiles_IsNull_BecauseTheCompilerWatchesTheProjectsFiles()
+    {
+        var definition = CreateDefinition();
+
+        definition.ReportedFiles.Should().BeNull();
     }
 
     private static TypeScriptServerDefinition CreateDefinition()

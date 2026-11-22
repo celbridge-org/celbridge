@@ -1,5 +1,7 @@
 using Celbridge.LanguageServers.Helpers;
+using Celbridge.Console;
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Settings;
@@ -23,11 +25,13 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IAppEnvironment _appEnvironment;
+    private readonly IMessengerService _messengerService;
     private readonly ILogger<LanguageServerService> _logger;
     private readonly TimeProvider _timeProvider;
 
     private readonly Lock _lock = new();
     private readonly Dictionary<string, LanguageServerSession> _sessions = new();
+    private readonly Dictionary<LanguageServerSession, FileChangeReporter> _fileChangeReporters = new();
     private readonly Dictionary<string, List<DateTimeOffset>> _crashTimes = new();
     private readonly HashSet<string> _stoppedServerIds = new();
     private bool _disposed;
@@ -39,6 +43,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
         IAppEnvironment appEnvironment,
+        IMessengerService messengerService,
         ILogger<LanguageServerService> logger)
         : this(
             definitions,
@@ -48,6 +53,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
             projectService,
             workspaceWrapper,
             appEnvironment,
+            messengerService,
             logger,
             TimeProvider.System)
     {
@@ -61,6 +67,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
         IAppEnvironment appEnvironment,
+        IMessengerService messengerService,
         ILogger<LanguageServerService> logger,
         TimeProvider timeProvider)
     {
@@ -71,8 +78,11 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
         _appEnvironment = appEnvironment;
+        _messengerService = messengerService;
         _logger = logger;
         _timeProvider = timeProvider;
+
+        _messengerService.Register<ConsoleRunTargetsChangedMessage>(this, OnConsoleRunTargetsChanged);
     }
 
     public string GetServerId(ResourceKey resource)
@@ -192,9 +202,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
 
     private Result<LanguageServerSession> StartSession(ILanguageServerDefinition definition, string projectFolderPath)
     {
-        var invocation = definition.CreateInvocation();
-
-        var launchResult = _launcher.Start(invocation, projectFolderPath);
+        var launchResult = _launcher.Start(definition, projectFolderPath);
         if (launchResult.IsFailure)
         {
             return Result<LanguageServerSession>.Fail($"Failed to launch the language server '{definition.Id}'")
@@ -216,13 +224,66 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
         session.Start();
         _logger.LogInformation("Started the language server '{ServerId}'", definition.Id);
 
+        if (definition.ReportedFiles is not null)
+        {
+            StartFileChangeReporter(session, definition.ReportedFiles, projectFolderPath);
+        }
+
         return session;
+    }
+
+    // Starts the reporter that tells a session's server about changes to files on disk.
+    private void StartFileChangeReporter(LanguageServerSession session, ReportedFiles reportedFiles, string projectFolderPath)
+    {
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var reporter = new FileChangeReporter(
+            resourceService.Monitor,
+            resourceService.Walker,
+            reportedFiles,
+            projectFolderPath,
+            session,
+            _logger);
+
+        var startResult = reporter.Start();
+        if (startResult.IsFailure)
+        {
+            // The server keeps running, and misses the changes on disk.
+            _logger.LogWarning(startResult, $"Failed to report file changes to the language server '{session.ServerId}'");
+            reporter.Dispose();
+            return;
+        }
+
+        _fileChangeReporters[session] = reporter;
+    }
+
+    // The Python server's interpreter comes from a running console. The consoles have changed here. Each session
+    // with such settings compares them, and tells its server about a difference.
+    private void OnConsoleRunTargetsChanged(object recipient, ConsoleRunTargetsChangedMessage message)
+    {
+        List<LanguageServerSession> sessions;
+
+        lock (_lock)
+        {
+            sessions = _sessions.Values
+                .Where(session => session.UseConsoleEnvironment)
+                .ToList();
+        }
+
+        foreach (var session in sessions)
+        {
+            session.NotifySettingsChanged();
+        }
     }
 
     private void OnSessionEnded(LanguageServerSession session, bool crashed)
     {
         lock (_lock)
         {
+            if (_fileChangeReporters.Remove(session, out var reporter))
+            {
+                reporter.Dispose();
+            }
+
             if (_sessions.TryGetValue(session.ServerId, out var currentSession)
                 && currentSession == session)
             {
@@ -274,7 +335,15 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
 
             _disposed = true;
             sessions = _sessions.Values.ToList();
+
+            foreach (var reporter in _fileChangeReporters.Values)
+            {
+                reporter.Dispose();
+            }
+            _fileChangeReporters.Clear();
         }
+
+        _messengerService.UnregisterAll(this);
 
         // A server takes time to exit, so each stop runs off the calling thread.
         foreach (var session in sessions)

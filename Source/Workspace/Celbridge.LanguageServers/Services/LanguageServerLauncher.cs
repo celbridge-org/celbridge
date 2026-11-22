@@ -36,9 +36,9 @@ internal interface ILanguageServerProcess : IDisposable
 internal interface ILanguageServerLauncher
 {
     /// <summary>
-    /// Starts a server with the folder as its working folder.
+    /// Starts a definition's server with the folder as its working folder.
     /// </summary>
-    Result<ILanguageServerProcess> Start(LanguageServerInvocation invocation, string workingFolderPath);
+    Result<ILanguageServerProcess> Start(ILanguageServerDefinition definition, string workingFolderPath);
 }
 
 /// <summary>
@@ -60,8 +60,41 @@ internal sealed class LanguageServerLauncher : ILanguageServerLauncher, IDisposa
         }
     }
 
-    public Result<ILanguageServerProcess> Start(LanguageServerInvocation invocation, string workingFolderPath)
+    public Result<ILanguageServerProcess> Start(ILanguageServerDefinition definition, string workingFolderPath)
     {
+        var startInfo = CreateStartInfo(definition, workingFolderPath);
+
+        Process? process;
+        try
+        {
+            process = Process.Start(startInfo);
+        }
+        catch (Exception exception)
+        {
+            return Result<ILanguageServerProcess>.Fail($"Failed to start '{startInfo.FileName}'")
+                .WithException(exception);
+        }
+
+        if (process is null)
+        {
+            return Result<ILanguageServerProcess>.Fail($"Failed to start '{startInfo.FileName}'");
+        }
+
+        _jobObject?.AssignProcess(process.Id);
+
+        var serverProcess = new LanguageServerProcess(process, _logger);
+
+        return Result<ILanguageServerProcess>.Ok(serverProcess);
+    }
+
+    /// <summary>
+    /// Returns the start settings for a definition's server. The server's environment is the inherited
+    /// environment after the definition's filter, with the invocation's variables set.
+    /// </summary>
+    internal static ProcessStartInfo CreateStartInfo(ILanguageServerDefinition definition, string workingFolderPath)
+    {
+        var invocation = definition.CreateInvocation();
+
         var startInfo = new ProcessStartInfo
         {
             FileName = invocation.ExecutablePath,
@@ -78,32 +111,14 @@ internal sealed class LanguageServerLauncher : ILanguageServerLauncher, IDisposa
             startInfo.ArgumentList.Add(argument);
         }
 
+        definition.FilterInheritedEnvironment(startInfo.Environment!);
+
         foreach (var (name, value) in invocation.EnvironmentVariables)
         {
             startInfo.Environment[name] = value;
         }
 
-        Process? process;
-        try
-        {
-            process = Process.Start(startInfo);
-        }
-        catch (Exception exception)
-        {
-            return Result<ILanguageServerProcess>.Fail($"Failed to start '{invocation.ExecutablePath}'")
-                .WithException(exception);
-        }
-
-        if (process is null)
-        {
-            return Result<ILanguageServerProcess>.Fail($"Failed to start '{invocation.ExecutablePath}'");
-        }
-
-        _jobObject?.AssignProcess(process.Id);
-
-        var serverProcess = new LanguageServerProcess(process, _logger);
-
-        return Result<ILanguageServerProcess>.Ok(serverProcess);
+        return startInfo;
     }
 
     public void Dispose()

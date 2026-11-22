@@ -24,5 +24,11 @@ public static class ServiceConfiguration
         services.AddSingleton<TypeScriptDependency>();
         services.AddSingleton<IFeatureDependencies, TypeScriptFeatureDependencies>();
         services.AddSingleton<ILanguageServerDefinition, TypeScriptServerDefinition>();
+
+        //
+        // Register the Python language server. The Python module installs the server.
+        //
+
+        services.AddSingleton<ILanguageServerDefinition, PythonServerDefinition>();
     }
 }

@@ -28,13 +28,17 @@ public sealed record ConsoleAttachSnapshot(
     string? LaunchedConfigToml);
 
 /// <summary>
-/// A console that can run a clicked file, addressed by its session id. The display name is its file name,
-/// carrying as much of the parent path as it takes to tell it apart from the other targets.
+/// A console that can run a clicked file, addressed by its session id. The display name is the console's file
+/// name, with enough of the parent path to tell the console apart from the other targets. The target also gives
+/// the session's type. The session's client may have reported a temporary environment, and the target gives the
+/// environment's folder, or an empty string.
 /// </summary>
 public sealed record ConsoleRunTarget(
     Guid SessionId,
     ResourceKey ResourceKey,
-    string DisplayName);
+    string DisplayName,
+    string SessionTypeId,
+    string TemporaryEnvironmentFolder);
 
 /// <summary>
 /// A console view, as the live session it is attached to sees it.

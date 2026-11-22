@@ -205,6 +205,14 @@ internal sealed record LogMessageParams(int Type, string? Message);
 
 internal sealed record PublishDiagnosticsParams(string? Uri, JsonNode? Diagnostics);
 
+/// <summary>
+/// One file change in a workspace/didChangeWatchedFiles notification. The type is 1 for created, 2 for changed and
+/// 3 for deleted.
+/// </summary>
+internal sealed record FileEvent(string Uri, int Type);
+
+internal sealed record DidChangeWatchedFilesParams(IReadOnlyList<FileEvent> Changes);
+
 //
 // Messages between the language client and a page
 //

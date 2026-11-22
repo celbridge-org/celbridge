@@ -1,5 +1,8 @@
 using System.Text.Json.Nodes;
+using Celbridge.Console;
 using Celbridge.LanguageServers;
+using Celbridge.Messaging;
+using Celbridge.Messaging.Services;
 using Celbridge.LanguageServers.Services;
 using Celbridge.Platform;
 using Celbridge.Projects;
@@ -24,6 +27,9 @@ public class LanguageServerServiceTests
         : "/Projects/Acme";
 
     private FakeLauncher _launcher = null!;
+    private FakeResourceMonitor _monitor = null!;
+    private IMessengerService _messengerService = null!;
+    private ILanguageServerDefinition _definition = null!;
     private IFeatureFlags _featureFlags = null!;
     private FakeTimeProvider _timeProvider = null!;
     private LanguageServerService _service = null!;
@@ -33,6 +39,7 @@ public class LanguageServerServiceTests
     {
         _launcher = new FakeLauncher();
         _timeProvider = new FakeTimeProvider();
+        _messengerService = new MessengerService();
 
         _featureFlags = Substitute.For<IFeatureFlags>();
         _featureFlags.IsEnabled(FeatureFlagCatalog.TypeScript).Returns(true);
@@ -60,6 +67,14 @@ public class LanguageServerServiceTests
         workspaceWrapper.HasWorkspaceService.Returns(true);
         workspaceWrapper.WorkspaceService.ResourceService.RootHandlers.Returns(rootHandlers);
 
+        // The project's folders are empty, so a file change reporter lists nothing.
+        _monitor = new FakeResourceMonitor();
+        var walker = Substitute.For<IResourceWalker>();
+        walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>())
+            .Returns(Result<IReadOnlyList<WalkedItem>>.Ok(new List<WalkedItem>()));
+        workspaceWrapper.WorkspaceService.ResourceService.Monitor.Returns(_monitor);
+        workspaceWrapper.WorkspaceService.ResourceService.Walker.Returns(walker);
+
         var appEnvironment = Substitute.For<IAppEnvironment>();
         appEnvironment.GetEnvironmentInfo().Returns(new EnvironmentInfo("1.8.0", "Windows", "Debug"));
 
@@ -74,6 +89,8 @@ public class LanguageServerServiceTests
         definition.CreateInvocation().Returns(
             new LanguageServerInvocation("fake-server", new List<string>(), new Dictionary<string, string>()));
 
+        _definition = definition;
+
         var definitions = new List<ILanguageServerDefinition>
         {
             definition,
@@ -87,6 +104,7 @@ public class LanguageServerServiceTests
             projectService,
             workspaceWrapper,
             appEnvironment,
+            _messengerService,
             new NullLogger<LanguageServerService>(),
             _timeProvider);
     }
@@ -159,6 +177,108 @@ public class LanguageServerServiceTests
         _launcher.WorkingFolderPaths.Should().Equal(ProjectFolderPath);
         ((string?)mainReady["method"]).Should().Be("celbridge/serverReady");
         ((string?)viewReady["method"]).Should().Be("celbridge/serverReady");
+    }
+
+    [Test]
+    public async Task AChangeToTheRunTargets_TellsAServerThatUsesAConsoleEnvironment()
+    {
+        _definition.UseConsoleEnvironment.Returns(true);
+        _definition.CreateConfiguration("alpha").Returns(_ => new JsonObject { ["level"] = 1 });
+        var server = await StartServerAsync();
+
+        var item = new JsonObject
+        {
+            ["section"] = "alpha"
+        };
+        var request = new JsonObject
+        {
+            ["id"] = "config-1",
+            ["method"] = "workspace/configuration",
+            ["params"] = new JsonObject
+            {
+                ["items"] = new JsonArray(item)
+            }
+        };
+        await server.SendAsync(request);
+        await server.ReadAsync();
+
+        _definition.CreateConfiguration("alpha").Returns(_ => new JsonObject { ["level"] = 2 });
+        var runTargetsChanged = new ConsoleRunTargetsChangedMessage();
+        _messengerService.Send(runTargetsChanged);
+        var notification = await server.ReadMethodAsync("workspace/didChangeConfiguration");
+
+        notification["params"]!.AsObject().ContainsKey("settings").Should().BeTrue();
+        notification["params"]!["settings"].Should().BeNull();
+    }
+
+    [Test]
+    public async Task AChangeToTheRunTargets_TellsNoOtherServer()
+    {
+        var server = await StartServerAsync();
+        var page = _service.ConnectPage(new ResourceKey("src/main.ts"));
+
+        // The server's next message is the document's open. A settings notice would arrive before it.
+        var runTargetsChanged = new ConsoleRunTargetsChangedMessage();
+        _messengerService.Send(runTargetsChanged);
+        await ReadPageAsync(page);
+        page.Receive("""{"method":"textDocument/didOpen","params":{"text":"","version":1}}""");
+        var nextMessage = await server.ReadAsync();
+
+        ((string?)nextMessage["method"]).Should().Be("textDocument/didOpen");
+    }
+
+    [Test]
+    public void ConnectPage_ADefinitionWithoutReportedFiles_FollowsNoFileChanges()
+    {
+        using var page = _service.ConnectPage(new ResourceKey("src/main.ts"));
+
+        _launcher.Servers.Should().HaveCount(1);
+        _monitor.MatcherSubscriptions.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task ConnectPage_ADefinitionWithReportedFiles_ReportsAFileChangeToTheServer()
+    {
+        SetReportedFiles();
+        using var page = _service.ConnectPage(new ResourceKey("src/main.ts"));
+        var server = _launcher.Servers[0];
+        await server.CompleteInitializeAsync(new JsonObject());
+
+        _monitor.MatcherSubscriptions.Should().HaveCount(1);
+        _monitor.DeliverChange("src/other.ts", ResourceItemState.File);
+        var notification = await server.ReadMethodAsync("workspace/didChangeWatchedFiles");
+
+        var changes = notification["params"]!["changes"]!.AsArray();
+        changes.Should().HaveCount(1);
+        ((string?)changes[0]!["uri"]).Should().EndWith("/src/other.ts");
+    }
+
+    [Test]
+    public async Task AServerThatEnds_StopsFollowingFileChanges()
+    {
+        SetReportedFiles();
+        using var page = _service.ConnectPage(new ResourceKey("src/main.ts"));
+        var server = _launcher.Servers[0];
+        await server.CompleteInitializeAsync(new JsonObject());
+        await ReadPageAsync(page);
+
+        server.Exit();
+        var lastMessage = await page.ReadNextAsync(CancellationToken.None).AsTask().WaitAsync(ReadTimeout);
+
+        lastMessage.Should().BeNull();
+        _monitor.MatcherSubscriptions.Should().BeEmpty();
+    }
+
+    [Test]
+    public void Dispose_StopsFollowingFileChanges()
+    {
+        SetReportedFiles();
+        using var page = _service.ConnectPage(new ResourceKey("src/main.ts"));
+        _monitor.MatcherSubscriptions.Should().HaveCount(1);
+
+        _service.Dispose();
+
+        _monitor.MatcherSubscriptions.Should().BeEmpty();
     }
 
     [Test]
@@ -296,6 +416,12 @@ public class LanguageServerServiceTests
         return JsonNode.Parse(message!)!.AsObject();
     }
 
+    private void SetReportedFiles()
+    {
+        var reportedFiles = new ReportedFiles(new HashSet<string> { ".ts" }, new HashSet<string>());
+        _definition.ReportedFiles.Returns(reportedFiles);
+    }
+
     private sealed class FakeLauncher : ILanguageServerLauncher
     {
         public List<FakeLanguageServer> Servers { get; } = new();
@@ -304,7 +430,7 @@ public class LanguageServerServiceTests
 
         public bool FailToStart { get; set; }
 
-        public Result<ILanguageServerProcess> Start(LanguageServerInvocation invocation, string workingFolderPath)
+        public Result<ILanguageServerProcess> Start(ILanguageServerDefinition definition, string workingFolderPath)
         {
             if (FailToStart)
             {

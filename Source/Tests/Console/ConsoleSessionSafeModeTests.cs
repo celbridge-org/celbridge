@@ -92,6 +92,7 @@ public class ConsoleSessionSafeModeTests
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<IWebViewPlatform>());
         services.AddSingleton(Substitute.For<ITemporaryEnvironments>());
+        services.AddSingleton(Substitute.For<IMessengerService>());
         services.AddSingleton(_tcpTransport);
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         var serviceProvider = services.BuildServiceProvider();

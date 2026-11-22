@@ -97,6 +97,104 @@ public class LanguageServerSessionTests
     }
 
     [Test]
+    public async Task NotifySettingsChanged_TheSettingsDifferFromTheServers_SendsAConfigurationNotification()
+    {
+        _definition.CreateConfiguration("alpha").Returns(_ => new JsonObject { ["level"] = 1 });
+        var session = await StartReadySessionAsync();
+        await AskForSettingsAsync("alpha");
+
+        _definition.CreateConfiguration("alpha").Returns(_ => new JsonObject { ["level"] = 2 });
+        session.NotifySettingsChanged();
+        var notification = await _server.ReadMethodAsync("workspace/didChangeConfiguration");
+
+        notification["params"]!.AsObject().ContainsKey("settings").Should().BeTrue();
+    }
+
+    [Test]
+    public async Task NotifySettingsChanged_TheSettingsMatchTheServers_SendsNothing()
+    {
+        _definition.CreateConfiguration("alpha").Returns(_ => new JsonObject { ["level"] = 1 });
+        var session = await StartReadySessionAsync();
+        await AskForSettingsAsync("alpha");
+
+        // The session's next message is the answer to the second request. A notice would arrive before it.
+        session.NotifySettingsChanged();
+        var answer = await AskForSettingsAsync("alpha");
+
+        answer.ContainsKey("result").Should().BeTrue();
+    }
+
+    [Test]
+    public async Task NotifySettingsChanged_ASecondNoticeForTheSameChange_SendsNothing()
+    {
+        _definition.CreateConfiguration("alpha").Returns(_ => new JsonObject { ["level"] = 1 });
+        var session = await StartReadySessionAsync();
+        await AskForSettingsAsync("alpha");
+
+        _definition.CreateConfiguration("alpha").Returns(_ => new JsonObject { ["level"] = 2 });
+        session.NotifySettingsChanged();
+        await _server.ReadMethodAsync("workspace/didChangeConfiguration");
+        session.NotifySettingsChanged();
+        var answer = await AskForSettingsAsync("alpha");
+
+        answer.ContainsKey("result").Should().BeTrue();
+    }
+
+    // Sends a workspace/configuration request for one section, and returns the session's next message.
+    private async Task<JsonObject> AskForSettingsAsync(string section)
+    {
+        var item = new JsonObject
+        {
+            ["section"] = section
+        };
+        var request = new JsonObject
+        {
+            ["id"] = $"config-{section}",
+            ["method"] = "workspace/configuration",
+            ["params"] = new JsonObject
+            {
+                ["items"] = new JsonArray(item)
+            }
+        };
+        await _server.SendAsync(request);
+
+        return await _server.ReadAsync();
+    }
+
+    [Test]
+    public async Task ReportFileChanges_AfterTheServerIsReady_SendsAWatchedFilesNotification()
+    {
+        var session = await StartReadySessionAsync();
+
+        session.ReportFileChanges(new[] { new FileEvent(MainUri, 1), new FileEvent(OtherUri, 3) });
+        var notification = await _server.ReadMethodAsync("workspace/didChangeWatchedFiles");
+
+        var changes = notification["params"]!["changes"]!.AsArray();
+        changes.Should().HaveCount(2);
+        ((string?)changes[0]!["uri"]).Should().Be(MainUri);
+        ((int)changes[0]!["type"]!).Should().Be(1);
+        ((string?)changes[1]!["uri"]).Should().Be(OtherUri);
+        ((int)changes[1]!["type"]!).Should().Be(3);
+    }
+
+    [Test]
+    public async Task ReportFileChanges_BeforeTheServerIsReady_WaitsForTheServersAnswer()
+    {
+        var session = CreateSession();
+        session.Start();
+
+        session.ReportFileChanges(new[] { new FileEvent(MainUri, 1) });
+        session.ReportFileChanges(new[] { new FileEvent(OtherUri, 1) });
+        await _server.CompleteInitializeAsync(new JsonObject());
+        var notification = await _server.ReadMethodAsync("workspace/didChangeWatchedFiles");
+
+        var changes = notification["params"]!["changes"]!.AsArray();
+        changes.Should().HaveCount(2);
+        ((string?)changes[0]!["uri"]).Should().Be(MainUri);
+        ((string?)changes[1]!["uri"]).Should().Be(OtherUri);
+    }
+
+    [Test]
     public async Task AddPage_AfterTheServerIsReady_GetsTheCapabilitiesAtOnce()
     {
         var session = await StartReadySessionAsync();

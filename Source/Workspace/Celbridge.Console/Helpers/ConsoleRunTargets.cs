@@ -5,14 +5,17 @@ namespace Celbridge.Console.Helpers;
 /// <summary>
 /// A session considered for a run: its identity, the absolute path of its .console file, its effective
 /// runners, and whether those runners are stale (a client connection was bound and then lost, so the REPL
-/// they target has exited back to the shell prompt).
+/// they target has exited back to the shell prompt). The candidate also carries the session's type. The session's
+/// client may report a temporary environment, and the candidate carries the environment's folder, or an empty string.
 /// </summary>
 public sealed record ConsoleRunCandidate(
     Guid SessionId,
     ResourceKey ResourceKey,
     string FilePath,
     IReadOnlyList<ConsoleRunner> Runners,
-    bool HasStaleRunners);
+    bool HasStaleRunners,
+    string SessionTypeId,
+    string TemporaryEnvironmentFolder);
 
 /// <summary>
 /// Resolves a console's effective runners, and selects which console sessions can run a file.
@@ -76,7 +79,12 @@ public static class ConsoleRunTargets
         var targets = new List<ConsoleRunTarget>();
         foreach (var candidate in matches)
         {
-            var target = new ConsoleRunTarget(candidate.SessionId, candidate.ResourceKey, displayNames[candidate.SessionId]);
+            var target = new ConsoleRunTarget(
+                candidate.SessionId,
+                candidate.ResourceKey,
+                displayNames[candidate.SessionId],
+                candidate.SessionTypeId,
+                candidate.TemporaryEnvironmentFolder);
             targets.Add(target);
         }
 
