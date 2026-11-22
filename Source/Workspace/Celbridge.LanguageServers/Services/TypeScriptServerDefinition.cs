@@ -49,6 +49,8 @@ public sealed class TypeScriptServerDefinition : ILanguageServerDefinition
     // The compiler watches the project's files itself.
     public ReportedFiles? ReportedFiles => null;
 
+    public bool UseConsoleEnvironment => false;
+
     public LanguageServerInvocation CreateInvocation()
     {
         var arguments = new List<string>

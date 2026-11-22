@@ -231,14 +231,20 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         // A reopen is a fresh launch from the file on disk: dispose the old session and start again. The
         // caller re-attaches through the returned snapshot path.
         IConsoleView? previousView = null;
+        ConsoleSession? existingSession;
         lock (_sessionsLock)
         {
-            if (_sessions.TryGetValue(resource, out var existingSession))
+            if (_sessions.TryGetValue(resource, out existingSession))
             {
                 previousView = existingSession.CurrentView;
                 _sessions.Remove(resource);
-                ReleaseSession(existingSession);
             }
+        }
+
+        // The release sends a message, so the release runs outside the lock.
+        if (existingSession is not null)
+        {
+            ReleaseSession(existingSession);
         }
 
         if (previousView is null)
@@ -328,12 +334,14 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
             match.ConnectionId = connectionId;
             match.HasConnected = true;
-            if (temporaryEnvironmentFolder is not null)
-            {
-                match.ClientTemporaryEnvironmentFolder = temporaryEnvironmentFolder;
-            }
+
+            // A client that reports no folder clears the folder of an earlier client. uv removed the earlier
+            // client's environment when that client exited.
+            match.ClientTemporaryEnvironmentFolder = temporaryEnvironmentFolder;
             _connectionToSession[connectionId] = sessionToken;
         }
+
+        _messengerService.Send(new ConsoleRunTargetsChangedMessage());
 
         return true;
     }
@@ -354,10 +362,12 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
                 if (session.SessionId == sessionId)
                 {
                     session.ConnectionId = null;
-                    return;
+                    break;
                 }
             }
         }
+
+        _messengerService.Send(new ConsoleRunTargetsChangedMessage());
     }
 
     public IReadOnlyList<ConsoleSessionType> GetSessionTypes()
@@ -390,6 +400,20 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     }
 
     public IReadOnlyList<ConsoleRunTarget> GetRunTargets(string fileExtension)
+    {
+        var candidates = GetRunCandidates();
+
+        return ConsoleRunTargets.Resolve(candidates, fileExtension);
+    }
+
+    public string GetRunEnvironmentFolder(string fileExtension, string sessionTypeId)
+    {
+        var candidates = GetRunCandidates();
+
+        return ConsoleRunTargets.FindEnvironmentFolder(candidates, fileExtension, sessionTypeId);
+    }
+
+    private List<ConsoleRunCandidate> GetRunCandidates()
     {
         var runningSessions = new List<ConsoleSession>();
         lock (_sessionsLock)
@@ -426,12 +450,14 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
                 session.Resource,
                 filePath,
                 session.Runners,
-                session.HasStaleRunners);
+                session.HasStaleRunners,
+                session.TypeId,
+                session.ClientTemporaryEnvironmentFolder ?? string.Empty);
 
             candidates.Add(candidate);
         }
 
-        return ConsoleRunTargets.Resolve(candidates, fileExtension);
+        return candidates;
     }
 
     public Result<string> ResolveRunnerInvocation(Guid sessionId, string scriptPath, string arguments)
@@ -527,6 +553,10 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         }
 
         session.Dispose();
+
+        // The released session has left the Run menu's targets.
+        _messengerService.Send(new ConsoleRunTargetsChangedMessage());
+
         RemoveClientTemporaryEnvironment(session);
     }
 
@@ -582,6 +612,9 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
                 session.Rekey(message.NewResource);
             }
         }
+
+        // The Run menu sorts its targets by name, so a rename can change the order.
+        _messengerService.Send(new ConsoleRunTargetsChangedMessage());
     }
 
     // Submits straight to the session rather than through a command. A trigger firing is the tail of a

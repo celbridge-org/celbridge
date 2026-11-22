@@ -1,6 +1,7 @@
 ﻿using Celbridge.Console.Helpers;
 using Celbridge.Localization;
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Patterns;
 using Celbridge.Projects;
 using Celbridge.Settings;
@@ -240,6 +241,7 @@ internal sealed class ConsoleSession : IDisposable
         ConnectionId = null;
         HasConnected = false;
         ClientTemporaryEnvironmentFolder = null;
+        SendRunTargetsChanged();
 
         // Seed the host-connection variables for every console: the shared listener port every peer dials,
         // and this console's session token, inherited by anything the shell launches.
@@ -869,6 +871,7 @@ internal sealed class ConsoleSession : IDisposable
         FlushHeldDiagnosticText();
 
         State = ConsoleSessionRunState.Ended;
+        SendRunTargetsChanged();
 
         IConsoleView? attachedView;
         lock (_streamLock)
@@ -876,6 +879,13 @@ internal sealed class ConsoleSession : IDisposable
             attachedView = _attachedView;
         }
         attachedView?.OnSessionEnded();
+    }
+
+    // A session that ends leaves the Run menu's targets, and a session that starts again has a new client.
+    private void SendRunTargetsChanged()
+    {
+        var messengerService = _serviceProvider.GetRequiredService<IMessengerService>();
+        messengerService.Send(new ConsoleRunTargetsChangedMessage());
     }
 
     // An expected failure is one the project chose, for example by disabling a feature. It logs at Debug.

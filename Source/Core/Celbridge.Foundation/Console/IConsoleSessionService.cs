@@ -130,6 +130,13 @@ public interface IConsoleSessionService
     IReadOnlyList<ConsoleRunTarget> GetRunTargets(string fileExtension);
 
     /// <summary>
+    /// Finds the first Run menu target of a session type, for a file extension. Returns the folder of the
+    /// temporary environment reported by the target's client. Returns an empty string unless such a target exists
+    /// and has reported an environment.
+    /// </summary>
+    string GetRunEnvironmentFolder(string fileExtension, string sessionTypeId);
+
+    /// <summary>
     /// Returns the invocation that runs a file in a session, built from the first runner whose extensions
     /// cover the file type, with any arguments appended. Fails if the session has ended, has lost its
     /// client connection, or carries no runner for that file type.

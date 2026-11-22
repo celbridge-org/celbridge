@@ -49,6 +49,9 @@ public sealed class PythonServerDefinition : ILanguageServerDefinition
         new HashSet<string> { ".py", ".pyi" },
         new HashSet<string> { "pyrightconfig.json", "pyproject.toml", "py.typed" });
 
+    // The interpreter is the first Python console's while that console runs.
+    public bool UseConsoleEnvironment => true;
+
     public LanguageServerInvocation CreateInvocation()
     {
         var arguments = new List<string>
@@ -75,7 +78,8 @@ public sealed class PythonServerDefinition : ILanguageServerDefinition
         switch (section)
         {
             case PythonSection:
-                // The server asks this interpreter for its import search paths.
+                // The server asks this interpreter for the import search paths. The interpreter changes when the
+                // first Python console starts or stops.
                 return new JsonObject
                 {
                     [PythonPathProperty] = _environment.InterpreterPath,

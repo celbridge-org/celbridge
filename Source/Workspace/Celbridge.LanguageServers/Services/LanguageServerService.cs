@@ -1,5 +1,7 @@
 using Celbridge.LanguageServers.Helpers;
+using Celbridge.Console;
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Settings;
@@ -23,6 +25,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IAppEnvironment _appEnvironment;
+    private readonly IMessengerService _messengerService;
     private readonly ILogger<LanguageServerService> _logger;
     private readonly TimeProvider _timeProvider;
 
@@ -40,6 +43,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
         IAppEnvironment appEnvironment,
+        IMessengerService messengerService,
         ILogger<LanguageServerService> logger)
         : this(
             definitions,
@@ -49,6 +53,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
             projectService,
             workspaceWrapper,
             appEnvironment,
+            messengerService,
             logger,
             TimeProvider.System)
     {
@@ -62,6 +67,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
         IAppEnvironment appEnvironment,
+        IMessengerService messengerService,
         ILogger<LanguageServerService> logger,
         TimeProvider timeProvider)
     {
@@ -72,8 +78,11 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
         _appEnvironment = appEnvironment;
+        _messengerService = messengerService;
         _logger = logger;
         _timeProvider = timeProvider;
+
+        _messengerService.Register<ConsoleRunTargetsChangedMessage>(this, OnConsoleRunTargetsChanged);
     }
 
     public string GetServerId(ResourceKey resource)
@@ -248,6 +257,25 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
         _fileChangeReporters[session] = reporter;
     }
 
+    // The Python server's interpreter comes from a running console. The consoles have changed here. Each session
+    // with such settings compares them, and tells its server about a difference.
+    private void OnConsoleRunTargetsChanged(object recipient, ConsoleRunTargetsChangedMessage message)
+    {
+        List<LanguageServerSession> sessions;
+
+        lock (_lock)
+        {
+            sessions = _sessions.Values
+                .Where(session => session.UseConsoleEnvironment)
+                .ToList();
+        }
+
+        foreach (var session in sessions)
+        {
+            session.NotifySettingsChanged();
+        }
+    }
+
     private void OnSessionEnded(LanguageServerSession session, bool crashed)
     {
         lock (_lock)
@@ -315,6 +343,8 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
             }
             _fileChangeReporters.Clear();
         }
+
+        _messengerService.UnregisterAll(this);
 
         // A server takes time to exit, so each stop runs off the calling thread.
         foreach (var session in sessions)

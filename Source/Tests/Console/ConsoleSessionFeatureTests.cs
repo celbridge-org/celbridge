@@ -54,6 +54,7 @@ public class ConsoleSessionFeatureTests
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<IWebViewPlatform>());
         services.AddSingleton(Substitute.For<ITemporaryEnvironments>());
+        services.AddSingleton(Substitute.For<IMessengerService>());
         services.AddSingleton(Substitute.For<ITcpTransport>());
         services.AddSingleton(_featureFlags);
         services.AddSingleton<ILocalizerService>(new TestLocalizerService());

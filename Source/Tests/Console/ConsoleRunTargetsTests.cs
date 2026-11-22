@@ -19,14 +19,18 @@ public class ConsoleRunTargetsTests
         string resourcePath = "scratch.console",
         bool hasStaleRunners = false,
         IReadOnlyList<ConsoleRunner>? runners = null,
-        string? filePath = null)
+        string? filePath = null,
+        string sessionTypeId = "python",
+        string temporaryEnvironmentFolder = "")
     {
         return new ConsoleRunCandidate(
             Guid.NewGuid(),
             new ResourceKey(resourcePath),
             filePath ?? $"{ProjectFolderPath}/{resourcePath}",
             runners ?? PythonRunners,
-            hasStaleRunners);
+            hasStaleRunners,
+            sessionTypeId,
+            temporaryEnvironmentFolder);
     }
 
     private static IReadOnlyList<ConsoleRunner> ResolveAgainstPythonBuiltIns(
@@ -210,5 +214,56 @@ public class ConsoleRunTargetsTests
     public void FindRunner_NoRunners_ReturnsNull()
     {
         ConsoleRunTargets.FindRunner(Array.Empty<ConsoleRunner>(), ".py").Should().BeNull();
+    }
+
+    [Test]
+    public void FindEnvironmentFolder_ReturnsTheFolderOfTheFirstTargetWithTheSessionType()
+    {
+        var candidates = new List<ConsoleRunCandidate>
+        {
+            MakeCandidate("zebra.console", temporaryEnvironmentFolder: "/cache/zebra"),
+            MakeCandidate("alpha.console", sessionTypeId: "shell"),
+            MakeCandidate("beta.console", temporaryEnvironmentFolder: "/cache/beta"),
+        };
+
+        var folder = ConsoleRunTargets.FindEnvironmentFolder(candidates, ".py", "python");
+
+        folder.Should().Be("/cache/beta");
+    }
+
+    [Test]
+    public void FindEnvironmentFolder_TheFirstTargetReportedNoEnvironment_ReturnsAnEmptyString()
+    {
+        var candidates = new List<ConsoleRunCandidate>
+        {
+            MakeCandidate("alpha.console"),
+            MakeCandidate("beta.console", temporaryEnvironmentFolder: "/cache/beta"),
+        };
+
+        var folder = ConsoleRunTargets.FindEnvironmentFolder(candidates, ".py", "python");
+
+        folder.Should().BeEmpty();
+    }
+
+    [Test]
+    public void FindEnvironmentFolder_ATargetWithStaleRunners_IsSkipped()
+    {
+        var candidates = new List<ConsoleRunCandidate>
+        {
+            MakeCandidate("alpha.console", hasStaleRunners: true, temporaryEnvironmentFolder: "/cache/alpha"),
+            MakeCandidate("beta.console", temporaryEnvironmentFolder: "/cache/beta"),
+        };
+
+        var folder = ConsoleRunTargets.FindEnvironmentFolder(candidates, ".py", "python");
+
+        folder.Should().Be("/cache/beta");
+    }
+
+    [Test]
+    public void FindEnvironmentFolder_NoTargets_ReturnsAnEmptyString()
+    {
+        var folder = ConsoleRunTargets.FindEnvironmentFolder(new List<ConsoleRunCandidate>(), ".py", "python");
+
+        folder.Should().BeEmpty();
     }
 }

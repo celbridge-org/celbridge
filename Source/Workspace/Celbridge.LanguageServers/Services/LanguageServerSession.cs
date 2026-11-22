@@ -40,6 +40,9 @@ internal sealed class LanguageServerSession : IFileChangeReceiver
     // apart from this one property.
     private const string TextDocumentProperty = "textDocument";
 
+    // The property of a workspace/didChangeConfiguration notification that carries the settings.
+    private const string SettingsProperty = "settings";
+
     // The kind of a diagnostics answer that carries the document's diagnostics.
     private const string FullReportKind = "full";
 
@@ -90,6 +93,10 @@ internal sealed class LanguageServerSession : IFileChangeReceiver
     // The file changes reported before the server is ready.
     private readonly List<FileEvent> _waitingFileEvents = new();
 
+    // The settings the server has for each section it asked for, as JSON text. An empty string stands for no
+    // settings.
+    private readonly Dictionary<string, string> _serverSettings = new();
+
     private SessionState _state = SessionState.Starting;
     private long _nextRequestId = 1;
     private JsonObject _serverCapabilities = new();
@@ -133,6 +140,11 @@ internal sealed class LanguageServerSession : IFileChangeReceiver
     }
 
     public string ServerId => _definition.Id;
+
+    /// <summary>
+    /// Returns true if the server's settings use a running console's environment.
+    /// </summary>
+    public bool UseConsoleEnvironment => _definition.UseConsoleEnvironment;
 
     /// <summary>
     /// Sends the initialize request, and starts reading the server's messages.
@@ -267,6 +279,53 @@ internal sealed class LanguageServerSession : IFileChangeReceiver
                 RequestDiagnosticsRound();
             }
         }
+    }
+
+    /// <summary>
+    /// Tells a ready server that the settings changed. The server then asks for the settings again. A server that
+    /// is still starting asks for the settings once the server is ready, so the notice is skipped. The notice is
+    /// also skipped while the definition's settings match the settings the server has. A server may check every
+    /// open file again after each notice.
+    /// </summary>
+    public void NotifySettingsChanged()
+    {
+        lock (_lock)
+        {
+            if (_state != SessionState.Ready)
+            {
+                return;
+            }
+
+            var hasChanged = false;
+            foreach (var section in _serverSettings.Keys.ToList())
+            {
+                var settingsText = ToSettingsText(_definition.CreateConfiguration(section));
+                if (settingsText != _serverSettings[section])
+                {
+                    // The server gets these settings, or newer ones, when the server asks again.
+                    _serverSettings[section] = settingsText;
+                    hasChanged = true;
+                }
+            }
+
+            if (!hasChanged)
+            {
+                return;
+            }
+
+            // The settings property is required, and null tells the server to ask for each section.
+            var parameters = new JsonObject
+            {
+                [SettingsProperty] = null,
+            };
+            SendNotification(LspMethods.DidChangeConfiguration, parameters);
+        }
+    }
+
+    // An empty string stands for no settings.
+    private static string ToSettingsText(JsonNode? settings)
+    {
+        return settings?.ToJsonString() ?? string.Empty;
     }
 
     public void ReportFileChanges(IReadOnlyList<FileEvent> fileEvents)
@@ -699,7 +758,9 @@ internal sealed class LanguageServerSession : IFileChangeReceiver
                     foreach (var item in configurationParams.Items)
                     {
                         var section = item?.Section ?? string.Empty;
-                        settings.Add(_definition.CreateConfiguration(section));
+                        var sectionSettings = _definition.CreateConfiguration(section);
+                        _serverSettings[section] = ToSettingsText(sectionSettings);
+                        settings.Add(sectionSettings);
                     }
                 }
                 SendResponse(requestId, settings);

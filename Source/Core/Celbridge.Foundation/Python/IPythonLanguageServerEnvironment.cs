@@ -12,9 +12,10 @@ public interface IPythonLanguageServerEnvironment
     string ServerExecutablePath { get; }
 
     /// <summary>
-    /// Returns the path of the celbridge tool environment's interpreter, whether or not the environment is installed
-    /// yet. The server asks the interpreter for the import search paths, so the server resolves the celbridge
-    /// package.
+    /// Returns the path of the interpreter that gives the server the import search paths. While the first Python
+    /// console in the Run menu's list runs, the interpreter belongs to that console's environment, which contains
+    /// the console's packages. Otherwise the interpreter belongs to the celbridge tool environment, whether or not
+    /// the environment is installed yet. The server resolves the celbridge package through either one.
     /// </summary>
     string InterpreterPath { get; }
 

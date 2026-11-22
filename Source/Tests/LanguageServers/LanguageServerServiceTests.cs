@@ -1,5 +1,8 @@
 using System.Text.Json.Nodes;
+using Celbridge.Console;
 using Celbridge.LanguageServers;
+using Celbridge.Messaging;
+using Celbridge.Messaging.Services;
 using Celbridge.LanguageServers.Services;
 using Celbridge.Platform;
 using Celbridge.Projects;
@@ -25,6 +28,7 @@ public class LanguageServerServiceTests
 
     private FakeLauncher _launcher = null!;
     private FakeResourceMonitor _monitor = null!;
+    private IMessengerService _messengerService = null!;
     private ILanguageServerDefinition _definition = null!;
     private IFeatureFlags _featureFlags = null!;
     private FakeTimeProvider _timeProvider = null!;
@@ -35,6 +39,7 @@ public class LanguageServerServiceTests
     {
         _launcher = new FakeLauncher();
         _timeProvider = new FakeTimeProvider();
+        _messengerService = new MessengerService();
 
         _featureFlags = Substitute.For<IFeatureFlags>();
         _featureFlags.IsEnabled(FeatureFlagCatalog.TypeScript).Returns(true);
@@ -99,6 +104,7 @@ public class LanguageServerServiceTests
             projectService,
             workspaceWrapper,
             appEnvironment,
+            _messengerService,
             new NullLogger<LanguageServerService>(),
             _timeProvider);
     }
@@ -171,6 +177,52 @@ public class LanguageServerServiceTests
         _launcher.WorkingFolderPaths.Should().Equal(ProjectFolderPath);
         ((string?)mainReady["method"]).Should().Be("celbridge/serverReady");
         ((string?)viewReady["method"]).Should().Be("celbridge/serverReady");
+    }
+
+    [Test]
+    public async Task AChangeToTheRunTargets_TellsAServerThatUsesAConsoleEnvironment()
+    {
+        _definition.UseConsoleEnvironment.Returns(true);
+        _definition.CreateConfiguration("alpha").Returns(_ => new JsonObject { ["level"] = 1 });
+        var server = await StartServerAsync();
+
+        var item = new JsonObject
+        {
+            ["section"] = "alpha"
+        };
+        var request = new JsonObject
+        {
+            ["id"] = "config-1",
+            ["method"] = "workspace/configuration",
+            ["params"] = new JsonObject
+            {
+                ["items"] = new JsonArray(item)
+            }
+        };
+        await server.SendAsync(request);
+        await server.ReadAsync();
+
+        _definition.CreateConfiguration("alpha").Returns(_ => new JsonObject { ["level"] = 2 });
+        _messengerService.Send(new ConsoleRunTargetsChangedMessage());
+        var notification = await server.ReadMethodAsync("workspace/didChangeConfiguration");
+
+        notification["params"]!.AsObject().ContainsKey("settings").Should().BeTrue();
+        notification["params"]!["settings"].Should().BeNull();
+    }
+
+    [Test]
+    public async Task AChangeToTheRunTargets_TellsNoOtherServer()
+    {
+        var server = await StartServerAsync();
+        var page = _service.ConnectPage(new ResourceKey("src/main.ts"));
+
+        // The server's next message is the document's open. A settings notice would arrive before it.
+        _messengerService.Send(new ConsoleRunTargetsChangedMessage());
+        await ReadPageAsync(page);
+        page.Receive("""{"method":"textDocument/didOpen","params":{"text":"","version":1}}""");
+        var nextMessage = await server.ReadAsync();
+
+        ((string?)nextMessage["method"]).Should().Be("textDocument/didOpen");
     }
 
     [Test]

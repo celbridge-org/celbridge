@@ -5,14 +5,17 @@ namespace Celbridge.Console.Helpers;
 /// <summary>
 /// A session considered for a run: its identity, the absolute path of its .console file, its effective
 /// runners, and whether those runners are stale (a client connection was bound and then lost, so the REPL
-/// they target has exited back to the shell prompt).
+/// they target has exited back to the shell prompt). The candidate also carries the session's type. The session's
+/// client may report a temporary environment, and the candidate carries the environment's folder, or an empty string.
 /// </summary>
 public sealed record ConsoleRunCandidate(
     Guid SessionId,
     ResourceKey ResourceKey,
     string FilePath,
     IReadOnlyList<ConsoleRunner> Runners,
-    bool HasStaleRunners);
+    bool HasStaleRunners,
+    string SessionTypeId,
+    string TemporaryEnvironmentFolder);
 
 /// <summary>
 /// Resolves a console's effective runners, and selects which console sessions can run a file.
@@ -55,6 +58,39 @@ public static class ConsoleRunTargets
     /// </summary>
     public static IReadOnlyList<ConsoleRunTarget> Resolve(IEnumerable<ConsoleRunCandidate> candidates, string fileExtension)
     {
+        var targets = ResolveOrdered(candidates, fileExtension)
+            .Select(match => match.Target)
+            .ToList();
+
+        return targets;
+    }
+
+    /// <summary>
+    /// Finds the first Run menu target with the session type, for a file extension. Returns the target's
+    /// temporary environment folder. Returns an empty string unless such a target exists and has reported an
+    /// environment.
+    /// </summary>
+    public static string FindEnvironmentFolder(
+        IReadOnlyList<ConsoleRunCandidate> candidates,
+        string fileExtension,
+        string sessionTypeId)
+    {
+        foreach (var (candidate, _) in ResolveOrdered(candidates, fileExtension))
+        {
+            if (candidate.SessionTypeId == sessionTypeId)
+            {
+                return candidate.TemporaryEnvironmentFolder;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    // The Run menu's targets in the menu's order, each with the candidate the target came from.
+    private static List<(ConsoleRunCandidate Candidate, ConsoleRunTarget Target)> ResolveOrdered(
+        IEnumerable<ConsoleRunCandidate> candidates,
+        string fileExtension)
+    {
         var matches = new List<ConsoleRunCandidate>();
         foreach (var candidate in candidates)
         {
@@ -73,18 +109,18 @@ public static class ConsoleRunTargets
 
         var displayNames = BuildDisplayNames(matches);
 
-        var targets = new List<ConsoleRunTarget>();
+        var targets = new List<(ConsoleRunCandidate Candidate, ConsoleRunTarget Target)>();
         foreach (var candidate in matches)
         {
             var target = new ConsoleRunTarget(candidate.SessionId, candidate.ResourceKey, displayNames[candidate.SessionId]);
-            targets.Add(target);
+            targets.Add((candidate, target));
         }
 
         // Sorted by the name the menu shows, so the order is one the user can predict. The resource key
         // breaks the remaining ties, since the sessions arrive in dictionary order.
         var ordered = targets
-            .OrderBy(target => target.DisplayName, StringComparer.CurrentCultureIgnoreCase)
-            .ThenBy(target => target.ResourceKey.Path, StringComparer.Ordinal)
+            .OrderBy(match => match.Target.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(match => match.Target.ResourceKey.Path, StringComparer.Ordinal)
             .ToList();
 
         return ordered;

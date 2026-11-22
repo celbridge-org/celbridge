@@ -49,6 +49,13 @@ public interface ILanguageServerDefinition
     ReportedFiles? ReportedFiles { get; }
 
     /// <summary>
+    /// Returns true if the settings from CreateConfiguration use a running console's environment. The language
+    /// client then compares the settings after each change to the consoles, and tells the server about a
+    /// difference.
+    /// </summary>
+    bool UseConsoleEnvironment { get; }
+
+    /// <summary>
     /// Returns how to start the server over stdio.
     /// </summary>
     LanguageServerInvocation CreateInvocation();
