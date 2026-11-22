@@ -202,9 +202,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
 
     private Result<LanguageServerSession> StartSession(ILanguageServerDefinition definition, string projectFolderPath)
     {
-        var invocation = definition.CreateInvocation();
-
-        var launchResult = _launcher.Start(invocation, projectFolderPath);
+        var launchResult = _launcher.Start(definition, projectFolderPath);
         if (launchResult.IsFailure)
         {
             return Result<LanguageServerSession>.Fail($"Failed to launch the language server '{definition.Id}'")
@@ -234,7 +232,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
         return session;
     }
 
-    // The server keeps running when the reporter fails to start. The server then misses the changes on disk.
+    // Starts the reporter that tells a session's server about changes to files on disk.
     private void StartFileChangeReporter(LanguageServerSession session, ReportedFiles reportedFiles, string projectFolderPath)
     {
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
@@ -249,6 +247,7 @@ public sealed class LanguageServerService : ILanguageServerService, IDisposable
         var startResult = reporter.Start();
         if (startResult.IsFailure)
         {
+            // The server keeps running, and misses the changes on disk.
             _logger.LogWarning(startResult, $"Failed to report file changes to the language server '{session.ServerId}'");
             reporter.Dispose();
             return;

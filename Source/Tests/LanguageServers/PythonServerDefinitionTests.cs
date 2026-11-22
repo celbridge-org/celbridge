@@ -60,7 +60,7 @@ public class PythonServerDefinitionTests
     }
 
     [Test]
-    public void CreateInvocation_StartsTheServerOverStdioWithoutTheInheritedPythonVariables()
+    public void CreateInvocation_StartsTheServerOverStdio()
     {
         var definition = CreateDefinition();
 
@@ -69,7 +69,18 @@ public class PythonServerDefinitionTests
         invocation.ExecutablePath.Should().Be(ServerPath);
         invocation.Arguments.Should().Equal("--stdio");
         invocation.EnvironmentVariables.Should().BeEmpty();
-        invocation.RemovedEnvironmentVariables.Should().Equal("PYTHONHOME", "PYTHONPATH");
+    }
+
+    [Test]
+    public void FilterInheritedEnvironment_PassesTheEnvironmentToThePythonFilter()
+    {
+        var environment = Substitute.For<IPythonLanguageServerEnvironment>();
+        var definition = new PythonServerDefinition(environment);
+        var inheritedEnvironment = new Dictionary<string, string>();
+
+        definition.FilterInheritedEnvironment(inheritedEnvironment);
+
+        environment.Received(1).FilterInheritedEnvironment(inheritedEnvironment);
     }
 
     [Test]
@@ -99,7 +110,6 @@ public class PythonServerDefinitionTests
         var environment = Substitute.For<IPythonLanguageServerEnvironment>();
         environment.ServerExecutablePath.Returns(ServerPath);
         environment.InterpreterPath.Returns(InterpreterPath);
-        environment.GetInheritedVariablesToRemove().Returns(new List<string> { "PYTHONHOME", "PYTHONPATH" });
 
         return new PythonServerDefinition(environment);
     }

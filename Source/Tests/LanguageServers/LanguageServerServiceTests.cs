@@ -87,7 +87,7 @@ public class LanguageServerServiceTests
             [".tsx"] = "typescriptreact",
         });
         definition.CreateInvocation().Returns(
-            new LanguageServerInvocation("fake-server", new List<string>(), new Dictionary<string, string>(), new List<string>()));
+            new LanguageServerInvocation("fake-server", new List<string>(), new Dictionary<string, string>()));
 
         _definition = definition;
 
@@ -203,7 +203,8 @@ public class LanguageServerServiceTests
         await server.ReadAsync();
 
         _definition.CreateConfiguration("alpha").Returns(_ => new JsonObject { ["level"] = 2 });
-        _messengerService.Send(new ConsoleRunTargetsChangedMessage());
+        var runTargetsChanged = new ConsoleRunTargetsChangedMessage();
+        _messengerService.Send(runTargetsChanged);
         var notification = await server.ReadMethodAsync("workspace/didChangeConfiguration");
 
         notification["params"]!.AsObject().ContainsKey("settings").Should().BeTrue();
@@ -217,7 +218,8 @@ public class LanguageServerServiceTests
         var page = _service.ConnectPage(new ResourceKey("src/main.ts"));
 
         // The server's next message is the document's open. A settings notice would arrive before it.
-        _messengerService.Send(new ConsoleRunTargetsChangedMessage());
+        var runTargetsChanged = new ConsoleRunTargetsChangedMessage();
+        _messengerService.Send(runTargetsChanged);
         await ReadPageAsync(page);
         page.Receive("""{"method":"textDocument/didOpen","params":{"text":"","version":1}}""");
         var nextMessage = await server.ReadAsync();
@@ -428,7 +430,7 @@ public class LanguageServerServiceTests
 
         public bool FailToStart { get; set; }
 
-        public Result<ILanguageServerProcess> Start(LanguageServerInvocation invocation, string workingFolderPath)
+        public Result<ILanguageServerProcess> Start(ILanguageServerDefinition definition, string workingFolderPath)
         {
             if (FailToStart)
             {

@@ -5,13 +5,12 @@ namespace Celbridge.LanguageServers.Services;
 
 /// <summary>
 /// How to start a language server: the executable's absolute path and the arguments. The server's environment is
-/// Celbridge's own, with the added variables set and the removed variables left out.
+/// the environment Celbridge's process has, after the definition's filter, with the added variables set.
 /// </summary>
 public sealed record LanguageServerInvocation(
     string ExecutablePath,
     IReadOnlyList<string> Arguments,
-    IReadOnlyDictionary<string, string> EnvironmentVariables,
-    IReadOnlyList<string> RemovedEnvironmentVariables);
+    IReadOnlyDictionary<string, string> EnvironmentVariables);
 
 /// <summary>
 /// Names files by extension and by name. The language client reports each change on disk to one of the files to a
@@ -59,6 +58,12 @@ public interface ILanguageServerDefinition
     /// Returns how to start the server over stdio.
     /// </summary>
     LanguageServerInvocation CreateInvocation();
+
+    /// <summary>
+    /// Removes the inherited variables that would change how the server runs. The server starts from the
+    /// environment Celbridge's process has.
+    /// </summary>
+    void FilterInheritedEnvironment(IDictionary<string, string> inheritedEnvironment);
 
     /// <summary>
     /// Returns the initialization options sent in the initialize request, or null for none.

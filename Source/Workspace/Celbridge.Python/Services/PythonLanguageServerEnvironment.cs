@@ -1,4 +1,3 @@
-using System.Collections;
 using Celbridge.Workspace;
 
 namespace Celbridge.Python.Services;
@@ -41,19 +40,9 @@ public sealed class PythonLanguageServerEnvironment : IPythonLanguageServerEnvir
         }
     }
 
-    public IReadOnlyList<string> GetInheritedVariablesToRemove()
+    public void FilterInheritedEnvironment(IDictionary<string, string> inheritedEnvironment)
     {
-        var environment = new Dictionary<string, string>();
-        foreach (DictionaryEntry entry in Environment.GetEnvironmentVariables())
-        {
-            var name = entry.Key as string;
-            if (!string.IsNullOrEmpty(name))
-            {
-                environment[name] = entry.Value as string ?? string.Empty;
-            }
-        }
-
-        return PythonEnvironmentFilter.Apply(environment);
+        PythonEnvironmentFilter.Apply(inheritedEnvironment);
     }
 
     // The first Python console in the Run menu's list for a Python file runs in an environment with the

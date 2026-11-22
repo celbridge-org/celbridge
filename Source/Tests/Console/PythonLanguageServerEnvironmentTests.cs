@@ -97,6 +97,20 @@ public class PythonLanguageServerEnvironmentTests
     }
 
     [Test]
+    public void FilterInheritedEnvironment_RemovesThePythonVariablesAndKeepsTheRest()
+    {
+        var inheritedEnvironment = new Dictionary<string, string>
+        {
+            ["PYTHONPATH"] = "/somewhere",
+            ["PATH"] = "/usr/bin",
+        };
+
+        _environment.FilterInheritedEnvironment(inheritedEnvironment);
+
+        inheritedEnvironment.Keys.Should().Equal("PATH");
+    }
+
+    [Test]
     public void ServerExecutablePath_IsInsideTheDependenciesFolder()
     {
         _environment.ServerExecutablePath.Should().StartWith(Path.Combine(DataFolderPath, "Dependencies"));

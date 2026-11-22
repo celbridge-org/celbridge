@@ -341,7 +341,8 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
             _connectionToSession[connectionId] = sessionToken;
         }
 
-        _messengerService.Send(new ConsoleRunTargetsChangedMessage());
+        var runTargetsChanged = new ConsoleRunTargetsChangedMessage();
+        _messengerService.Send(runTargetsChanged);
 
         return true;
     }
@@ -367,7 +368,8 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
             }
         }
 
-        _messengerService.Send(new ConsoleRunTargetsChangedMessage());
+        var runTargetsChanged = new ConsoleRunTargetsChangedMessage();
+        _messengerService.Send(runTargetsChanged);
     }
 
     public IReadOnlyList<ConsoleSessionType> GetSessionTypes()
@@ -548,7 +550,8 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         session.Dispose();
 
         // The released session has left the Run menu's targets.
-        _messengerService.Send(new ConsoleRunTargetsChangedMessage());
+        var runTargetsChanged = new ConsoleRunTargetsChangedMessage();
+        _messengerService.Send(runTargetsChanged);
 
         RemoveClientTemporaryEnvironment(session);
     }
@@ -607,7 +610,8 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         }
 
         // The Run menu sorts its targets by name, so a rename can change the order.
-        _messengerService.Send(new ConsoleRunTargetsChangedMessage());
+        var runTargetsChanged = new ConsoleRunTargetsChangedMessage();
+        _messengerService.Send(runTargetsChanged);
     }
 
     // Submits straight to the session rather than through a command. A trigger firing is the tail of a

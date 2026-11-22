@@ -36,9 +36,9 @@ internal interface ILanguageServerProcess : IDisposable
 internal interface ILanguageServerLauncher
 {
     /// <summary>
-    /// Starts a server with the folder as its working folder.
+    /// Starts a definition's server with the folder as its working folder.
     /// </summary>
-    Result<ILanguageServerProcess> Start(LanguageServerInvocation invocation, string workingFolderPath);
+    Result<ILanguageServerProcess> Start(ILanguageServerDefinition definition, string workingFolderPath);
 }
 
 /// <summary>
@@ -60,8 +60,10 @@ internal sealed class LanguageServerLauncher : ILanguageServerLauncher, IDisposa
         }
     }
 
-    public Result<ILanguageServerProcess> Start(LanguageServerInvocation invocation, string workingFolderPath)
+    public Result<ILanguageServerProcess> Start(ILanguageServerDefinition definition, string workingFolderPath)
     {
+        var invocation = definition.CreateInvocation();
+
         var startInfo = new ProcessStartInfo
         {
             FileName = invocation.ExecutablePath,
@@ -78,10 +80,7 @@ internal sealed class LanguageServerLauncher : ILanguageServerLauncher, IDisposa
             startInfo.ArgumentList.Add(argument);
         }
 
-        foreach (var name in invocation.RemovedEnvironmentVariables)
-        {
-            startInfo.Environment.Remove(name);
-        }
+        definition.FilterInheritedEnvironment(startInfo.Environment!);
 
         foreach (var (name, value) in invocation.EnvironmentVariables)
         {

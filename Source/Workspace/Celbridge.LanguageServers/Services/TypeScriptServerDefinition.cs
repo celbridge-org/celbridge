@@ -62,8 +62,11 @@ public sealed class TypeScriptServerDefinition : ILanguageServerDefinition
         return new LanguageServerInvocation(
             _typeScriptDependency.ExecutablePath,
             arguments,
-            new Dictionary<string, string>(),
-            new List<string>());
+            new Dictionary<string, string>());
+    }
+
+    public void FilterInheritedEnvironment(IDictionary<string, string> inheritedEnvironment)
+    {
     }
 
     public JsonNode? CreateInitializationOptions()

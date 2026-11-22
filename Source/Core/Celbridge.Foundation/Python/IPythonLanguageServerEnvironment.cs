@@ -2,7 +2,7 @@ namespace Celbridge.Python;
 
 /// <summary>
 /// Gives what the Python language server needs from the Python environment. That is the paths that start the
-/// server, and the inherited variables to leave out of the server's process.
+/// server, and the filter for the environment the server inherits.
 /// </summary>
 public interface IPythonLanguageServerEnvironment
 {
@@ -20,8 +20,8 @@ public interface IPythonLanguageServerEnvironment
     string InterpreterPath { get; }
 
     /// <summary>
-    /// Returns the names of the variables in Celbridge's own environment that control uv or Python. A console's
-    /// environment leaves the same variables out.
+    /// Removes the inherited variables that control uv or Python. A console's environment leaves the same
+    /// variables out.
     /// </summary>
-    IReadOnlyList<string> GetInheritedVariablesToRemove();
+    void FilterInheritedEnvironment(IDictionary<string, string> inheritedEnvironment);
 }

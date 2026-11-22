@@ -885,7 +885,8 @@ internal sealed class ConsoleSession : IDisposable
     private void SendRunTargetsChanged()
     {
         var messengerService = _serviceProvider.GetRequiredService<IMessengerService>();
-        messengerService.Send(new ConsoleRunTargetsChangedMessage());
+        var runTargetsChanged = new ConsoleRunTargetsChangedMessage();
+        messengerService.Send(runTargetsChanged);
     }
 
     // An expected failure is one the project chose, for example by disabling a feature. It logs at Debug.

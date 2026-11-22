@@ -59,13 +59,17 @@ public sealed class PythonServerDefinition : ILanguageServerDefinition
             "--stdio",
         };
 
-        // A user's own Python variables would change the launcher's interpreter and the import search paths. A
-        // console's environment leaves the same variables out.
         return new LanguageServerInvocation(
             _environment.ServerExecutablePath,
             arguments,
-            new Dictionary<string, string>(),
-            _environment.GetInheritedVariablesToRemove());
+            new Dictionary<string, string>());
+    }
+
+    // A user's own Python variables would change the launcher's interpreter and the import search paths. A
+    // console's environment leaves the same variables out.
+    public void FilterInheritedEnvironment(IDictionary<string, string> inheritedEnvironment)
+    {
+        _environment.FilterInheritedEnvironment(inheritedEnvironment);
     }
 
     public JsonNode? CreateInitializationOptions()
