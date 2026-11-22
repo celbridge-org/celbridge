@@ -96,6 +96,8 @@ Celbridge is built on many fantastic open source projects, including:
 - [Python](https://www.python.org/)
 - [IPython](https://ipython.org/)
 - [uv](https://docs.astral.sh/uv/)
+- [basedpyright](https://docs.basedpyright.com/)
+- [TypeScript](https://www.typescriptlang.org/)
 - [ClosedXML](https://github.com/ClosedXML/ClosedXML)
 - [marked](https://marked.js.org/)
 - [highlight.js](https://highlightjs.org/)
