@@ -65,6 +65,7 @@ public sealed class TypeScriptServerDefinition : ILanguageServerDefinition
             new Dictionary<string, string>());
     }
 
+    // The compiler runs with the inherited environment unchanged.
     public void FilterInheritedEnvironment(IDictionary<string, string> inheritedEnvironment)
     {
     }
