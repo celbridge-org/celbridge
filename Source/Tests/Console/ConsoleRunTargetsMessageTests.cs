@@ -42,7 +42,9 @@ public class ConsoleRunTargetsMessageTests
         _messengerService = Substitute.For<IMessengerService>();
         _temporaryEnvironments = Substitute.For<ITemporaryEnvironments>();
 
+        // A substitute returns false for every flag a test has not set up. Every launch here needs consoles enabled.
         var featureFlags = Substitute.For<IFeatureFlags>();
+        featureFlags.IsEnabled(FeatureFlagCatalog.Consoles).Returns(true);
 
         // The launch gives the provider the session's token, then stops at the provider's failure.
         var pythonProvider = Substitute.For<IConsoleSessionProvider>();

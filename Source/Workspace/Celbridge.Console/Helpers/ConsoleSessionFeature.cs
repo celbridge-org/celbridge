@@ -8,10 +8,16 @@ namespace Celbridge.Console.Helpers;
 public static class ConsoleSessionFeature
 {
     /// <summary>
-    /// Returns true when the provider needs no feature, or the loaded project has its feature enabled.
+    /// Returns true when the loaded project enables consoles, and enables the provider's feature when the provider
+    /// names one.
     /// </summary>
     public static bool IsEnabled(IConsoleSessionProvider provider, IFeatureFlags featureFlags)
     {
+        if (!featureFlags.IsEnabled(FeatureFlagCatalog.Consoles))
+        {
+            return false;
+        }
+
         return provider.Feature is null
             || featureFlags.IsEnabled(provider.Feature);
     }

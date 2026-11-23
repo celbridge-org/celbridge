@@ -119,6 +119,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
                     resource,
                     _sessionProviders,
                     _startupWrite,
+                    _proxyListener,
                     _triggerScheduler.Schedule);
                 _sessions[resource] = session;
             }
@@ -130,13 +131,9 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     // Launches the session if it has not been launched already, and waits for that launch.
     private async Task StartSessionAsync(ConsoleSession session, ResourceKey resource)
     {
-        // Every console shares one cel-proxy listener, so the first launch starts it and the rest reuse
-        // the port.
-        var rpcPort = _proxyListener.EnsureStarted();
-
         lock (_sessionsLock)
         {
-            session.StartTask ??= session.StartAsync(DefaultCols, DefaultRows, rpcPort);
+            session.StartTask ??= session.StartAsync(DefaultCols, DefaultRows);
         }
 
         try

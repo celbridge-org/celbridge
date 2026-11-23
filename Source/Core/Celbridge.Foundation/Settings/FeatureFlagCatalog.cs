@@ -48,6 +48,14 @@ public static class FeatureFlagCatalog
         "ProjectSettings_FeatureFlag_WebViewLoadDiagnostics_Description");
 
     /// <summary>
+    /// Consoles of every session type, for running commands and scripts in the platform's shell. Enabled by default.
+    /// </summary>
+    public static readonly FeatureFlagDescriptor Consoles = new(
+        "consoles",
+        "ProjectSettings_FeatureFlag_Consoles_Title",
+        "ProjectSettings_FeatureFlag_Consoles_Description");
+
+    /// <summary>
     /// Registers the bundled Notes editor for .note files, with its New File template. Off by default.
     /// </summary>
     public static readonly FeatureFlagDescriptor NoteEditor = new(
@@ -86,6 +94,7 @@ public static class FeatureFlagCatalog
         }),
         new("ProjectSettings_FeatureFlagGroup_Documents_Title", new List<FeatureFlagDescriptor>
         {
+            Consoles,
             NoteEditor,
         }),
         new("ProjectSettings_FeatureFlagGroup_Languages_Title", new List<FeatureFlagDescriptor>

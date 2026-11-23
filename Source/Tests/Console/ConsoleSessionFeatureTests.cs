@@ -15,19 +15,21 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Celbridge.Tests.Console;
 
 /// <summary>
-/// Covers a session type that needs a project feature. A console of the type starts only while the loaded project
-/// has the feature enabled. While the feature is disabled, the service still reports the type, marked as
+/// Covers the features a console needs. A console starts only while the loaded project has consoles enabled, and
+/// the feature its type needs, if any. While either is disabled, the service still reports the type, marked as
 /// unavailable.
 /// </summary>
 [TestFixture]
 public class ConsoleSessionFeatureTests
 {
-    private static readonly ResourceKey ConsoleResource = new("python.console");
+    private static readonly ResourceKey PythonConsoleResource = new("python.console");
+    private static readonly ResourceKey ShellConsoleResource = new("shell.console");
 
     private IServiceProvider? _previousServiceProvider;
     private IFeatureFlags _featureFlags = null!;
     private IConsoleSessionProvider _shellProvider = null!;
     private IConsoleSessionProvider _pythonProvider = null!;
+    private ITcpTransport _tcpTransport = null!;
     private ServiceProvider _serviceProvider = null!;
     private ConsoleSessionService _sessionService = null!;
 
@@ -36,7 +38,10 @@ public class ConsoleSessionFeatureTests
     {
         _previousServiceProvider = ServiceLocator.ServiceProvider;
 
+        // A substitute returns false for every flag a test has not set up, so the setup enables each flag the tests
+        // need.
         _featureFlags = Substitute.For<IFeatureFlags>();
+        _featureFlags.IsEnabled(FeatureFlagCatalog.Consoles).Returns(true);
         _featureFlags.IsEnabled(FeatureFlagCatalog.Python).Returns(true);
 
         _shellProvider = CreateProvider("shell", feature: null);
@@ -51,11 +56,13 @@ public class ConsoleSessionFeatureTests
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns(project);
 
+        _tcpTransport = Substitute.For<ITcpTransport>();
+
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<IWebViewPlatform>());
         services.AddSingleton(Substitute.For<ITemporaryEnvironments>());
         services.AddSingleton(Substitute.For<IMessengerService>());
-        services.AddSingleton(Substitute.For<ITcpTransport>());
+        services.AddSingleton(_tcpTransport);
         services.AddSingleton(_featureFlags);
         services.AddSingleton<ILocalizerService>(new TestLocalizerService());
         services.AddSingleton(projectService);
@@ -95,10 +102,10 @@ public class ConsoleSessionFeatureTests
     {
         _featureFlags.IsEnabled(FeatureFlagCatalog.Python).Returns(false);
 
-        var snapshot = await AttachAsync();
+        var snapshot = await AttachAsync(PythonConsoleResource);
 
         snapshot.State.Should().Be(ConsoleSessionRunState.Failed);
-        snapshot.Error.Should().Be(new TestLocalizerService().GetString("Console_TypeDisabled"));
+        snapshot.Error.Should().Be(FeatureDisabledNotice());
     }
 
     [Test]
@@ -106,7 +113,7 @@ public class ConsoleSessionFeatureTests
     {
         _featureFlags.IsEnabled(FeatureFlagCatalog.Python).Returns(false);
 
-        await AttachAsync();
+        await AttachAsync(PythonConsoleResource);
 
         await _pythonProvider.DidNotReceive().BuildStartupInvocationAsync(Arg.Any<ConsoleSessionContext>());
     }
@@ -116,7 +123,7 @@ public class ConsoleSessionFeatureTests
     {
         _featureFlags.IsEnabled(FeatureFlagCatalog.Python).Returns(false);
 
-        await AttachAsync();
+        await AttachAsync(PythonConsoleResource);
 
         // The project chose to disable the feature, so the console is working as expected.
         SessionLogEntries().Should().NotContain(entry => entry.Level == LogEntryLevel.Warning);
@@ -125,10 +132,71 @@ public class ConsoleSessionFeatureTests
     [Test]
     public async Task FeatureEnabled_TheProviderBuildsTheStartup()
     {
-        var snapshot = await AttachAsync();
+        var snapshot = await AttachAsync(PythonConsoleResource);
 
         await _pythonProvider.Received(1).BuildStartupInvocationAsync(Arg.Any<ConsoleSessionContext>());
         snapshot.Error.Should().Be("The provider ran");
+    }
+
+    [Test]
+    public async Task FeatureEnabled_TheProxyListenerStarts()
+    {
+        await AttachAsync(PythonConsoleResource);
+
+        ProxyListenerStarted().Should().BeTrue();
+    }
+
+    [Test]
+    public async Task FeatureDisabled_TheProxyListenerNeverStarts()
+    {
+        _featureFlags.IsEnabled(FeatureFlagCatalog.Python).Returns(false);
+
+        await AttachAsync(PythonConsoleResource);
+
+        ProxyListenerStarted().Should().BeFalse();
+    }
+
+    [Test]
+    public async Task ConsolesDisabled_TheProxyListenerNeverStarts()
+    {
+        _featureFlags.IsEnabled(FeatureFlagCatalog.Consoles).Returns(false);
+
+        await AttachAsync(ShellConsoleResource);
+
+        ProxyListenerStarted().Should().BeFalse();
+    }
+
+    [Test]
+    public async Task ConsolesDisabled_AShellConsoleFailsWithTheNotice()
+    {
+        _featureFlags.IsEnabled(FeatureFlagCatalog.Consoles).Returns(false);
+
+        var snapshot = await AttachAsync(ShellConsoleResource);
+
+        snapshot.State.Should().Be(ConsoleSessionRunState.Failed);
+        snapshot.Error.Should().Be(FeatureDisabledNotice());
+    }
+
+    [Test]
+    public async Task ConsolesDisabled_TheShellProviderNeverRuns()
+    {
+        _featureFlags.IsEnabled(FeatureFlagCatalog.Consoles).Returns(false);
+
+        await AttachAsync(ShellConsoleResource);
+
+        await _shellProvider.DidNotReceive().BuildStartupInvocationAsync(Arg.Any<ConsoleSessionContext>());
+    }
+
+    [Test]
+    public async Task ConsolesDisabled_APythonConsoleFailsWithTheNoticeWhilePythonIsEnabled()
+    {
+        _featureFlags.IsEnabled(FeatureFlagCatalog.Consoles).Returns(false);
+
+        var snapshot = await AttachAsync(PythonConsoleResource);
+
+        snapshot.State.Should().Be(ConsoleSessionRunState.Failed);
+        snapshot.Error.Should().Be(FeatureDisabledNotice());
+        await _pythonProvider.DidNotReceive().BuildStartupInvocationAsync(Arg.Any<ConsoleSessionContext>());
     }
 
     [Test]
@@ -162,6 +230,17 @@ public class ConsoleSessionFeatureTests
         availability.Values.Should().AllSatisfy(isAvailable => isAvailable.Should().BeTrue());
     }
 
+    [Test]
+    public void GetSessionTypes_MarksEveryTypeUnavailableWhileConsolesAreDisabled()
+    {
+        _featureFlags.IsEnabled(FeatureFlagCatalog.Consoles).Returns(false);
+
+        var availability = Availability();
+
+        availability.Should().HaveCount(2);
+        availability.Values.Should().AllSatisfy(isAvailable => isAvailable.Should().BeFalse());
+    }
+
     private IReadOnlyDictionary<string, bool> Availability()
     {
         var availability = _sessionService.GetSessionTypes()
@@ -188,15 +267,31 @@ public class ConsoleSessionFeatureTests
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.SafeModeService.Returns(safeModeService);
-        workspaceWrapper.WorkspaceService.ResourceService.FileSystem.ReadAllTextAsync(ConsoleResource)
+        workspaceWrapper.WorkspaceService.ResourceService.FileSystem.ReadAllTextAsync(PythonConsoleResource)
             .Returns(Result<string>.Ok("[session]\ntype = \"python\"\n"));
+        workspaceWrapper.WorkspaceService.ResourceService.FileSystem.ReadAllTextAsync(ShellConsoleResource)
+            .Returns(Result<string>.Ok("[session]\ntype = \"shell\"\n"));
 
         return workspaceWrapper;
     }
 
-    private Task<ConsoleAttachSnapshot> AttachAsync()
+    private Task<ConsoleAttachSnapshot> AttachAsync(ResourceKey consoleResource)
     {
-        return _sessionService.AttachAsync(ConsoleResource, Substitute.For<IConsoleView>(), cols: 80, rows: 24);
+        return _sessionService.AttachAsync(consoleResource, Substitute.For<IConsoleView>(), cols: 80, rows: 24);
+    }
+
+    private static string FeatureDisabledNotice()
+    {
+        return new TestLocalizerService().GetString("Console_FeatureDisabled");
+    }
+
+    // ConsoleProxyListener.EnsureStarted registers a handshake target on the transport.
+    private bool ProxyListenerStarted()
+    {
+        var registrations = _tcpTransport.ReceivedCalls()
+            .Count(call => call.GetMethodInfo().Name == nameof(ITcpTransport.AddRpcTargetFactory));
+
+        return registrations > 0;
     }
 
     // ConsoleSession is internal to the console assembly, so its logger is found by the session's type name.

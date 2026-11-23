@@ -536,7 +536,7 @@ export function createConsoleSettings({ client }) {
     }
 
     // Opens Project Settings through the Project Settings button on the Utility Panel rail. The notice names the
-    // section that contains the type's setting.
+    // section that contains the setting.
     async function openProjectSettings() {
         try {
             await client.cel.app.showUtility(PROJECT_SETTINGS_UTILITY_ID, '');
@@ -568,7 +568,7 @@ export function createConsoleSettings({ client }) {
 
         const typeId = selectedType();
         if (isTypeDisabled(typeId)) {
-            settingsSwitcher.setNotice(t('Console_TypeDisabled'), {
+            settingsSwitcher.setNotice(t('Console_FeatureDisabled'), {
                 label: t('Console_OpenProjectSettings'),
                 onClick: () => openProjectSettings(),
             });
@@ -617,8 +617,7 @@ export function createConsoleSettings({ client }) {
 
         // Takes the session types from an attach. The Type options list the types, and the form lists each type's
         // built-in runners. When the loaded project disables a type, the type's fields are read-only and the
-        // settings say the type is disabled. The first attach lands after the form is populated, hence the
-        // re-render.
+        // settings show the notice. The first attach lands after the form is populated, hence the re-render.
         setSessionTypes(sessionTypes) {
             hostSessionTypes = sessionTypes;
             renderSessionTypeOptions(selectedType());
