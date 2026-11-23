@@ -24,6 +24,7 @@ public class TemporaryEnvironmentsTests
 
         var appEnvironment = Substitute.For<IAppEnvironment>();
         appEnvironment.LocalApplicationDataFolderPath.Returns(_rootFolderPath);
+        appEnvironment.DependenciesFolderPath.Returns(Path.Combine(_rootFolderPath, "Deps"));
         _folders = new CelbridgeWheelFolders(appEnvironment);
 
         _temporaryEnvironments = new TemporaryEnvironments(

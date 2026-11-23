@@ -14,7 +14,6 @@ namespace Celbridge.LanguageServers.Services;
 /// </summary>
 public sealed class TypeScriptDependency : IDependency
 {
-    private const string LanguageServersFolderName = "LanguageServers";
     private const string TypeScriptFolderName = "typescript";
     private const string PackageArchiveFolder = "package";
     private const string LibFolderName = "lib";
@@ -76,10 +75,7 @@ public sealed class TypeScriptDependency : IDependency
         LibFolderName,
         OperatingSystem.IsWindows() ? CompilerExecutableNameWindows : CompilerExecutableName);
 
-    private string VersionsFolderPath => Path.Combine(
-        _appEnvironment.DependenciesFolderPath,
-        LanguageServersFolderName,
-        TypeScriptFolderName);
+    private string VersionsFolderPath => Path.Combine(_appEnvironment.LanguageServersFolderPath, TypeScriptFolderName);
 
     public async Task<bool> IsInstalledAsync()
     {

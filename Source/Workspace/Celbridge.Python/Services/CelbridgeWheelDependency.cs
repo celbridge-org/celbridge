@@ -10,7 +10,7 @@ using Celbridge.Utilities;
 namespace Celbridge.Python.Services;
 
 /// <summary>
-/// Checks and installs the celbridge wheel in the application's data folder. Installing copies the wheel and the
+/// Checks and installs the celbridge wheel in the dependencies folder. Installing copies the wheel and the
 /// pinned interpreter version from the bundled assets. Then uv publishes the celbridge-py tool and fetches the tool's
 /// interpreter.
 /// </summary>
@@ -247,6 +247,15 @@ public sealed class CelbridgeWheelDependency : IDependency
                 "Python reinstall required: installed_version.txt mismatch. Installed='{Installed}' Expected='{Expected}'",
                 installedVersionContent.Replace("\n", "\\n"),
                 expectedVersionContent.Replace("\n", "\\n"));
+            return false;
+        }
+
+        // The marker describes what was installed, and the wheel can go while the marker still matches. Every
+        // console needs the wheel.
+        var findWheelResult = await FindWheelFileAsync(pythonFolderPath);
+        if (findWheelResult.IsFailure)
+        {
+            _logger.LogDebug("Python reinstall required: no celbridge wheel in {Path}", pythonFolderPath);
             return false;
         }
 

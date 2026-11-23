@@ -31,13 +31,15 @@ public class BasedpyrightDependencyTests
     public void Setup()
     {
         _dataFolderPath = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(BasedpyrightDependencyTests), Guid.NewGuid().ToString("N"));
-        var dependenciesFolderPath = Path.Combine(_dataFolderPath, "Dependencies");
-        _versionsFolderPath = Path.Combine(dependenciesFolderPath, "LanguageServers", "basedpyright");
+        var dependenciesFolderPath = Path.Combine(_dataFolderPath, "Deps");
+        var languageServersFolderPath = Path.Combine(dependenciesFolderPath, "lsp");
+        _versionsFolderPath = Path.Combine(languageServersFolderPath, "basedpyright");
         Directory.CreateDirectory(_versionsFolderPath);
 
         _appEnvironment = Substitute.For<IAppEnvironment>();
         _appEnvironment.LocalApplicationDataFolderPath.Returns(_dataFolderPath);
         _appEnvironment.DependenciesFolderPath.Returns(dependenciesFolderPath);
+        _appEnvironment.LanguageServersFolderPath.Returns(languageServersFolderPath);
 
         _folders = new CelbridgeWheelFolders(_appEnvironment);
 

@@ -28,6 +28,11 @@ public interface IAppEnvironment
     string DependenciesFolderPath { get; }
 
     /// <summary>
+    /// The folder in the dependencies folder where Celbridge installs the language servers.
+    /// </summary>
+    string LanguageServersFolderPath { get; }
+
+    /// <summary>
     /// A folder for the application's temporary files.
     /// </summary>
     string TemporaryFolderPath { get; }

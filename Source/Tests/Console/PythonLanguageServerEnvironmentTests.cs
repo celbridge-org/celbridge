@@ -18,6 +18,7 @@ public class PythonLanguageServerEnvironmentTests
 {
     private static readonly string DataFolderPath = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(PythonLanguageServerEnvironmentTests));
     private static readonly string ConsoleEnvironmentFolder = Path.Combine(DataFolderPath, "builds-v0", ".tmpAbc");
+    private static readonly string LanguageServersFolderPath = Path.Combine(DataFolderPath, "Deps", "lsp");
 
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private CelbridgeWheelFolders _folders = null!;
@@ -28,7 +29,8 @@ public class PythonLanguageServerEnvironmentTests
     {
         var appEnvironment = Substitute.For<IAppEnvironment>();
         appEnvironment.LocalApplicationDataFolderPath.Returns(DataFolderPath);
-        appEnvironment.DependenciesFolderPath.Returns(Path.Combine(DataFolderPath, "Dependencies"));
+        appEnvironment.DependenciesFolderPath.Returns(Path.Combine(DataFolderPath, "Deps"));
+        appEnvironment.LanguageServersFolderPath.Returns(LanguageServersFolderPath);
 
         _folders = new CelbridgeWheelFolders(appEnvironment);
 
@@ -111,9 +113,9 @@ public class PythonLanguageServerEnvironmentTests
     }
 
     [Test]
-    public void ServerExecutablePath_IsInsideTheDependenciesFolder()
+    public void ServerExecutablePath_IsInsideTheLanguageServersFolder()
     {
-        _environment.ServerExecutablePath.Should().StartWith(Path.Combine(DataFolderPath, "Dependencies"));
+        _environment.ServerExecutablePath.Should().StartWith(LanguageServersFolderPath);
     }
 
     private static ConsoleRunTarget MakeRunTarget(string resourcePath, string sessionTypeId, string environmentFolder)
