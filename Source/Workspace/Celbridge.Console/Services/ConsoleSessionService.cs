@@ -104,6 +104,8 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
             // In Safe Mode, no console session starts. A session would run the console file's startup script and
             // triggers. The check is in this service, so it applies to every editor that shows a console file.
+            // Safe Mode also turns off the consoles flag. This check keeps consoles off in Safe Mode without depending
+            // on that flag.
             var safeModeService = _workspaceWrapper.WorkspaceService.SafeModeService;
             if (safeModeService.IsActive)
             {

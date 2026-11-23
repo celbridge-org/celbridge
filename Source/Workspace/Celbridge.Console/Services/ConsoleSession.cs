@@ -231,7 +231,8 @@ internal sealed class ConsoleSession : IDisposable
         }
 
         // Every console shares one cel-proxy listener. The first console to launch starts the listener, and later
-        // consoles reuse the listener's port.
+        // consoles reuse the listener's port. The listener starts only after the feature check above, so a project
+        // that disables consoles opens no port.
         var rpcPort = _proxyListener.EnsureStarted();
 
         // The identity and runners a Run target is resolved from, available from launch so a console is
