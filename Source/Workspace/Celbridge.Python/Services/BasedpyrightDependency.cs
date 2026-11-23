@@ -9,7 +9,7 @@ namespace Celbridge.Python.Services;
 
 /// <summary>
 /// The pinned release of basedpyright, the language server for Python. uv installs each version as a tool. Each
-/// version has a folder in the dependencies folder, named by the version. The check looks for the server's
+/// version has a folder in the language servers folder, named by the version. The check looks for the server's
 /// executable in the folder, and for the interpreter behind the tool environment.
 /// </summary>
 public sealed class BasedpyrightDependency : IDependency
@@ -20,7 +20,6 @@ public sealed class BasedpyrightDependency : IDependency
     public const string PinnedVersion = "1.40.2";
 
     private const string PackageName = "basedpyright";
-    private const string LanguageServersFolderName = "LanguageServers";
     private const string BasedpyrightFolderName = "basedpyright";
     private const string BinFolderName = "bin";
     private const string PyVenvConfigFileName = "pyvenv.cfg";
@@ -96,10 +95,7 @@ public sealed class BasedpyrightDependency : IDependency
     // uv names the tool's environment after the package.
     private string PyVenvConfigPath => Path.Combine(FolderPath, PackageName, PyVenvConfigFileName);
 
-    private string VersionsFolderPath => Path.Combine(
-        _appEnvironment.DependenciesFolderPath,
-        LanguageServersFolderName,
-        BasedpyrightFolderName);
+    private string VersionsFolderPath => Path.Combine(_appEnvironment.LanguageServersFolderPath, BasedpyrightFolderName);
 
     public async Task<bool> IsInstalledAsync()
     {

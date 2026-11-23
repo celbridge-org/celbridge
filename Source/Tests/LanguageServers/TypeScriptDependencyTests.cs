@@ -28,7 +28,7 @@ public class TypeScriptDependencyTests
     public void Setup()
     {
         _dependenciesFolderPath = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(TypeScriptDependencyTests), Guid.NewGuid().ToString("N"));
-        _typeScriptFolderPath = Path.Combine(_dependenciesFolderPath, "LanguageServers", "typescript");
+        _typeScriptFolderPath = Path.Combine(_dependenciesFolderPath, "lsp", "typescript");
         Directory.CreateDirectory(_typeScriptFolderPath);
 
         // A download that succeeds creates the version's folder. The real downloader does the same.
@@ -201,7 +201,7 @@ public class TypeScriptDependencyTests
         var pin = new TypeScriptPinnedRelease(PinnedVersion, "https://example.com/registry", packages);
 
         var appEnvironment = Substitute.For<IAppEnvironment>();
-        appEnvironment.DependenciesFolderPath.Returns(_dependenciesFolderPath);
+        appEnvironment.LanguageServersFolderPath.Returns(Path.Combine(_dependenciesFolderPath, "lsp"));
 
         return new TypeScriptDependency(
             new LocalFileSystem(new NullLogger<LocalFileSystem>()),

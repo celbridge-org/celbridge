@@ -11,9 +11,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Celbridge.Tests.Console;
 
 /// <summary>
-/// Covers the celbridge wheel's install in a temporary data folder. A fake runner replaces uv and returns set
-/// outcomes. A failed online tool install runs again offline, and the install writes the marker only once the tool
-/// is installed.
+/// Covers the celbridge wheel's folders and install in a temporary data folder. A fake runner replaces uv and returns
+/// set outcomes. A failed online tool install runs again offline, and the install writes the marker only once the
+/// tool is installed. A missing wheel fails the check, and the install then rebuilds the Python folder.
 /// </summary>
 [TestFixture]
 public class CelbridgeWheelDependencyTests
@@ -47,7 +47,7 @@ public class CelbridgeWheelDependencyTests
 
         _appEnvironment = Substitute.For<IAppEnvironment>();
         _appEnvironment.LocalApplicationDataFolderPath.Returns(dataFolderPath);
-        _appEnvironment.DependenciesFolderPath.Returns(Path.Combine(dataFolderPath, "Dependencies"));
+        _appEnvironment.DependenciesFolderPath.Returns(Path.Combine(dataFolderPath, "Deps"));
         _appEnvironment.GetBundledAssetPath("Celbridge.Python", "Assets/Python").Returns(_assetsFolderPath);
         _appEnvironment.GetEnvironmentInfo().Returns(new EnvironmentInfo("1.0.0", "macOS", "Debug"));
 
@@ -99,6 +99,54 @@ public class CelbridgeWheelDependencyTests
         var home = ToolEnvironmentInterpreter.ReadPyVenvHome(configText);
 
         home.Should().BeNull();
+    }
+
+    [Test]
+    public void Folders_PutPythonSupportAndTheCacheInTheDependenciesFolder()
+    {
+        var dependenciesFolderPath = _appEnvironment.DependenciesFolderPath;
+
+        _folders.PythonFolderPath.Should().Be(Path.Combine(dependenciesFolderPath, "python"));
+        Path.GetDirectoryName(_folders.UvCacheFolderPath).Should().Be(dependenciesFolderPath);
+        Path.GetDirectoryName(_folders.UvPythonInstallFolderPath).Should().Be(dependenciesFolderPath);
+        Path.GetDirectoryName(_folders.InstallLockFilePath).Should().Be(_appEnvironment.LocalApplicationDataFolderPath);
+    }
+
+    [Test]
+    public async Task IsInstalled_WithoutTheInstalledWheel_ReturnsFalse()
+    {
+        CreateUvExecutable();
+        var dependency = CreateDependency(new FakeUvRunner(Succeeded()));
+        var installResult = await dependency.InstallAsync();
+        installResult.IsSuccess.Should().BeTrue();
+        CreateToolEnvironment();
+        var isInstalledBefore = await dependency.IsInstalledAsync();
+
+        File.Delete(Path.Combine(_folders.PythonFolderPath, WheelFileName));
+        var isInstalledAfter = await dependency.IsInstalledAsync();
+
+        isInstalledBefore.Should().BeTrue();
+        isInstalledAfter.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task Install_WithoutTheInstalledWheel_RebuildsThePythonFolder()
+    {
+        CreateUvExecutable();
+        var firstDependency = CreateDependency(new FakeUvRunner(Succeeded()));
+        var firstResult = await firstDependency.InstallAsync();
+        firstResult.IsSuccess.Should().BeTrue();
+        CreateToolEnvironment();
+        var installedWheelPath = Path.Combine(_folders.PythonFolderPath, WheelFileName);
+        File.Delete(installedWheelPath);
+        var uvRunner = new FakeUvRunner(Succeeded());
+        var dependency = CreateDependency(uvRunner);
+
+        var result = await dependency.InstallAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        File.Exists(installedWheelPath).Should().BeTrue();
+        uvRunner.Invocations.Should().ContainSingle();
     }
 
     [Test]
@@ -179,6 +227,30 @@ public class CelbridgeWheelDependencyTests
     {
         Directory.CreateDirectory(_uvDependency.FolderPath);
         File.WriteAllText(_uvDependency.ExecutablePath, "uv");
+    }
+
+    // Creates what the tool install leaves: the celbridge-py command, the environment's own interpreter, and the
+    // environment's pyvenv.cfg, which names the folder of the shared interpreter.
+    private void CreateToolEnvironment()
+    {
+        var interpreterFolderPath = Path.Combine(_rootFolderPath, "Interpreter");
+        Directory.CreateDirectory(interpreterFolderPath);
+        File.WriteAllText(Path.Combine(interpreterFolderPath, "python.exe"), "an interpreter");
+
+        var toolFilePaths = new[]
+        {
+            _folders.CelbridgeToolCommandPath,
+            _folders.CelbridgeToolInterpreterPath,
+        };
+        foreach (var path in toolFilePaths)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, "a tool file");
+        }
+
+        var configPath = _folders.CelbridgeToolConfigPath;
+        Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
+        File.WriteAllText(configPath, $"home = {interpreterFolderPath}\n");
     }
 
     private CelbridgeWheelDependency CreateDependency(IUvRunner uvRunner)

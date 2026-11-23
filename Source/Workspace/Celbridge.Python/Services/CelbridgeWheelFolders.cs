@@ -3,13 +3,13 @@ using Celbridge.Platform;
 namespace Celbridge.Python.Services;
 
 /// <summary>
-/// Gives the paths of the celbridge wheel's folders and files in the application's data folder, whether or not each
-/// item exists yet.
+/// Gives the paths of the celbridge wheel's folders and files, whether or not each item exists yet. The Python
+/// folder, uv's cache and the interpreter store are in the dependencies folder. The install lock is in the
+/// application's data folder.
 /// </summary>
 public sealed class CelbridgeWheelFolders
 {
-    private const string PythonFolderName = "Python";
-    private const string PythonCacheFolderName = "PythonCache";
+    private const string PythonFolderName = "python";
     private const string UvToolsFolderName = "uv_tools";
     private const string UvToolBinFolderName = "uv_bin";
     private const string UvCacheFolderName = "uv_cache";
@@ -34,7 +34,7 @@ public sealed class CelbridgeWheelFolders
     /// The Python folder. It contains the celbridge wheel, the installed tool and the version marker. A reinstall
     /// deletes the whole folder.
     /// </summary>
-    public string PythonFolderPath => Path.Combine(_appEnvironment.LocalApplicationDataFolderPath, PythonFolderName);
+    public string PythonFolderPath => Path.Combine(_appEnvironment.DependenciesFolderPath, PythonFolderName);
 
     /// <summary>
     /// The version marker file, which records what the Python folder was built from.
@@ -78,21 +78,20 @@ public sealed class CelbridgeWheelFolders
     public string CelbridgeToolConfigPath => Path.Combine(UvToolsFolderPath, CelbridgeToolName, PyVenvConfigFileName);
 
     /// <summary>
-    /// uv's package cache, shared by the installed tool and by every project.
+    /// uv's package cache, shared by the installed tool and by every project. The cache is beside the Python folder,
+    /// so a reinstall leaves it in place, and a rebuilt wheel downloads nothing.
     /// </summary>
-    public string UvCacheFolderPath => Path.Combine(PythonCacheFolderPath, UvCacheFolderName);
+    public string UvCacheFolderPath => Path.Combine(_appEnvironment.DependenciesFolderPath, UvCacheFolderName);
 
     /// <summary>
     /// The store of interpreters uv manages, shared by the installed tool and by every project. The installed tool
-    /// runs on an interpreter from here.
+    /// runs on an interpreter from here. The store is beside the Python folder, so a reinstall leaves it in place.
     /// </summary>
-    public string UvPythonInstallFolderPath => Path.Combine(PythonCacheFolderPath, UvPythonInstallsFolderName);
+    public string UvPythonInstallFolderPath =>
+        Path.Combine(_appEnvironment.DependenciesFolderPath, UvPythonInstallsFolderName);
 
     /// <summary>
     /// The folder in uv's cache that contains uv run's temporary environments, one for each REPL.
     /// </summary>
     public string TemporaryEnvironmentsFolderPath => Path.Combine(UvCacheFolderPath, TemporaryEnvironmentsFolderName);
-
-    // Outside the Python folder. A reinstall then leaves the cache in place, and a rebuilt wheel downloads nothing.
-    private string PythonCacheFolderPath => Path.Combine(_appEnvironment.LocalApplicationDataFolderPath, PythonCacheFolderName);
 }
