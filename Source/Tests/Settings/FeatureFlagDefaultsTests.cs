@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Settings;
 using Celbridge.Tests.Architecture;
 using Celbridge.Tests.Helpers;
 
@@ -6,7 +7,8 @@ namespace Celbridge.Tests.Settings;
 
 /// <summary>
 /// Keeps the FeatureFlags sections of appsettings.json and the local appsettings.development.json in step
-/// with FeatureFlagCatalog.
+/// with FeatureFlagCatalog. It also checks the defaults. A project without its own value for a flag runs with
+/// the default.
 /// </summary>
 [TestFixture]
 public class FeatureFlagDefaultsTests
@@ -43,6 +45,17 @@ public class FeatureFlagDefaultsTests
         var nonBooleanNames = GetNonBooleanFlagNames(configuredFlags);
 
         nonBooleanNames.Should().BeEmpty("a value that is not a boolean resolves to off");
+    }
+
+    [Test]
+    public void AppSettings_EnablesConsolesByDefault()
+    {
+        var settingsPath = GetSettingsPath(AppSettingsFileName);
+        var configuredFlags = ReadConfiguredFlags(settingsPath);
+        var consolesName = FeatureFlagCatalog.Consoles.Name;
+
+        configuredFlags.Should().ContainKey(consolesName);
+        configuredFlags[consolesName].Should().Be(JsonValueKind.True, "a project without its own value runs consoles");
     }
 
     [Test]

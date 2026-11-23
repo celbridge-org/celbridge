@@ -104,6 +104,8 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
             // In Safe Mode, no console session starts. A session would run the console file's startup script and
             // triggers. The check is in this service, so it applies to every editor that shows a console file.
+            // Safe Mode also turns off the consoles flag. This check keeps consoles off in Safe Mode without depending
+            // on that flag.
             var safeModeService = _workspaceWrapper.WorkspaceService.SafeModeService;
             if (safeModeService.IsActive)
             {
@@ -119,6 +121,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
                     resource,
                     _sessionProviders,
                     _startupWrite,
+                    _proxyListener,
                     _triggerScheduler.Schedule);
                 _sessions[resource] = session;
             }
@@ -130,13 +133,9 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     // Launches the session if it has not been launched already, and waits for that launch.
     private async Task StartSessionAsync(ConsoleSession session, ResourceKey resource)
     {
-        // Every console shares one cel-proxy listener, so the first launch starts it and the rest reuse
-        // the port.
-        var rpcPort = _proxyListener.EnsureStarted();
-
         lock (_sessionsLock)
         {
-            session.StartTask ??= session.StartAsync(DefaultCols, DefaultRows, rpcPort);
+            session.StartTask ??= session.StartAsync(DefaultCols, DefaultRows);
         }
 
         try

@@ -65,8 +65,8 @@ public sealed record ConsoleSessionType(
     IReadOnlyList<ConsoleRunner> BuiltInRunners)
 {
     /// <summary>
-    /// False when the loaded project disables the type's feature. The session service's list of types carries the
-    /// loaded project's value. A provider's own declaration is always available.
+    /// False when the loaded project disables consoles, or the feature the type needs. The session service's list of
+    /// types carries the loaded project's value. A provider's own declaration is always available.
     /// </summary>
     public bool IsAvailable { get; init; } = true;
 }
@@ -83,8 +83,9 @@ public interface IConsoleSessionProvider
     ConsoleSessionType SessionType { get; }
 
     /// <summary>
-    /// The project feature a console of this type needs, or null when the type needs none. A console of the type
-    /// does not start while the loaded project has the feature disabled. It shows a notice instead.
+    /// The project feature a console of this type needs, or null when the type needs no feature beyond consoles. A
+    /// console of the type does not start while the loaded project has the feature disabled. The console shows a notice
+    /// instead.
     /// </summary>
     FeatureFlagDescriptor? Feature { get; }
 

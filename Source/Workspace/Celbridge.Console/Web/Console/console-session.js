@@ -89,11 +89,11 @@ export function createConsoleSession({ client, term, settings, fitTerminal, wait
         applyDisabledTypeActions();
     }
 
-    // The loaded project can disable a session's type. A session of that type fails to start. A reopen would fail
-    // the same way, because a change to the type's feature applies only when the project reloads. The reload also
-    // restarts the session. So for a disabled type, the overlay shows Open Project Settings and hides Reopen Console.
-    // To start the console with another type, the user changes the type in the settings. The Reopen button in the
-    // settings then takes the accent.
+    // The loaded project can disable a session's type. A session of that type fails to start. A reopen would fail the
+    // same way, because a change to a feature applies only when the project reloads. The reload also restarts the
+    // session. So for a disabled type, the overlay shows Open Project Settings and hides Reopen Console. While another
+    // type is enabled, the user can start the console with that type by changing the type in the settings. The Reopen
+    // button in the settings then takes the accent.
     function applyDisabledTypeActions() {
         const isTypeDisabled = settings.isSessionTypeDisabled();
         openProjectSettingsButton.classList.toggle('hidden', !isTypeDisabled);

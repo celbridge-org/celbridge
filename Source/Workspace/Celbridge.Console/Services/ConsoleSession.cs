@@ -33,6 +33,7 @@ internal sealed class ConsoleSession : IDisposable
     // The registered providers, collected and checked once by the session service.
     private readonly IReadOnlyList<IConsoleSessionProvider> _sessionProviders;
     private readonly SharedConsoleStartupWrite _startupWrite;
+    private readonly ConsoleProxyListener _proxyListener;
     private readonly IReadOnlyList<ConsoleSessionType> _sessionTypes;
 
     // Requests a trigger's run in this session. The session service debounces the requests.
@@ -80,6 +81,7 @@ internal sealed class ConsoleSession : IDisposable
         ResourceKey resource,
         IReadOnlyList<IConsoleSessionProvider> sessionProviders,
         SharedConsoleStartupWrite startupWrite,
+        ConsoleProxyListener proxyListener,
         Action<Guid, string> scheduleTrigger)
     {
         _serviceProvider = serviceProvider;
@@ -87,6 +89,7 @@ internal sealed class ConsoleSession : IDisposable
         Resource = resource;
         _sessionProviders = sessionProviders;
         _startupWrite = startupWrite;
+        _proxyListener = proxyListener;
         _scheduleTrigger = scheduleTrigger;
         _sessionTypes = sessionProviders.Select(provider => provider.SessionType).ToList();
         _logger = serviceProvider.GetRequiredService<ILogger<ConsoleSession>>();
@@ -182,7 +185,7 @@ internal sealed class ConsoleSession : IDisposable
     private int ViewSizeTimeoutMs =>
         _webViewPlatform.CanSizeUnarrangedViewport ? 30000 : 5000;
 
-    public async Task StartAsync(int fallbackCols, int fallbackRows, int rpcPort)
+    public async Task StartAsync(int fallbackCols, int fallbackRows)
     {
         var fileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var readResult = await fileSystem.ReadAllTextAsync(Resource);
@@ -215,17 +218,22 @@ internal sealed class ConsoleSession : IDisposable
             return;
         }
 
-        // The project chose to disable the feature, so the session is working as expected. The session's error is
-        // the notice. The page shows it over the terminal.
+        // The project chose to disable consoles, or the feature this type needs, so the session is working as expected.
+        // The session's error is the notice. The page shows it over the terminal.
         var featureFlags = _serviceProvider.GetRequiredService<IFeatureFlags>();
         if (!ConsoleSessionFeature.IsEnabled(provider, featureFlags))
         {
             var localizerService = _serviceProvider.GetRequiredService<ILocalizerService>();
-            var notice = localizerService.GetString("Console_TypeDisabled");
+            var notice = localizerService.GetString("Console_FeatureDisabled");
 
             Fail(notice, isExpected: true);
             return;
         }
+
+        // Every console shares one cel-proxy listener. The first console to launch starts the listener, and later
+        // consoles reuse the listener's port. The listener starts only after the feature check above, so a project
+        // that disables consoles opens no port.
+        var rpcPort = _proxyListener.EnsureStarted();
 
         // The identity and runners a Run target is resolved from, available from launch so a console is
         // targetable before any view attaches. A fresh token per launch stops a stale client from a
