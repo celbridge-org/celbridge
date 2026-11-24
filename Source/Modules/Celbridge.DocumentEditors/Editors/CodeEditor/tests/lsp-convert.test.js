@@ -25,7 +25,6 @@ describe('positions and ranges', () => {
         const range = convert.toMonacoRange({ start: { line: 7, character: 6 }, end: { line: 7, character: 10 } });
         expect(range).toEqual({ startLineNumber: 8, startColumn: 7, endLineNumber: 8, endColumn: 11 });
         expect(convert.toLspRange(range)).toEqual({ start: { line: 7, character: 6 }, end: { line: 7, character: 10 } });
-        expect(convert.toMonacoPosition({ line: 7, character: 21 })).toEqual({ lineNumber: 8, column: 22 });
     });
 });
 
@@ -401,52 +400,6 @@ describe('toCodeActionList', () => {
 
         expect(convert.toCodeActionList(items, 'apply', false).actions).toEqual([]);
         expect(convert.toCodeActionList(items, 'apply', true).actions.map((action) => action.title)).toEqual(['Fix later']);
-    });
-});
-
-describe('toInlayHints', () => {
-    // Recorded with every kind of hint on, since main.ts passes no literal argument.
-    it('turns a label made of parts into plain text, with the hint\'s kind and padding', () => {
-        const { hints } = convert.toInlayHints(answers.inlayHint);
-
-        expect(hints).toHaveLength(5);
-        expect(hints[0]).toEqual({
-            label: ': number',
-            position: { lineNumber: 4, column: 11 },
-            paddingLeft: true,
-            paddingRight: false,
-            kind: 'Type'
-        });
-        expect(hints[1]).toEqual({
-            label: 'circle:',
-            position: { lineNumber: 8, column: 27 },
-            paddingLeft: false,
-            paddingRight: true,
-            kind: 'Parameter'
-        });
-    });
-
-    it('keeps a label written as a string, a tooltip and the hint\'s edits', () => {
-        const hint = {
-            position: { line: 0, character: 5 },
-            label: '= 0',
-            tooltip: { kind: 'markdown', value: 'The value of **Red**' },
-            textEdits: [{ range: { start: { line: 0, character: 5 }, end: { line: 0, character: 5 } }, newText: ' = 0' }]
-        };
-
-        const [inlayHint] = convert.toInlayHints([hint]).hints;
-
-        expect(inlayHint.label).toBe('= 0');
-        expect(inlayHint.kind).toBeUndefined();
-        expect(inlayHint.tooltip).toEqual({ value: 'The value of **Red**' });
-        expect(inlayHint.textEdits).toEqual([{
-            range: { startLineNumber: 1, startColumn: 6, endLineNumber: 1, endColumn: 6 },
-            text: ' = 0'
-        }]);
-    });
-
-    it('returns no hints for an empty answer', () => {
-        expect(convert.toInlayHints(null).hints).toEqual([]);
     });
 });
 

@@ -115,7 +115,6 @@ internal static class ClientCapabilities
             },
             "formatting": {},
             "rangeFormatting": {},
-            "inlayHint": {},
             "semanticTokens": {
               "requests": { "full": true },
               "tokenTypes": [

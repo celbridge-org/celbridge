@@ -130,30 +130,6 @@ export class EditorController {
         }
     }
 
-    applyOptions(options) {
-        if (!this.#editor) {
-            return;
-        }
-
-        const editorOptions = {};
-
-        if (options.scrollBeyondLastLine !== undefined) {
-            editorOptions.scrollBeyondLastLine = options.scrollBeyondLastLine;
-        }
-
-        if (options.wordWrap !== undefined) {
-            editorOptions.wordWrap = options.wordWrap ? 'on' : 'off';
-        }
-
-        if (options.minimapEnabled !== undefined) {
-            editorOptions.minimap = { enabled: options.minimapEnabled };
-        }
-
-        if (Object.keys(editorOptions).length > 0) {
-            this.#editor.updateOptions(editorOptions);
-        }
-    }
-
     insertText(text) {
         if (!this.#editor) {
             return;
