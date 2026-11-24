@@ -3,7 +3,7 @@
 // language client. The provider then turns the answer into Monaco's types. The server's diagnostics become the
 // model's markers. A location in another file gets a read-only copy of the file's text for a peek to show. The
 // host applies a rename's or a code action's edit, so an edit to another file reaches that file. Each semantic
-// token gets one of the token types in the editor's themes.
+// token gets one of the token types in the editor's themes. The page leaves out the server's inlay hints.
 //
 // The module expects the global `monaco` AMD namespace to be loaded before any method is called.
 
@@ -494,21 +494,6 @@ export class LanguageFeatures {
                     const result = await client.sendRequest('textDocument/rangeFormatting', params, token);
 
                     return convert.toTextEdits(result);
-                }
-            }));
-        }
-
-        if (capabilities.inlayHintProvider) {
-            this.#registrations.push(languages.registerInlayHintsProvider(language, {
-                provideInlayHints: async (candidate, range, token) => {
-                    if (!ownModel(candidate)) {
-                        return null;
-                    }
-
-                    const params = { range: convert.toLspRange(range) };
-                    const result = await client.sendRequest('textDocument/inlayHint', params, token);
-
-                    return convert.toInlayHints(result);
                 }
             }));
         }

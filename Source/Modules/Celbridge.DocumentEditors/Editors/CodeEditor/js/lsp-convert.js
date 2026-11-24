@@ -31,11 +31,6 @@ const highlightKindNames = [
     'Write'
 ];
 
-const inlayHintKindNames = [
-    'Type',
-    'Parameter'
-];
-
 const foldingKindNames = {
     comment: 'Comment',
     imports: 'Imports',
@@ -69,10 +64,6 @@ const pageTokenTypes = Object.values(SemanticTokenType);
 
 export function toLspPosition(position) {
     return { line: position.lineNumber - 1, character: position.column - 1 };
-}
-
-export function toMonacoPosition(position) {
-    return { lineNumber: position.line + 1, column: position.character + 1 };
 }
 
 export function toMonacoRange(range) {
@@ -551,43 +542,6 @@ export function toCodeActionList(result, commandId, canResolve) {
     }
 
     return { actions, dispose: () => {} };
-}
-
-// Returns Monaco's inlay hints for an inlay hint answer. A label made of parts becomes plain text.
-export function toInlayHints(result) {
-    return {
-        hints: (result ?? []).map(toInlayHint),
-        dispose: () => {}
-    };
-}
-
-function toInlayHint(hint) {
-    let label = hint.label;
-    if (Array.isArray(label)) {
-        label = label.map((part) => part.value).join('');
-    }
-
-    const inlayHint = {
-        label,
-        position: toMonacoPosition(hint.position),
-        paddingLeft: hint.paddingLeft === true,
-        paddingRight: hint.paddingRight === true
-    };
-
-    const kindName = inlayHintKindNames[hint.kind - 1];
-    if (kindName) {
-        inlayHint.kind = monaco.languages.InlayHintKind[kindName];
-    }
-
-    if (hint.tooltip !== undefined) {
-        inlayHint.tooltip = toDocumentation(hint.tooltip);
-    }
-
-    if (hint.textEdits?.length > 0) {
-        inlayHint.textEdits = hint.textEdits.map(toTextEdit);
-    }
-
-    return inlayHint;
 }
 
 // Returns Monaco's semantic tokens for a semantic tokens answer, in the page's legend. `legend` is the server's

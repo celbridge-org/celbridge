@@ -9,30 +9,19 @@ using Celbridge.Tests.Helpers;
 namespace Celbridge.Tests.LanguageServers;
 
 /// <summary>
-/// Covers the settings of the TypeScript server, and that the server asks for no file change reports.
+/// Covers that the TypeScript server runs with its default settings, and asks for no file change reports.
 /// </summary>
 [TestFixture]
 public class TypeScriptServerDefinitionTests
 {
     [TestCase("typescript")]
     [TestCase("javascript")]
-    public void CreateConfiguration_ALanguageSection_EnablesParameterNameAndEnumValueHints(string section)
+    [TestCase("editor")]
+    public void CreateConfiguration_AnySection_ReturnsNull(string section)
     {
         var definition = CreateDefinition();
 
         var settings = definition.CreateConfiguration(section);
-
-        settings.Should().NotBeNull();
-        settings!["inlayHints"]!["parameterNames"]!["enabled"]!.GetValue<string>().Should().Be("literals");
-        settings["inlayHints"]!["enumMemberValues"]!["enabled"]!.GetValue<bool>().Should().BeTrue();
-    }
-
-    [Test]
-    public void CreateConfiguration_AnotherSection_ReturnsNull()
-    {
-        var definition = CreateDefinition();
-
-        var settings = definition.CreateConfiguration("editor");
 
         settings.Should().BeNull();
     }

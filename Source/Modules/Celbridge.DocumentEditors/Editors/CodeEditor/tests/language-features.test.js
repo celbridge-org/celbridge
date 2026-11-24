@@ -122,7 +122,8 @@ describe('LanguageFeatures providers', () => {
     it('registers a provider for each feature the server offers, for the model\'s language', () => {
         startWithServer();
 
-        // The TypeScript server offers neither declarations nor document links. The page provides no code lenses.
+        // The TypeScript server offers neither declarations nor document links. The server offers inlay hints, and
+        // the page leaves them out. The page provides no code lenses.
         expect(Object.keys(stub.providers).sort()).toEqual([
             'registerCodeActionProvider',
             'registerCompletionItemProvider',
@@ -135,7 +136,6 @@ describe('LanguageFeatures providers', () => {
             'registerFoldingRangeProvider',
             'registerHoverProvider',
             'registerImplementationProvider',
-            'registerInlayHintsProvider',
             'registerReferenceProvider',
             'registerRenameProvider',
             'registerSelectionRangeProvider',
@@ -152,7 +152,7 @@ describe('LanguageFeatures providers', () => {
             documentLinkProvider: { resolveProvider: true }
         });
 
-        expect(Object.keys(stub.providers)).toHaveLength(19);
+        expect(Object.keys(stub.providers)).toHaveLength(18);
         expect(typeof stub.providers.registerLinkProvider.provider.resolveLink).toBe('function');
     });
 
@@ -329,20 +329,7 @@ describe('LanguageFeatures providers', () => {
     });
 });
 
-describe('LanguageFeatures inlay hints and semantic tokens', () => {
-    it('asks for the inlay hints of Monaco\'s range', async () => {
-        startWithServer();
-        const provider = stub.providers.registerInlayHintsProvider.provider;
-        const range = { startLineNumber: 1, startColumn: 1, endLineNumber: 11, endColumn: 1 };
-
-        const pending = provider.provideInlayHints(model, range);
-        const request = answerRequest('textDocument/inlayHint', answers.inlayHint);
-        const { hints } = await pending;
-
-        expect(request.params).toEqual({ range: { start: { line: 0, character: 0 }, end: { line: 10, character: 0 } } });
-        expect(hints.map((hint) => hint.label)).toEqual([': number', 'circle:', ': number', 'circle:', '...data:']);
-    });
-
+describe('LanguageFeatures semantic tokens', () => {
     it('gives Monaco the page\'s legend, and the document\'s tokens in that legend', async () => {
         startWithServer();
         const provider = stub.providers.registerDocumentSemanticTokensProvider.provider;
@@ -368,9 +355,7 @@ describe('LanguageFeatures inlay hints and semantic tokens', () => {
     it('answers nothing for a model that is not the page\'s document', async () => {
         startWithServer();
         const otherModel = createModelStub({ filePath: 'D:\\Projects\\Acme\\src\\shapes.ts' });
-        const range = { startLineNumber: 1, startColumn: 1, endLineNumber: 2, endColumn: 1 };
 
-        expect(await stub.providers.registerInlayHintsProvider.provider.provideInlayHints(otherModel, range)).toBeNull();
         expect(await stub.providers.registerDocumentSemanticTokensProvider.provider
             .provideDocumentSemanticTokens(otherModel, null)).toBeNull();
         expect(connections[0].sent).toHaveLength(1);

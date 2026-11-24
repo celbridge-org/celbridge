@@ -62,7 +62,8 @@ function installMonacoStub(editor) {
             setModelLanguage: vi.fn(),
             defineTheme: vi.fn(),
             setTheme: vi.fn(),
-            onDidCreateEditor: vi.fn()
+            onDidCreateEditor: vi.fn(),
+            registerLinkOpener: vi.fn()
         },
         EditorOption: { lineHeight: 0 },
         Selection: {
@@ -136,6 +137,65 @@ describe('EditorController editors inside the editor', () => {
         expect(peekEditor.updateOptions).not.toHaveBeenCalled();
         await flushMicrotasks();
         expect(peekEditor.updateOptions).toHaveBeenCalledWith({ readOnly: true });
+    });
+});
+
+describe('EditorController links', () => {
+    let opener;
+
+    // A fake of Monaco's URI. Monaco's own encoding of the text would change a mail address's @ to %40.
+    function linkUri(scheme, text) {
+        return {
+            scheme,
+            toString: (skipEncoding) => (skipEncoding ? text : text.replace('@', '%40'))
+        };
+    }
+
+    beforeEach(() => {
+        installMonacoStub(createMockEditor(createMockModel()));
+        new EditorController().create(document.createElement('div'));
+        [opener] = monaco.editor.registerLinkOpener.mock.calls[0];
+    });
+
+    afterEach(() => {
+        celbridge.isHosted = false;
+        vi.restoreAllMocks();
+    });
+
+    it('sends a web link and a mail link to the host, as they are written', () => {
+        celbridge.isHosted = true;
+        const notifyLinkClicked = vi.spyOn(celbridge.input, 'notifyLinkClicked');
+
+        expect(opener.open(linkUri('https', 'https://example.com/docs?page=2'))).toBe(true);
+        expect(opener.open(linkUri('mailto', 'mailto:someone@example.com'))).toBe(true);
+
+        expect(notifyLinkClicked.mock.calls).toEqual([
+            ['https://example.com/docs?page=2'],
+            ['mailto:someone@example.com']
+        ]);
+    });
+
+    it('sends a web link with an upper case scheme to the host', () => {
+        celbridge.isHosted = true;
+        const notifyLinkClicked = vi.spyOn(celbridge.input, 'notifyLinkClicked');
+
+        expect(opener.open(linkUri('HTTPS', 'HTTPS://example.com/'))).toBe(true);
+        expect(notifyLinkClicked).toHaveBeenCalledWith('HTTPS://example.com/');
+    });
+
+    it('leaves a link to a file to Monaco', () => {
+        celbridge.isHosted = true;
+        const notifyLinkClicked = vi.spyOn(celbridge.input, 'notifyLinkClicked');
+
+        expect(opener.open(linkUri('file', 'file:///d%3A/Projects/notes.txt'))).toBe(false);
+        expect(notifyLinkClicked).not.toHaveBeenCalled();
+    });
+
+    it('leaves every link to Monaco in a page outside the host', () => {
+        const notifyLinkClicked = vi.spyOn(celbridge.input, 'notifyLinkClicked');
+
+        expect(opener.open(linkUri('https', 'https://example.com/'))).toBe(false);
+        expect(notifyLinkClicked).not.toHaveBeenCalled();
     });
 });
 
