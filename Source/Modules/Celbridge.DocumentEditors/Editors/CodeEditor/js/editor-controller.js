@@ -16,6 +16,10 @@ import { log } from './logger.js';
 // collapsed editor at 5 by 5.
 const minimumScrollableSize = 20;
 
+// The schemes of the links the host opens. The host opens a web address in the system's browser, and a mail
+// address in the system's mail app.
+const hostLinkSchemes = ['http', 'https', 'mailto'];
+
 export class EditorController {
     #editor = null;
     #containerElement = null;
@@ -62,6 +66,11 @@ export class EditorController {
         // editor before the editor's constructor ends, and the option is set once the editor is ready.
         monaco.editor.onDidCreateEditor((editor) => {
             queueMicrotask(() => editor.updateOptions({ readOnly: true }));
+        });
+
+        // Monaco opens a link with window.open, and the page's WebView declines every new window.
+        monaco.editor.registerLinkOpener({
+            open: (uri) => this.#openLink(uri)
         });
 
         this.#attachModel();
@@ -786,6 +795,20 @@ export class EditorController {
         this.#editor.setModel(model);
         unnamedModel?.dispose();
         this.#attachModel();
+    }
+
+    // Sends a web or mail link to the host, and returns true. Monaco handles every other link, and every link in a
+    // page outside the host. The scheme is compared in lower case, since Monaco keeps a scheme's case as written. The
+    // URI keeps the link's own spelling, since Monaco's encoding would change a mail address's @ to %40.
+    #openLink(uri) {
+        if (!celbridge.isHosted
+            || !hostLinkSchemes.includes(uri.scheme.toLowerCase())) {
+            return false;
+        }
+
+        celbridge.input.notifyLinkClicked(uri.toString(true));
+
+        return true;
     }
 
     #attachModel() {
