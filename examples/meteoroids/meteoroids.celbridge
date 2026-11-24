@@ -1,5 +1,5 @@
 [celbridge]
-celbridge-version = "1.8.0"
+celbridge-version = "1.9.0"
 features = { python = true }
 
 [celbridge.explorer]
