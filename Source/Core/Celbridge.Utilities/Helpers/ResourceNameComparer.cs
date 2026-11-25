@@ -73,13 +73,14 @@ public sealed class ResourceNameComparer : IComparer<string>
         return string.CompareOrdinal(x, y);
     }
 
-    // Returns the run of digits, or of other characters, that starts at the index.
+    // Returns the run of digits, or of other characters, that starts at the index. A digit is any Unicode decimal
+    // digit, such as the fullwidth digits of East Asian text.
     private static ReadOnlySpan<char> ReadRun(string text, int start)
     {
-        var isDigit = char.IsAsciiDigit(text[start]);
+        var isDigit = char.IsDigit(text[start]);
         var end = start + 1;
         while (end < text.Length
-            && char.IsAsciiDigit(text[end]) == isDigit)
+            && char.IsDigit(text[end]) == isDigit)
         {
             end++;
         }
@@ -89,19 +90,45 @@ public sealed class ResourceNameComparer : IComparer<string>
 
     private static bool IsDigitRun(ReadOnlySpan<char> run)
     {
-        return char.IsAsciiDigit(run[0]);
+        return char.IsDigit(run[0]);
     }
 
     // Compares two runs of digits by value. Any length of number is supported.
     private static int CompareNumbers(ReadOnlySpan<char> x, ReadOnlySpan<char> y)
     {
-        var xDigits = x.TrimStart('0');
-        var yDigits = y.TrimStart('0');
+        var xDigits = TrimLeadingZeros(x);
+        var yDigits = TrimLeadingZeros(y);
         if (xDigits.Length != yDigits.Length)
         {
             return xDigits.Length.CompareTo(yDigits.Length);
         }
 
-        return xDigits.SequenceCompareTo(yDigits);
+        for (var index = 0; index < xDigits.Length; index++)
+        {
+            var digitComparison = DigitValue(xDigits[index]).CompareTo(DigitValue(yDigits[index]));
+            if (digitComparison != 0)
+            {
+                return digitComparison;
+            }
+        }
+
+        return 0;
+    }
+
+    private static ReadOnlySpan<char> TrimLeadingZeros(ReadOnlySpan<char> digits)
+    {
+        var start = 0;
+        while (start < digits.Length
+            && DigitValue(digits[start]) == 0)
+        {
+            start++;
+        }
+
+        return digits.Slice(start);
+    }
+
+    private static int DigitValue(char digit)
+    {
+        return (int)char.GetNumericValue(digit);
     }
 }

@@ -586,8 +586,6 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         return folderPath;
     }
 
-    // Converts an entry of the folder to a FolderChild. Returns null for a reserved folder and for a link, which
-    // listings leave out.
     private static int CompareInDisplayOrder(FolderChild x, FolderChild y)
     {
         if (x.IsFolder != y.IsFolder)
@@ -598,6 +596,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         return ResourceNameComparer.Instance.Compare(x.Resource.ResourceName, y.Resource.ResourceName);
     }
 
+    // Converts an entry of the folder to a FolderChild. Returns null for a reserved folder and for a link, which
+    // listings leave out.
     private FolderChild? ToFolderChild(ResourceKey folder, FileSystemEntry entry)
     {
         var childName = Path.GetFileName(entry.FullPath);

@@ -54,6 +54,27 @@ public class ResourceNameComparerTests
     }
 
     [Test]
+    public void NonAsciiDigitsSortByValue()
+    {
+        // Fullwidth digits, as a Japanese input method types them.
+        var names = new List<string>
+        {
+            "１５",
+            "10",
+            "２",
+            "1",
+        };
+
+        names.Sort(ResourceNameComparer.Instance);
+
+        names.Should().Equal(
+            "1",
+            "２",
+            "10",
+            "１５");
+    }
+
+    [Test]
     public void APrefixSortsFirst()
     {
         var comparer = ResourceNameComparer.Instance;
