@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.UI.Xaml.Media.Imaging;
 
@@ -309,7 +310,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
 
     private void ShowItems(List<ResourcePickerItem> items)
     {
-        items.Sort((a, b) => string.Compare(a.DisplayText, b.DisplayText, StringComparison.OrdinalIgnoreCase));
+        items.Sort((a, b) => ResourceNameComparer.Instance.Compare(a.DisplayText, b.DisplayText));
         if (_listsProjectFolder)
         {
             items.Insert(0, CreateProjectFolderItem());

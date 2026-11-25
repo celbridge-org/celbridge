@@ -641,6 +641,31 @@ public class ResourceOperationServiceTests
     }
 
     [Test]
+    public async Task EnumerateFolderAsync_ListsFoldersThenFilesInDisplayOrder()
+    {
+        var folderPath = Path.Combine(_tempFolder, "folder");
+        Directory.CreateDirectory(Path.Combine(folderPath, "v1.10"));
+        Directory.CreateDirectory(Path.Combine(folderPath, "v1.9"));
+        Directory.CreateDirectory(Path.Combine(folderPath, "Archive"));
+        await File.WriteAllTextAsync(Path.Combine(folderPath, "notes.md"), "notes");
+        await File.WriteAllTextAsync(Path.Combine(folderPath, "README.md"), "readme");
+        await File.WriteAllTextAsync(Path.Combine(folderPath, "chapter10.md"), "ten");
+        await File.WriteAllTextAsync(Path.Combine(folderPath, "chapter2.md"), "two");
+
+        var enumerateResult = await _resourceFileSystem.EnumerateFolderAsync(new ResourceKey("folder"));
+
+        enumerateResult.IsSuccess.Should().BeTrue(enumerateResult.MessageChain);
+        enumerateResult.Value.Select(item => item.Resource.ResourceName).Should().Equal(
+            "Archive",
+            "v1.9",
+            "v1.10",
+            "chapter2.md",
+            "chapter10.md",
+            "notes.md",
+            "README.md");
+    }
+
+    [Test]
     public async Task VisitFolderAsync_LeavesOutLinkedFilesAndFolders()
     {
         CreateFolderThatContainsLinks();

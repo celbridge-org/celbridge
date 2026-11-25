@@ -504,9 +504,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
         var entries = new List<FolderChild>();
 
-        // EnumerateAsync returns folders first in ordinal order, with each
-        // entry's size and modified time from the directory walk. The listing
-        // keeps that order and those values.
+        // Each entry's size and modified time come from the directory walk.
         foreach (var entry in enumerateResult.Value)
         {
             var folderChild = ToFolderChild(folder, entry);
@@ -515,6 +513,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 entries.Add(folderChild);
             }
         }
+
+        // The listing is in display order: folders first, then files, each ordered by ResourceNameComparer.
+        entries.Sort(CompareInDisplayOrder);
 
         IReadOnlyList<FolderChild> result = entries;
         return result.OkResult();
@@ -583,6 +584,16 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         }
 
         return folderPath;
+    }
+
+    private static int CompareInDisplayOrder(FolderChild x, FolderChild y)
+    {
+        if (x.IsFolder != y.IsFolder)
+        {
+            return x.IsFolder ? -1 : 1;
+        }
+
+        return ResourceNameComparer.Instance.Compare(x.Resource.ResourceName, y.Resource.ResourceName);
     }
 
     // Converts an entry of the folder to a FolderChild. Returns null for a reserved folder and for a link, which

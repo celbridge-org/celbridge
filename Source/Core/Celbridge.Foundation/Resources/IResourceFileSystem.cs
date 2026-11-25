@@ -93,7 +93,8 @@ public interface IResourceFileSystem
 
     /// <summary>
     /// Returns the immediate children of a folder resource. Single-level only;
-    /// recursive callers walk per-level. Fails when the resource is not a folder.
+    /// recursive callers walk per-level. Folders come first, then files, each
+    /// sorted by name for display. Fails when the resource is not a folder.
     /// A link, file or folder, is left out, since no key that is a link or passes
     /// through one resolves.
     /// </summary>
