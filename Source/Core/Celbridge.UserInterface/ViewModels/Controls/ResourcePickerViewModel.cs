@@ -165,8 +165,8 @@ public partial class ResourcePickerViewModel : ObservableObject
     /// </summary>
     public void Initialize(ResourcePickerOptions options)
     {
-        // The resource picker needs a loaded project. DialogService tells the user when no project is loaded, before
-        // the picker is set up. This guard catches a caller that skips that check.
+        // The resource picker needs a loaded project. The caller checks for one first, and tells the user when no
+        // project is loaded. This guard catches a caller that skips that check.
         Guard.IsTrue(_workspaceWrapper.IsWorkspaceLoaded);
 
         _options = options;

@@ -121,12 +121,15 @@ public sealed partial class ResourcePickerView : UserControl
             && EditKeyboard.IsCommandModifierDown())
         {
             e.Handled = true;
-            FocusSearchBox();
+
+            // UNO-BUG: on macOS, the canvas types a Command chord's letter into the focused control after KeyDown.
+            // The search box takes the keyboard after the key has been handled, so the letter F never reaches it.
+            DispatcherQueue.TryEnqueue(FocusSearchBox);
         }
     }
 
-    // The modifier that goes up a level with Up. Windows uses Alt, which matches File Explorer. macOS uses Command,
-    // which matches the Finder.
+    // Returns true if the go-up modifier is down. Up with that modifier opens the folder above. Windows uses Alt,
+    // which matches File Explorer. macOS uses Command, which matches the Finder.
     private static bool IsGoUpModifierDown()
     {
         if (OperatingSystem.IsMacOS())
