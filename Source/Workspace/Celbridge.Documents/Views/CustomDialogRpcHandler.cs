@@ -47,8 +47,15 @@ internal sealed class CustomDialogRpcHandler : IHostDialog
             ];
         }
 
-        var title = _stringLocalizer.GetString("Extension_SelectImage_Title");
-        var result = await _dialogService.ShowResourcePickerDialogAsync(extensionsArray, title, showPreview: true);
+        var options = new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Open,
+            Extensions = extensionsArray,
+            StartFolder = GetDocumentFolder(),
+            Title = _stringLocalizer.GetString("Extension_SelectImage_Title"),
+            ShowPreview = true
+        };
+        var result = await _dialogService.ShowResourcePickerDialogAsync(options);
 
         if (result.IsSuccess)
         {
@@ -65,9 +72,14 @@ internal sealed class CustomDialogRpcHandler : IHostDialog
 
     public async Task<PickFileResult> PickFileAsync(IReadOnlyList<string>? extensions = null)
     {
-        var title = _stringLocalizer.GetString("Extension_SelectFile_Title");
-        var extensionsArray = extensions?.ToArray() ?? [];
-        var result = await _dialogService.ShowResourcePickerDialogAsync(extensionsArray, title);
+        var options = new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Open,
+            Extensions = extensions?.ToArray() ?? [],
+            StartFolder = GetDocumentFolder(),
+            Title = _stringLocalizer.GetString("Extension_SelectFile_Title")
+        };
+        var result = await _dialogService.ShowResourcePickerDialogAsync(options);
 
         if (result.IsSuccess)
         {
@@ -130,6 +142,19 @@ internal sealed class CustomDialogRpcHandler : IHostDialog
         _messengerService.Send(notification);
 
         return new ShowNotificationResult();
+    }
+
+    // The picker opens on the folder of the document that asked. A document outside the project, for example a
+    // utility's document, gives an empty key. The picker then opens on the project folder.
+    private ResourceKey GetDocumentFolder()
+    {
+        var documentResource = _viewModel.FileResource;
+        if (documentResource.Root != ResourceKey.DefaultRoot)
+        {
+            return ResourceKey.Empty;
+        }
+
+        return documentResource.GetParent();
     }
 
     private static OpenDocumentAction? ComposeAction(string? resource, string? label, int line, int column)

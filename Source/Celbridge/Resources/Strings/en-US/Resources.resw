@@ -129,8 +129,11 @@
   <data name="DialogButton_Save" xml:space="preserve">
     <value>Save</value>
   </data>
-  <data name="DialogButton_Select" xml:space="preserve">
-    <value>Select</value>
+  <data name="DialogButton_Open" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="DialogButton_SelectFolder" xml:space="preserve">
+    <value>Select Folder</value>
   </data>
   <data name="DialogButton_Back" xml:space="preserve">
     <value>Back</value>
@@ -1691,14 +1694,26 @@ Open with default application instead?</value>
   <data name="NewFileDialog_FileName" xml:space="preserve">
     <value>Name</value>
   </data>
-  <data name="ResourcePickerDialog_Title" xml:space="preserve">
-    <value>Select Resource</value>
+  <data name="ResourcePickerDialog_OpenTitle" xml:space="preserve">
+    <value>Open File</value>
+  </data>
+  <data name="ResourcePickerDialog_FolderTitle" xml:space="preserve">
+    <value>Choose Folder</value>
+  </data>
+  <data name="ResourcePickerDialog_Up" xml:space="preserve">
+    <value>Up One Level</value>
   </data>
   <data name="ResourcePickerDialog_SearchPlaceholder" xml:space="preserve">
-    <value>Enter file name...</value>
+    <value>Search the project</value>
   </data>
-  <data name="ResourcePickerDialog_FolderSearchPlaceholder" xml:space="preserve">
-    <value>Enter folder name...</value>
+  <data name="ResourcePickerDialog_SearchLocation" xml:space="preserve">
+    <value>Matches from the whole project</value>
+  </data>
+  <data name="ResourcePickerDialog_MoreItems_One" xml:space="preserve">
+    <value>1 more item is not shown.</value>
+  </data>
+  <data name="ResourcePickerDialog_MoreItems_Many" xml:space="preserve">
+    <value>{0} more items are not shown.</value>
   </data>
   <data name="ResourcePickerDialog_Loading" xml:space="preserve">
     <value>Loading...</value>
@@ -1730,7 +1745,7 @@ Open with default application instead?</value>
   <data name="DownloadFileDialog_SelectFolderTitle" xml:space="preserve">
     <value>Select Folder</value>
   </data>
-  <data name="ResourcePickerDialog_ProjectFolder" xml:space="preserve">
+  <data name="DownloadFileDialog_ProjectFolder" xml:space="preserve">
     <value>{0} (project folder)</value>
   </data>
   <data name="ResourcePickerDialog_MoreMatches_One" xml:space="preserve">

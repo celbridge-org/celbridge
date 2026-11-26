@@ -90,8 +90,14 @@ public sealed class ResourcePolicy : IResourcePolicy
         return Result.Ok();
     }
 
-    public bool IsExplorerExcluded(ResourceKey resource, bool isFolder)
+    public bool IsExplorerHidden(ResourceKey resource, bool isFolder)
     {
+        if (!isFolder
+            && resource.ResourceName.EndsWith(SidecarFile.Extension, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
         return MatchesProjectPatterns(_explorerExclude, resource, isFolder);
     }
 

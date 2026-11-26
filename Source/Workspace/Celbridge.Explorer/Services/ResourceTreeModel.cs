@@ -1,13 +1,12 @@
 using System.Diagnostics;
 using Celbridge.Automation;
-using Celbridge.Explorer.Helpers;
 using Celbridge.Explorer.Models;
 using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.Projects;
-using Celbridge.Resources.Services;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -279,7 +278,7 @@ public sealed class ResourceTreeModel
                 return Result.Fail($"Resource not found: '{resource}'");
             }
 
-            if (ResourceTreeFilter.IsHidden(folderChild.Resource, folderChild.IsFolder, policy))
+            if (policy.IsExplorerHidden(folderChild.Resource, folderChild.IsFolder))
             {
                 isHidden = true;
             }
@@ -601,7 +600,7 @@ public sealed class ResourceTreeModel
             return true;
         }
 
-        return !ResourceTreeFilter.IsHidden(folderChild.Resource, folderChild.IsFolder, ResourceService.Policy);
+        return !ResourceService.Policy.IsExplorerHidden(folderChild.Resource, folderChild.IsFolder);
     }
 
     // Returns true if the folder has a visible child. A folder the model has neither listed nor checked counts as
@@ -663,7 +662,7 @@ public sealed class ResourceTreeModel
 
         foreach (var folderChild in listing.Children)
         {
-            var isHidden = ResourceTreeFilter.IsHidden(folderChild.Resource, folderChild.IsFolder, policy);
+            var isHidden = policy.IsExplorerHidden(folderChild.Resource, folderChild.IsFolder);
             if (isHidden
                 && !showHiddenFiles)
             {

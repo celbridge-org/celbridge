@@ -21,13 +21,13 @@ The delay timer starts when the matching dialog is displayed, not when this call
   - `"Alert"` — info-only OK prompts (e.g. an error notice surfaced after a failed operation).
   - `"Confirmation"` — yes/no prompts (e.g. `explorer_delete`).
   - `"InputText"` — single-string text-entry prompts (e.g. `explorer_rename`).
-  - `"ResourcePicker"` — file-resource pickers (e.g. JS contribution `PickFile` / `PickImage`).
+  - `"ResourcePicker"` — the resource picker, which chooses a file or a folder in the project. JS contribution `PickFile` and `PickImage` open it, and so do the folder choices in Project Settings.
   - `"DownloadFile"` — the Download File dialog. A file downloaded in a web view opens it.
 - `payload` (optional string, default `""`) — the content the dialog should receive:
   - **Alert dialogs**: payload is ignored; the dialog closes unconditionally.
   - **Confirmation dialogs**: payload is ignored; the dialog OKs unconditionally.
   - **Input-text dialogs**: payload is the text to enter. Empty payload enters an empty string.
-  - **Resource-picker dialogs**: payload is the resource key to select (e.g. `"Folder/picked.txt"` or `"root:path/inside.bin"`). The key must match an item currently visible in the picker (i.e. matching the picker's extension filter); a non-matching or malformed key logs a warning and closes the dialog without confirming, so the picker call returns `Result.Fail` and the test fails loudly.
+  - **Resource-picker dialogs**: payload is the resource key of the file or folder to choose (e.g. `"Folder/picked.txt"`). The picker accepts any item it would list, in any folder of the project. A picker that asks for a file takes a file with one of its extensions. A picker that asks for a folder takes a folder, and an empty payload chooses the project folder itself. The picker lists what the Explorer lists, so a key that the Explorer hides is refused while Show Hidden Files is off. A key that is malformed, missing, outside the project or refused logs a warning with the reason, and closes the dialog without confirming. The picker call then returns `Result.Fail`, and the test fails loudly.
   - **Download File dialogs**: payload is the resource key of the folder in the project the file is saved to (e.g. `"downloads"`). An empty payload saves to the project folder itself. The file keeps the site's name, or gets " (N)" before its extension when that name is taken. A malformed key logs a warning and cancels the download. A key that names no folder fails the download, and the log says why. The answer always saves in the project, like the dialog's In Project option. Other Location opens the system save dialog, which no tool operates.
 - `delayMs` (optional int, default `250`) — milliseconds to wait *after the dialog is displayed* before broadcasting the answer. Tune up for dialogs with slow initialization; tune down for tight test loops.
 

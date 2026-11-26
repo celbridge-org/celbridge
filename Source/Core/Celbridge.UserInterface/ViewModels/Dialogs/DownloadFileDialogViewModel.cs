@@ -56,6 +56,9 @@ public partial class DownloadFileDialogViewModel : ObservableObject
     private string _primaryButtonText = string.Empty;
 
     [ObservableProperty]
+    private bool _isPrimaryButtonEnabled = true;
+
+    [ObservableProperty]
     private string _secondaryButtonText = string.Empty;
 
     [ObservableProperty]
@@ -147,7 +150,7 @@ public partial class DownloadFileDialogViewModel : ObservableObject
         if (folder.IsEmpty)
         {
             var projectName = _projectService.CurrentProject?.ProjectName ?? string.Empty;
-            DownloadFolderText = _stringLocalizer.GetString("ResourcePickerDialog_ProjectFolder", projectName);
+            DownloadFolderText = _stringLocalizer.GetString("DownloadFileDialog_ProjectFolder", projectName);
         }
         else
         {
@@ -163,19 +166,22 @@ public partial class DownloadFileDialogViewModel : ObservableObject
         IsChoosingFolder = false;
         TitleText = _stringLocalizer.GetString("DownloadFileDialog_Title");
         PrimaryButtonText = _stringLocalizer.GetString("DialogButton_Save");
+        IsPrimaryButtonEnabled = true;
         SecondaryButtonText = _stringLocalizer.GetString("DialogButton_Cancel");
         FilePageVisibility = Visibility.Visible;
         FolderPageVisibility = Visibility.Collapsed;
     }
 
     /// <summary>
-    /// Shows the second page, which chooses the download folder.
+    /// Shows the second page, where the user chooses the download folder. The primary button is enabled when
+    /// isPrimaryButtonEnabled is true.
     /// </summary>
-    public void ShowFolderPage()
+    public void ShowFolderPage(bool isPrimaryButtonEnabled)
     {
         IsChoosingFolder = true;
         TitleText = _stringLocalizer.GetString("DownloadFileDialog_SelectFolderTitle");
-        PrimaryButtonText = _stringLocalizer.GetString("DialogButton_Select");
+        PrimaryButtonText = _stringLocalizer.GetString("DialogButton_SelectFolder");
+        IsPrimaryButtonEnabled = isPrimaryButtonEnabled;
         SecondaryButtonText = _stringLocalizer.GetString("DialogButton_Back");
         FilePageVisibility = Visibility.Collapsed;
         FolderPageVisibility = Visibility.Visible;

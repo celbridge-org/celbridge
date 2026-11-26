@@ -70,7 +70,7 @@ public class DownloadFileDialogViewModelTests
         _viewModel.SourceVisibility.Should().Be(Visibility.Visible);
 
         _viewModel.DownloadFolder.Should().Be(ResourceKey.Empty);
-        _viewModel.DownloadFolderText.Should().Be("ResourcePickerDialog_ProjectFolder:Acme");
+        _viewModel.DownloadFolderText.Should().Be("DownloadFileDialog_ProjectFolder:Acme");
         _viewModel.IsInProjectSelected.Should().BeTrue();
         _viewModel.IsOtherLocationSelected.Should().BeFalse();
 
@@ -122,11 +122,12 @@ public class DownloadFileDialogViewModelTests
             ResourceKey.Empty,
             DownloadFileChoice.InProject);
 
-        _viewModel.ShowFolderPage();
+        _viewModel.ShowFolderPage(isPrimaryButtonEnabled: false);
 
         _viewModel.IsChoosingFolder.Should().BeTrue();
         _viewModel.TitleText.Should().Be("DownloadFileDialog_SelectFolderTitle");
-        _viewModel.PrimaryButtonText.Should().Be("DialogButton_Select");
+        _viewModel.PrimaryButtonText.Should().Be("DialogButton_SelectFolder");
+        _viewModel.IsPrimaryButtonEnabled.Should().BeFalse();
         _viewModel.SecondaryButtonText.Should().Be("DialogButton_Back");
         _viewModel.FilePageVisibility.Should().Be(Visibility.Collapsed);
         _viewModel.FolderPageVisibility.Should().Be(Visibility.Visible);
@@ -136,6 +137,7 @@ public class DownloadFileDialogViewModelTests
         _viewModel.IsChoosingFolder.Should().BeFalse();
         _viewModel.TitleText.Should().Be("DownloadFileDialog_Title");
         _viewModel.PrimaryButtonText.Should().Be("DialogButton_Save");
+        _viewModel.IsPrimaryButtonEnabled.Should().BeTrue();
         _viewModel.SecondaryButtonText.Should().Be("DialogButton_Cancel");
         _viewModel.FilePageVisibility.Should().Be(Visibility.Visible);
         _viewModel.FolderPageVisibility.Should().Be(Visibility.Collapsed);

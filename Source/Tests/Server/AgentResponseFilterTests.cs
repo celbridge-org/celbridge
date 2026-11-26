@@ -691,8 +691,7 @@ public class AgentResponseFilterTests
 
         public Task<Result<NewFileConfig>> ShowNewFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator) => throw new NotSupportedException();
 
-        public Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false) => throw new NotSupportedException();
-        public Task<Result<ResourceKey>> ShowFolderPickerDialogAsync(string? title = null) => throw new NotSupportedException();
+        public Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(ResourcePickerOptions options) => throw new NotSupportedException();
 
         public Task<Result<DownloadFileAnswer>> ShowDownloadFileDialogAsync(string fileName, string sourceUrl, ResourceKey downloadFolder, DownloadFileChoice rememberedChoice) => throw new NotSupportedException();
 

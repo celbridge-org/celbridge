@@ -1,4 +1,7 @@
-namespace Celbridge.Resources.Services;
+using Celbridge.FileSystem;
+using Celbridge.Resources;
+
+namespace Celbridge.Utilities;
 
 /// <summary>
 /// Computes the writable state for a resource from its root handler and on-disk

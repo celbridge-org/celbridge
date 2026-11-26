@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Celbridge.Dialog;
 using Celbridge.Logging;
+using Celbridge.UserInterface.ViewModels.Controls;
 using Microsoft.UI.Xaml.Input;
 
 namespace Celbridge.UserInterface.Views;
@@ -17,7 +18,6 @@ public sealed partial class DownloadFileDialog : ContentDialog, IDownloadFileDia
     private readonly IMessengerService _messengerService;
 
     private Button? _primaryButton;
-    private bool _isFolderListInitialized;
     private bool _isPickingOtherLocation;
 
     // Set when something other than the dialog's buttons settles it: an automatic answer, or the path the system
@@ -103,7 +103,7 @@ public sealed partial class DownloadFileDialog : ContentDialog, IDownloadFileDia
         if (ViewModel.IsChoosingFolder)
         {
             args.Cancel = true;
-            ChooseSelectedFolder();
+            ChooseFolder();
             return;
         }
 
@@ -198,81 +198,69 @@ public sealed partial class DownloadFileDialog : ContentDialog, IDownloadFileDia
         Hide();
     }
 
-    private void FolderList_ItemInvoked(object? sender, EventArgs e)
-    {
-        ChooseSelectedFolder();
-    }
-
     private void FolderList_EscapePressed(object? sender, EventArgs e)
     {
         ShowFilePage();
     }
 
+    // Copies whether the picker view's primary button is enabled to the second page's primary button.
     private void OnFolderListPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ResourcePickerDialogViewModel.IsSubmitEnabled))
+        if (ViewModel.IsChoosingFolder
+            && e.PropertyName == nameof(ResourcePickerViewModel.IsPrimaryButtonEnabled))
         {
-            UpdatePrimaryButton();
+            ViewModel.IsPrimaryButtonEnabled = FolderList.ViewModel.IsPrimaryButtonEnabled;
         }
     }
 
+    // The project is walked only when the folder page is first shown, so the first page opens at once. The folder page
+    // opens in the download folder.
     private void ShowFolderPage()
     {
-        // The project is walked only when the folder list is first shown, so the first page opens at once.
-        if (!_isFolderListInitialized)
+        var options = new ResourcePickerOptions
         {
-            FolderList.ViewModel.InitializeForFolders(listProjectFolder: true);
-            _isFolderListInitialized = true;
-        }
-
-        FolderList.ViewModel.SearchText = string.Empty;
-        ViewModel.ShowFolderPage();
-        UpdatePrimaryButton();
+            Mode = ResourcePickerMode.Folder,
+            StartFolder = ViewModel.DownloadFolder
+        };
+        FolderList.ViewModel.Initialize(options);
+        ViewModel.ShowFolderPage(FolderList.ViewModel.IsPrimaryButtonEnabled);
 
         // Focused once the page has been laid out, since a control that has just become visible cannot take the
         // keyboard yet.
         DispatcherQueue.TryEnqueue(() => FolderList.FocusSearchBox());
 
-        _ = SelectDownloadFolderAsync();
+        _ = OpenDownloadFolderAsync();
     }
 
-    private async Task SelectDownloadFolderAsync()
+    private async Task OpenDownloadFolderAsync()
     {
         try
         {
-            await FolderList.ViewModel.LoadItemsAsync();
-            FolderList.SelectAndShow(ViewModel.DownloadFolder);
+            await FolderList.ViewModel.OpenAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to select the download folder in the folder list");
+            _logger.LogError(ex, "Failed to open the download folder in the folder page");
         }
     }
 
     private void ShowFilePage()
     {
         ViewModel.ShowFilePage();
-        UpdatePrimaryButton();
 
         DispatcherQueue.TryEnqueue(() => _primaryButton?.Focus(FocusState.Programmatic));
     }
 
-    private void ChooseSelectedFolder()
+    private void ChooseFolder()
     {
-        var selectedItem = FolderList.ViewModel.SelectedItem;
-        if (selectedItem is null)
+        var chosenFolder = FolderList.ViewModel.GetChoice();
+        if (chosenFolder is null)
         {
             return;
         }
 
-        ViewModel.SetDownloadFolder(selectedItem.ResourceKey);
+        ViewModel.SetDownloadFolder(chosenFolder.Value);
         ShowFilePage();
-    }
-
-    private void UpdatePrimaryButton()
-    {
-        IsPrimaryButtonEnabled = !ViewModel.IsChoosingFolder
-            || FolderList.ViewModel.IsSubmitEnabled;
     }
 
     private void OnDialogAnswer(object recipient, DialogAnswerMessage message)

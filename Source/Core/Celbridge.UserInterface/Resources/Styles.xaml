@@ -26,6 +26,10 @@
        tab strip. Set this to 0 to square every corner off. -->
   <x:Double x:Key="PanelCornerRadius">14</x:Double>
 
+  <!-- The width of the resource picker view. The download dialog's first page takes the same width, so that dialog
+       keeps one width on both pages. -->
+  <x:Double x:Key="ResourcePickerViewWidth">640</x:Double>
+
   <!-- The settings section switcher's metrics, mirroring the cel-section-* design tokens so the native
        control and the .cel-section-switcher web component hold the same shape. Keep the two in sync when
        either changes. The inset is taken by both the heading block and the section content. -->

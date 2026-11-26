@@ -1,0 +1,22 @@
+<UserControl
+  x:Class="Celbridge.UserInterface.Views.Controls.ResourcePickerCrumbView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+  DataContextChanged="CrumbView_DataContextChanged">
+
+  <Grid>
+    <controls:Icon x:Name="ProjectFolderIcon"
+                   Symbol="Folder"
+                   FontSize="{StaticResource IconSizeMedium}"
+                   VerticalAlignment="Center"
+                   Visibility="Collapsed"/>
+
+    <!-- Tight line bounds center the name's capital letters, so the name lines up with the icons and chevrons. -->
+    <TextBlock x:Name="NameText"
+               VerticalAlignment="Center"
+               TextLineBounds="Tight"
+               Visibility="Collapsed"/>
+  </Grid>
+
+</UserControl>

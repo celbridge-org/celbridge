@@ -1,22 +1,25 @@
 using Celbridge.Dialog;
 using Celbridge.Logging;
+using Celbridge.UserInterface.ViewModels.Controls;
 
 namespace Celbridge.UserInterface.Views;
 
+/// <summary>
+/// Asks the user to choose a file to open, or a folder, in the project. The dialog hosts the resource picker view,
+/// which browses the project one folder at a time.
+/// </summary>
 public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePickerDialog
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ILogger<ResourcePickerDialog> _logger;
     private readonly IMessengerService _messengerService;
-    private bool _confirmed;
-    private ResourcePickerItem? _answeredItem;
-    private string? _customTitle;
 
-    public ResourcePickerDialogViewModel ViewModel { get; }
+    // Set when the user, or an automated answer, chooses a resource.
+    private ResourceKey? _chosenResource;
 
-    public string TitleString => _customTitle ?? _stringLocalizer.GetString("ResourcePickerDialog_Title");
-    public string OkString => _stringLocalizer.GetString("DialogButton_Ok");
-    public string CancelString => _stringLocalizer.GetString("DialogButton_Cancel");
+    public ResourcePickerViewModel ViewModel { get; }
+
+    private string CancelString => _stringLocalizer.GetString("DialogButton_Cancel");
 
     public ResourcePickerDialog()
     {
@@ -30,51 +33,23 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
         this.InitializeComponent();
         this.EnableThemeSync();
 
-        ViewModel = ResourceSearchList.ViewModel;
-    }
+        var panelCornerRadius = (double)Application.Current.Resources["PanelCornerRadius"];
+        PreviewArea.CornerRadius = new CornerRadius(panelCornerRadius);
 
-    public void SetTitle(string title)
-    {
-        _customTitle = title;
-        // Update the Title binding since it was already evaluated
-        Title = title;
-    }
-
-    private void Dialog_Opened(ContentDialog sender, ContentDialogOpenedEventArgs args)
-    {
-        ResourceSearchList.FocusSearchBox();
-
-        // The dialog opens at once and shows that it is loading. The walk fills the list when it finishes.
-        _ = ViewModel.LoadItemsAsync();
-    }
-
-    private void ResourceSearchList_ItemInvoked(object? sender, EventArgs e)
-    {
-        _confirmed = true;
-        Hide();
-    }
-
-    private void ResourceSearchList_EscapePressed(object? sender, EventArgs e)
-    {
-        Hide();
+        ViewModel = PickerView.ViewModel;
     }
 
     public async Task<Result<ResourceKey>> ShowDialogAsync()
     {
-        _confirmed = false;
-        _answeredItem = null;
+        _chosenResource = null;
         _messengerService.Register<DialogAnswerMessage>(this, OnDialogAnswer);
         try
         {
-            var contentDialogResult = await ShowAsync();
+            await ShowAsync();
 
-            if (contentDialogResult == ContentDialogResult.Primary || _confirmed)
+            if (_chosenResource is not null)
             {
-                var selected = _answeredItem ?? ViewModel.SelectedItem;
-                if (selected is not null)
-                {
-                    return Result<ResourceKey>.Ok(selected.ResourceKey);
-                }
+                return Result<ResourceKey>.Ok(_chosenResource.Value);
             }
 
             return Result<ResourceKey>.Fail("Resource picker was cancelled");
@@ -83,6 +58,50 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
         {
             _messengerService.UnregisterAll(this);
         }
+    }
+
+    private async void Dialog_Opened(ContentDialog sender, ContentDialogOpenedEventArgs args)
+    {
+        PickerView.FocusSearchBox();
+
+        try
+        {
+            // The dialog opens at once. The start folder fills the list when it has been listed.
+            await ViewModel.OpenAsync();
+            PickerView.ShowSelectedItem();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to open the resource picker's start folder");
+        }
+    }
+
+    // The button's own close is cancelled. Choose records the choice, then closes the dialog.
+    private void Dialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    {
+        args.Cancel = true;
+
+        var chosenResource = ViewModel.GetChoice();
+        if (chosenResource is not null)
+        {
+            Choose(chosenResource.Value);
+        }
+    }
+
+    private void PickerView_ResourceChosen(object? sender, ResourceKey resource)
+    {
+        Choose(resource);
+    }
+
+    private void PickerView_EscapePressed(object? sender, EventArgs e)
+    {
+        Hide();
+    }
+
+    private void Choose(ResourceKey resource)
+    {
+        _chosenResource = resource;
+        Hide();
     }
 
     private async void OnDialogAnswer(object recipient, DialogAnswerMessage message)
@@ -100,22 +119,25 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
             return;
         }
 
-        // The answer can arrive before the walk has listed the items. The answer can also name an item beyond the
-        // shown list.
-        await ViewModel.LoadItemsAsync();
-
-        var match = ViewModel.FindMatchingItem(targetKey);
-        if (match is null)
+        try
         {
-            _logger.LogWarning(
-                $"Resource picker auto-answer failed: no filtered item matches resource key '{targetKey}'.");
-            Hide();
-            return;
-        }
+            var checkResult = await ViewModel.CheckAnswerAsync(targetKey);
+            if (checkResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    $"Resource picker auto-answer failed: {checkResult.FirstErrorMessage}");
+                Hide();
+                return;
+            }
+            var answeredResource = checkResult.Value;
 
-        _answeredItem = match;
-        _confirmed = true;
-        _logger.LogInformation($"Resource picker answered automatically with '{targetKey}'.");
-        Hide();
+            _logger.LogInformation($"Resource picker answered automatically with '{answeredResource}'.");
+            Choose(answeredResource);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check the resource picker's automated answer");
+            Hide();
+        }
     }
 }

@@ -54,16 +54,10 @@ public interface IDialogFactory
     INewFileDialog CreateNewFileDialog(string defaultFileName, Range selectionRange, IValidator validator);
 
     /// <summary>
-    /// Create a Resource Picker Dialog filtered to the specified file extensions.
+    /// Create a Resource Picker Dialog, which asks the user to choose a file or a folder in the project.
     /// Requires a loaded workspace.
     /// </summary>
-    IResourcePickerDialog CreateResourcePickerDialog(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false);
-
-    /// <summary>
-    /// Create a Resource Picker Dialog listing the project's folders.
-    /// Requires a loaded workspace.
-    /// </summary>
-    IResourcePickerDialog CreateFolderPickerDialog(string? title = null);
+    IResourcePickerDialog CreateResourcePickerDialog(ResourcePickerOptions options);
 
     /// <summary>
     /// Create a Download File Dialog for a file downloaded from the source URL, opening on the given download

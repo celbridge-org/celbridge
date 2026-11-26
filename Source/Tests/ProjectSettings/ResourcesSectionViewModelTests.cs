@@ -240,7 +240,7 @@ public class ResourcesSectionViewModelTests
 
     private void StubPickedFolder(Result<ResourceKey> pickResult)
     {
-        _dialogService.ShowFolderPickerDialogAsync(Arg.Any<string?>())
+        _dialogService.ShowResourcePickerDialogAsync(Arg.Is<ResourcePickerOptions>(options => options.Mode == ResourcePickerMode.Folder))
             .Returns(Task.FromResult(pickResult));
     }
 
