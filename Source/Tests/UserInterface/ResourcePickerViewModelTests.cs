@@ -21,7 +21,6 @@ namespace Celbridge.Tests.UserInterface;
 public class ResourcePickerViewModelTests
 {
     private static readonly IconDefinition FileIcon = new("f", "#FFFFFF", "Segoe Fluent Icons", "16");
-    private static readonly IconDefinition FolderIcon = new("d", "#FFCC40", "Segoe Fluent Icons", "16");
 
     // Each folder's children, in the order a folder's listing gives them: folders first, then files.
     private Dictionary<ResourceKey, List<FolderChild>> _folders = null!;
@@ -128,8 +127,7 @@ public class ResourcePickerViewModelTests
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         var iconService = Substitute.For<IIconService>();
-        iconService.DefaultFolderIcon.Returns(FolderIcon);
-        iconService.GetFileIconForFileName(Arg.Any<string>()).Returns(Result<IconDefinition>.Ok(FileIcon));
+        iconService.GetFileIconForFileName(Arg.Any<string>()).Returns(FileIcon);
 
         // A formatted string comes back as the string's name and first argument, so a test can read the argument.
         var stringLocalizer = Substitute.For<IStringLocalizer>();
@@ -196,7 +194,7 @@ public class ResourcePickerViewModelTests
         });
 
         ShownNames().Should().Equal("images");
-        _viewModel.ShownItems.Should().OnlyContain(item => item.IconDefinition == FolderIcon);
+        _viewModel.ShownItems.Should().OnlyContain(item => item.IsFolder && item.FileIcon == null);
         _viewModel.TitleText.Should().Be("ResourcePickerDialog_FolderTitle");
         _viewModel.PrimaryButtonText.Should().Be("DialogButton_SelectFolder");
         _viewModel.SelectedItem.Should().BeNull();
@@ -741,7 +739,7 @@ public class ResourcePickerViewModelTests
     public async Task SaveMode_OpensTheDefaultResourcesFolder_WithItsNameInTheNameField()
     {
         var suggestions = 0;
-        _viewModel.NameSuggested += (_, _) => suggestions++;
+        _viewModel.NameField.NameSuggested += (_, _) => suggestions++;
 
         await OpenAsync(new ResourcePickerOptions
         {
@@ -751,9 +749,9 @@ public class ResourcePickerViewModelTests
         });
 
         _viewModel.CurrentFolder.Should().Be(new ResourceKey("docs"));
-        _viewModel.NameText.Should().Be("report.md");
+        _viewModel.NameField.Text.Should().Be("report.md");
         suggestions.Should().Be(1);
-        _viewModel.NameFieldVisibility.Should().Be(Visibility.Visible);
+        _viewModel.NameField.Visibility.Should().Be(Visibility.Visible);
         _viewModel.TitleText.Should().Be("ResourcePickerDialog_SaveTitle");
         _viewModel.PrimaryButtonText.Should().Be("DialogButton_Save");
         _viewModel.IsPrimaryButtonEnabled.Should().BeTrue();
@@ -771,8 +769,8 @@ public class ResourcePickerViewModelTests
         });
 
         _viewModel.CurrentFolder.Should().Be(new ResourceKey("docs"));
-        _viewModel.NameText.Should().BeEmpty();
-        _viewModel.IsNameErrorVisible.Should().BeFalse();
+        _viewModel.NameField.Text.Should().BeEmpty();
+        _viewModel.NameField.IsErrorVisible.Should().BeFalse();
         _viewModel.IsPrimaryButtonEnabled.Should().BeFalse();
         _viewModel.GetChoice().Should().BeNull();
     }
@@ -800,10 +798,10 @@ public class ResourcePickerViewModelTests
             Extensions = [".md"]
         });
 
-        _viewModel.NameText = "summary";
+        _viewModel.NameField.Text = "summary";
         _viewModel.GetChoice().Should().Be(new ResourceKey("summary.md"));
 
-        _viewModel.NameText = "summary.MD";
+        _viewModel.NameField.Text = "summary.MD";
         _viewModel.GetChoice().Should().Be(new ResourceKey("summary.MD"));
     }
 
@@ -816,15 +814,15 @@ public class ResourcePickerViewModelTests
             Extensions = [".png", ".jpg"]
         });
 
-        _viewModel.NameText = "hero";
+        _viewModel.NameField.Text = "hero";
 
-        _viewModel.IsNameErrorVisible.Should().BeTrue();
-        _viewModel.NameErrorText.Should().Be("ResourcePickerDialog_ExtensionRequired:.png, .jpg");
+        _viewModel.NameField.IsErrorVisible.Should().BeTrue();
+        _viewModel.NameField.ErrorText.Should().Be("ResourcePickerDialog_ExtensionRequired:.png, .jpg");
         _viewModel.IsPrimaryButtonEnabled.Should().BeFalse();
 
-        _viewModel.NameText = "hero.jpg";
+        _viewModel.NameField.Text = "hero.jpg";
 
-        _viewModel.IsNameErrorVisible.Should().BeFalse();
+        _viewModel.NameField.IsErrorVisible.Should().BeFalse();
         _viewModel.GetChoice().Should().Be(new ResourceKey("hero.jpg"));
     }
 
@@ -836,19 +834,19 @@ public class ResourcePickerViewModelTests
             Mode = ResourcePickerMode.Save
         });
 
-        _viewModel.NameText = "docs";
+        _viewModel.NameField.Text = "docs";
 
-        _viewModel.NameErrorText.Should().Be("Validation_FolderNameAlreadyExists:docs");
+        _viewModel.NameField.ErrorText.Should().Be("Validation_FolderNameAlreadyExists:docs");
         _viewModel.GetChoice().Should().BeNull();
 
-        _viewModel.NameText = "locked.md";
+        _viewModel.NameField.Text = "locked.md";
 
-        _viewModel.NameErrorText.Should().Be("Validation_FileIsReadOnly:locked.md");
+        _viewModel.NameField.ErrorText.Should().Be("Validation_FileIsReadOnly:locked.md");
         _viewModel.GetChoice().Should().BeNull();
 
-        _viewModel.NameText = "notes.cel";
+        _viewModel.NameField.Text = "notes.cel";
 
-        _viewModel.NameErrorText.Should().Be("Validation_CelExtensionReserved");
+        _viewModel.NameField.ErrorText.Should().Be("Validation_CelExtensionReserved");
         _viewModel.GetChoice().Should().BeNull();
     }
 
@@ -874,9 +872,9 @@ public class ResourcePickerViewModelTests
 
         _viewModel.CurrentFolder.Should().Be(new ResourceKey("docs"));
 
-        _viewModel.NameText = "images";
+        _viewModel.NameField.Text = "images";
 
-        _viewModel.NameErrorText.Should().Be("Validation_FolderNameAlreadyExists:images");
+        _viewModel.NameField.ErrorText.Should().Be("Validation_FolderNameAlreadyExists:images");
         _viewModel.GetChoice().Should().BeNull();
     }
 
@@ -888,13 +886,13 @@ public class ResourcePickerViewModelTests
             Mode = ResourcePickerMode.Save
         });
 
-        _viewModel.NameText = "DOCS";
+        _viewModel.NameField.Text = "DOCS";
         (await _viewModel.OpenNamedFolderAsync()).Should().BeTrue();
 
         _viewModel.CurrentFolder.Should().Be(new ResourceKey("docs"));
-        _viewModel.NameText.Should().BeEmpty();
+        _viewModel.NameField.Text.Should().BeEmpty();
 
-        _viewModel.NameText = "notes.md";
+        _viewModel.NameField.Text = "notes.md";
         (await _viewModel.OpenNamedFolderAsync()).Should().BeFalse();
         _viewModel.CurrentFolder.Should().Be(new ResourceKey("docs"));
     }
@@ -907,7 +905,7 @@ public class ResourcePickerViewModelTests
             Mode = ResourcePickerMode.Save
         });
 
-        _viewModel.NameText = "new.md";
+        _viewModel.NameField.Text = "new.md";
 
         _viewModel.GetConfirmedChoice().Should().Be(new ResourceKey("new.md"));
         _viewModel.IsAskingToReplace.Should().BeFalse();
@@ -920,7 +918,7 @@ public class ResourcePickerViewModelTests
         {
             Mode = ResourcePickerMode.Save
         });
-        _viewModel.NameText = "readme.md";
+        _viewModel.NameField.Text = "readme.md";
 
         _viewModel.GetConfirmedChoice().Should().BeNull();
 
@@ -944,10 +942,10 @@ public class ResourcePickerViewModelTests
         {
             Mode = ResourcePickerMode.Save
         });
-        _viewModel.NameText = "readme.md";
+        _viewModel.NameField.Text = "readme.md";
         _viewModel.GetConfirmedChoice();
 
-        _viewModel.NameText = "readme2.md";
+        _viewModel.NameField.Text = "readme2.md";
 
         _viewModel.IsAskingToReplace.Should().BeFalse();
         _viewModel.GetConfirmedChoice().Should().Be(new ResourceKey("readme2.md"));
@@ -961,7 +959,7 @@ public class ResourcePickerViewModelTests
             Mode = ResourcePickerMode.Save
         });
 
-        _viewModel.NameText = "README.md";
+        _viewModel.NameField.Text = "README.md";
 
         _viewModel.GetChoice().Should().Be(new ResourceKey("readme.md"));
         _viewModel.GetConfirmedChoice().Should().BeNull();
@@ -976,16 +974,16 @@ public class ResourcePickerViewModelTests
             Mode = ResourcePickerMode.Save
         });
         var suggestions = 0;
-        _viewModel.NameSuggested += (_, _) => suggestions++;
+        _viewModel.NameField.NameSuggested += (_, _) => suggestions++;
 
         _viewModel.SelectedItem = _viewModel.ShownItems.Single(item => item.Name == "readme.md");
 
-        _viewModel.NameText.Should().Be("readme.md");
+        _viewModel.NameField.Text.Should().Be("readme.md");
         suggestions.Should().Be(1);
 
         _viewModel.SelectedItem = _viewModel.ShownItems.Single(item => item.Name == "docs");
 
-        _viewModel.NameText.Should().Be("readme.md");
+        _viewModel.NameField.Text.Should().Be("readme.md");
     }
 
     [Test]
@@ -999,7 +997,7 @@ public class ResourcePickerViewModelTests
 
         (await _viewModel.InvokeItemAsync(readmeItem)).Should().BeNull();
 
-        _viewModel.NameText.Should().Be("readme.md");
+        _viewModel.NameField.Text.Should().Be("readme.md");
         _viewModel.IsAskingToReplace.Should().BeTrue();
 
         (await _viewModel.InvokeItemAsync(readmeItem)).Should().Be(new ResourceKey("readme.md"));
@@ -1020,7 +1018,7 @@ public class ResourcePickerViewModelTests
 
         _viewModel.SearchText.Should().BeEmpty();
         _viewModel.CurrentFolder.Should().Be(new ResourceKey("docs/images"));
-        _viewModel.NameText.Should().Be("logo.png");
+        _viewModel.NameField.Text.Should().Be("logo.png");
         _viewModel.SelectedItem!.Resource.Should().Be(new ResourceKey("docs/images/logo.png"));
         _viewModel.IsAskingToReplace.Should().BeFalse();
     }
@@ -1033,7 +1031,7 @@ public class ResourcePickerViewModelTests
             Mode = ResourcePickerMode.Save
         });
         await _viewModel.LoadSearchItemsAsync();
-        _viewModel.NameText = "new.md";
+        _viewModel.NameField.Text = "new.md";
 
         _viewModel.SearchText = "notes";
 

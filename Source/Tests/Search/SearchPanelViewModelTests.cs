@@ -7,6 +7,7 @@ using Celbridge.Search;
 using Celbridge.Search.ViewModels;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Tests.Helpers;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -75,7 +76,8 @@ public class SearchPanelViewModelTests
             workspaceWrapper,
             Substitute.For<IDialogService>(),
             stringLocalizer,
-            dispatcher);
+            dispatcher,
+            Substitute.For<IIconService>());
         _viewModel.SearchText = "hello";
     }
 

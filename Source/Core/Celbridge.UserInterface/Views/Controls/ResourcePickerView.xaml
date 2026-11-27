@@ -174,12 +174,11 @@
                 <ColumnDefinition Width="*"/>
               </Grid.ColumnDefinitions>
 
-              <!-- The icon dims with the name when the resource is read-only or hidden. -->
-              <controls:FileIcon Grid.Column="0"
-                                 Size="18"
-                                 IconDefinition="{x:Bind IconDefinition}"
-                                 Opacity="{x:Bind IsDimmed, Converter={StaticResource BoolToDimmedOpacityConverter}, ConverterParameter=Inverted}"
-                                 VerticalAlignment="Center"/>
+              <controls:ResourceIcon Grid.Column="0"
+                                     IsFolder="{x:Bind IsFolder}"
+                                     FileIcon="{x:Bind FileIcon}"
+                                     Opacity="{x:Bind IsDimmed, Converter={StaticResource BoolToDimmedOpacityConverter}, ConverterParameter=Inverted}"
+                                     VerticalAlignment="Center"/>
 
               <!-- The minimum width lines up the search results' paths in a column. A longer name pushes its path
                    to the right. -->
@@ -231,11 +230,11 @@
     <!-- The name of the file to save, in save mode. Under the field, an error says why the name can't be used, and a
          question asks before replacing a file. -->
     <StackPanel Grid.Row="3"
-                Visibility="{x:Bind ViewModel.NameFieldVisibility, Mode=OneWay}">
+                Visibility="{x:Bind ViewModel.NameField.Visibility, Mode=OneWay}">
       <TextBox x:Name="NameTextBox"
                Header="{x:Bind NameString}"
                HeaderTemplate="{StaticResource FieldHeaderTemplate}"
-               Text="{x:Bind ViewModel.NameText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+               Text="{x:Bind ViewModel.NameField.Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                IsSpellCheckEnabled="False"
                AcceptsReturn="False"
                KeyDown="NameTextBox_KeyDown"
@@ -243,9 +242,9 @@
       <Grid MinHeight="56"
             Margin="0,8,0,0">
         <InfoBar Severity="Error"
-                 IsOpen="{x:Bind ViewModel.IsNameErrorVisible, Mode=OneWay}"
+                 IsOpen="{x:Bind ViewModel.NameField.IsErrorVisible, Mode=OneWay}"
                  IsClosable="False"
-                 Message="{x:Bind ViewModel.NameErrorText, Mode=OneWay}"/>
+                 Message="{x:Bind ViewModel.NameField.ErrorText, Mode=OneWay}"/>
         <InfoBar Severity="Warning"
                  IsOpen="{x:Bind ViewModel.IsAskingToReplace, Mode=OneWay}"
                  IsClosable="False"

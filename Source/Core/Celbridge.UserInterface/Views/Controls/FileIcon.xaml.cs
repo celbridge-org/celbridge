@@ -162,8 +162,7 @@ public sealed partial class FileIcon : UserControl
         {
             _isIconDefinitionSetExternally = false;
 
-            var result = _iconService.GetFileIconForFileName(Source);
-            IconDefinition = result.IsSuccess ? result.Value : _iconService.DefaultFileIcon;
+            IconDefinition = _iconService.GetFileIconForFileName(Source);
         }
         else if (!_isIconDefinitionSetExternally)
         {

@@ -3,9 +3,7 @@ namespace Celbridge.UserInterface.Services;
 public class IconService : IIconService
 {
     private const string DefaultFileIconName = "nf-seti-default";
-    private const string DefaultFolderIconName = "bs-folder-fill";
     private const string DefaultColor = "#9dc0ce";
-    public const string DefaultFolderColor = "#FFCC40";
 
     private const string DefaultFontSize = "100%";
     private const string FallbackIconName = "bs-question-circle";
@@ -17,8 +15,7 @@ public class IconService : IIconService
     private IReadOnlyDictionary<string, IconDefinition> _fileNameIconOverrides =
         new Dictionary<string, IconDefinition>(StringComparer.OrdinalIgnoreCase);
 
-    public IconDefinition DefaultFileIcon { get; private set; }
-    public IconDefinition DefaultFolderIcon { get; private set; }
+    public IconDefinition DefaultFileIcon { get; }
 
     public IconService()
     {
@@ -34,13 +31,6 @@ public class IconService : IIconService
             throw new InvalidOperationException($"Failed to build the default file icon. {getFileResult.DiagnosticReport}");
         }
         DefaultFileIcon = getFileResult.Value;
-
-        var getFolderResult = CreateIcon(DefaultFolderIconName, DefaultFolderColor);
-        if (getFolderResult.IsFailure)
-        {
-            throw new InvalidOperationException($"Failed to build the default folder icon. {getFolderResult.DiagnosticReport}");
-        }
-        DefaultFolderIcon = getFolderResult.Value;
     }
 
     public Result LoadDefinitions()
@@ -58,45 +48,28 @@ public class IconService : IIconService
         return Result.Ok();
     }
 
-    public Result<IconDefinition> GetFileIconForExtension(string fileExtension)
-    {
-        if (fileExtension.StartsWith('.'))
-        {
-            // Remove leading dot before performing lookup
-            fileExtension = fileExtension.Substring(1);
-        }
-
-        if (_fileIconOverrides.TryGetValue(fileExtension, out var overrideIcon))
-        {
-            return Result<IconDefinition>.Ok(overrideIcon);
-        }
-
-        // An extension with no override is drawn with the default file icon.
-        return Result<IconDefinition>.Ok(DefaultFileIcon);
-    }
-
-    public Result<IconDefinition> GetFileIconForFileName(string fileName)
+    public IconDefinition GetFileIconForFileName(string fileName)
     {
         if (string.IsNullOrEmpty(fileName))
         {
-            return Result<IconDefinition>.Ok(DefaultFileIcon);
+            return DefaultFileIcon;
         }
 
         if (_fileNameIconOverrides.TryGetValue(fileName, out var fileNameOverride))
         {
-            return Result<IconDefinition>.Ok(fileNameOverride);
+            return fileNameOverride;
         }
 
         foreach (var suffix in GetExtensionSuffixes(fileName))
         {
             if (_fileIconOverrides.TryGetValue(suffix, out var suffixOverride))
             {
-                return Result<IconDefinition>.Ok(suffixOverride);
+                return suffixOverride;
             }
         }
 
         // A name matching no suffix falls through to the default file icon.
-        return Result<IconDefinition>.Ok(DefaultFileIcon);
+        return DefaultFileIcon;
     }
 
     // The dot-free extension suffixes of a name, longest first: "code.editor.toml" yields

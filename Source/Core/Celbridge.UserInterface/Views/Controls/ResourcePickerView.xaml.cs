@@ -51,7 +51,7 @@ public sealed partial class ResourcePickerView : UserControl
         var panelCornerRadius = (double)Application.Current.Resources["PanelCornerRadius"];
         ListArea.CornerRadius = new CornerRadius(panelCornerRadius);
 
-        ViewModel.NameSuggested += ViewModel_NameSuggested;
+        ViewModel.NameField.NameSuggested += NameField_NameSuggested;
     }
 
     /// <summary>
@@ -238,9 +238,9 @@ public sealed partial class ResourcePickerView : UserControl
     // Selects the suggested name without its extension, so typing replaces the name and keeps the file type. A
     // suggestion can arrive before the view's bindings have put the name in the field. The field's text then changes
     // later, and the selection waits for that change.
-    private void ViewModel_NameSuggested(object? sender, EventArgs e)
+    private void NameField_NameSuggested(object? sender, EventArgs e)
     {
-        _suggestedName = ViewModel.NameText;
+        _suggestedName = ViewModel.NameField.Text;
         SelectSuggestedBaseName();
     }
 

@@ -710,21 +710,10 @@ public sealed class ResourceTreeModel
                     WritableState: writableState,
                     ReadOnlyMessage: readOnlyMessage,
                     ProjectFolderTooltip: string.Empty,
-                    FileIcon: GetFileIcon(folderChild.Resource));
+                    FileIcon: _iconService.GetFileIconForFileName(folderChild.Resource.ResourceName));
                 builder.Add(folderChild.Resource, appearance);
             }
         }
-    }
-
-    private IconDefinition GetFileIcon(ResourceKey file)
-    {
-        var getIconResult = _iconService.GetFileIconForFileName(file.ResourceName);
-        if (getIconResult.IsSuccess)
-        {
-            return getIconResult.Value;
-        }
-
-        return _iconService.DefaultFileIcon;
     }
 
     private string GetProjectFolderName()

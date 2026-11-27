@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using Celbridge.UserInterface;
-using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -45,7 +44,7 @@ public partial class SearchFileResultViewModel : ObservableObject, ISelectableSe
 
     public ObservableCollection<SearchMatchLineViewModel> Matches { get; } = new();
 
-    public SearchFileResultViewModel(SearchFileResult result, SearchPanelViewModel parent, IWorkspaceWrapper workspaceWrapper)
+    public SearchFileResultViewModel(SearchFileResult result, SearchPanelViewModel parent, IIconService iconService)
     {
         Parent = parent;
         Resource = result.Resource;
@@ -56,9 +55,8 @@ public partial class SearchFileResultViewModel : ObservableObject, ISelectableSe
         // Use cached tooltip from parent to avoid ServiceLocator call per item
         ReplaceInFileTooltip = parent.ReplaceInFileTooltip;
 
-        // Get the file icon from the explorer service
-        var explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
-        FileIcon = explorerService.GetIconForFile(result.Resource);
+        // Match on the whole name, so a file with no extension can still have an icon.
+        FileIcon = iconService.GetFileIconForFileName(result.Resource.ResourceName);
 
         // Create all match ViewModels and add to collection
         // Using constructor initialization avoids per-item CollectionChanged events

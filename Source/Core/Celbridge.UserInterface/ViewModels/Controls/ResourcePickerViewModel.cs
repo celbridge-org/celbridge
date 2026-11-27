@@ -1,11 +1,8 @@
 using System.ComponentModel;
 using Celbridge.Dialog;
 using Celbridge.Logging;
-using Celbridge.Patterns;
 using Celbridge.Projects;
 using Celbridge.UserInterface.Helpers;
-using Celbridge.Utilities;
-using Celbridge.Validators;
 using Celbridge.Workspace;
 using Microsoft.UI.Xaml.Media.Imaging;
 
@@ -53,37 +50,19 @@ public partial class ResourcePickerViewModel : ObservableObject
     private readonly IProjectService _projectService;
     private readonly IIconService _iconService;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IResourceNameValidatorFactory _nameValidatorFactory;
+    private readonly ResourcePickerSearch _search;
 
     private ResourcePickerOptions _options = new();
-    private List<string> _extensions = [];
     private readonly Dictionary<WritableState, string> _readOnlyMessages = [];
-    private bool _showHiddenFiles;
-    private IResourcePolicy? _policy;
+    // Built from the options on each setup. Null until the picker is set up.
+    private ResourcePickerItemFactory? _itemFactory;
     private IRootHandlerRegistry? _rootHandlerRegistry;
     private IResourceFileSystem? _resourceFileSystem;
     private List<ResourcePickerItem> _folderItems = [];
-    // Every child of the current folder. The list leaves some of them out. Save mode finds an existing file here,
-    // with the name stored on disk.
-    private IReadOnlyList<FolderChild> _folderChildren = [];
-    // Checks the typed name in save mode, against the current folder's listing. Null until the picker lists a folder.
-    private IValidator? _nameValidator;
     // False until the picker lists a folder. Until then the breadcrumb is empty, and folder mode has nothing to choose.
     private bool _isFolderListed;
-    private List<ResourcePickerItem> _searchItems = [];
-    private bool _isWalkFinished;
     private Task? _walkTask;
     private int _folderListingCount;
-    // In save mode, the name of the file to save, or null while the typed name can't be used.
-    private string? _saveName;
-    // In save mode, true when a file in the current folder already has the save name.
-    private bool _isSaveNameTaken;
-
-    /// <summary>
-    /// Raised when the picker puts a name in the name field, for example when the user clicks a file. The view then
-    /// selects the name without its extension.
-    /// </summary>
-    public event EventHandler? NameSuggested;
 
     [ObservableProperty]
     private string _titleText = string.Empty;
@@ -149,18 +128,6 @@ public partial class ResourcePickerViewModel : ObservableObject
     private Visibility _previewImageVisibility = Visibility.Collapsed;
 
     [ObservableProperty]
-    private Visibility _nameFieldVisibility = Visibility.Collapsed;
-
-    [ObservableProperty]
-    private string _nameText = string.Empty;
-
-    [ObservableProperty]
-    private string _nameErrorText = string.Empty;
-
-    [ObservableProperty]
-    private bool _isNameErrorVisible;
-
-    [ObservableProperty]
     private bool _isAskingToReplace;
 
     [ObservableProperty]
@@ -179,7 +146,8 @@ public partial class ResourcePickerViewModel : ObservableObject
         _projectService = projectService;
         _iconService = iconService;
         _stringLocalizer = stringLocalizer;
-        _nameValidatorFactory = nameValidatorFactory;
+        _search = new ResourcePickerSearch(logger);
+        NameField = new ResourcePickerNameField(stringLocalizer, nameValidatorFactory);
 
         // Each message is looked up once here, so the walk can build items off the UI thread. The messages never
         // change afterwards, so a walk still running when the picker is set up again reads them safely.
@@ -190,7 +158,13 @@ public partial class ResourcePickerViewModel : ObservableObject
         }
 
         PropertyChanged += OnPropertyChanged;
+        NameField.PropertyChanged += NameField_PropertyChanged;
     }
+
+    /// <summary>
+    /// The name field of save mode, which names the file to save in the current folder.
+    /// </summary>
+    public ResourcePickerNameField NameField { get; }
 
     /// <summary>
     /// Returns what the user chooses: a file to open, a place to save a file, or a folder.
@@ -211,33 +185,29 @@ public partial class ResourcePickerViewModel : ObservableObject
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceService = workspaceService.ResourceService;
-        _policy = resourceService.Policy;
         _rootHandlerRegistry = resourceService.RootHandlers;
         _resourceFileSystem = resourceService.FileSystem;
-        _showHiddenFiles = workspaceService.BindableWorkspaceSettings.ShowHiddenFiles;
 
-        _extensions = [];
-        if (options.Mode != ResourcePickerMode.Folder)
-        {
-            _extensions = options.Extensions
-                .Select(extension => extension.TrimStart('.').ToLowerInvariant())
-                .Distinct()
-                .ToList();
-        }
+        // Folder mode lists folders only, so the extensions don't apply.
+        var extensions = options.Mode == ResourcePickerMode.Folder
+            ? ResourcePickerExtensions.Any
+            : new ResourcePickerExtensions(options.Extensions);
+
+        _itemFactory = new ResourcePickerItemFactory(
+            options.Mode,
+            extensions,
+            workspaceService.BindableWorkspaceSettings.ShowHiddenFiles,
+            resourceService.Policy,
+            resourceService.RootHandlers,
+            _iconService,
+            _readOnlyMessages);
 
         TitleText = options.Title ?? GetDefaultTitle(options.Mode);
 
-        if (_extensions.Count > 0)
-        {
-            var filters = _extensions.Select(extension => $"*.{extension}");
-            ExtensionFilterText = string.Join(", ", filters);
-            ExtensionFilterVisibility = Visibility.Visible;
-        }
-        else
-        {
-            ExtensionFilterText = string.Empty;
-            ExtensionFilterVisibility = Visibility.Collapsed;
-        }
+        ExtensionFilterText = extensions.FilterText;
+        ExtensionFilterVisibility = extensions.AllowsAny
+            ? Visibility.Collapsed
+            : Visibility.Visible;
 
         var showsPreview = options.ShowPreview
             && options.Mode == ResourcePickerMode.Open;
@@ -245,22 +215,16 @@ public partial class ResourcePickerViewModel : ObservableObject
             ? Visibility.Visible
             : Visibility.Collapsed;
 
-        NameFieldVisibility = options.Mode == ResourcePickerMode.Save
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-
         // Clear the earlier folder, selection, search and name, so the primary button chooses only from this setup.
         _folderItems = [];
-        _folderChildren = [];
-        _nameValidator = null;
         _isFolderListed = false;
         CurrentFolder = ResourceKey.Empty;
         Crumbs = [];
         SearchText = string.Empty;
         UpdateShownItems();
 
-        NameText = string.Empty;
-        UpdateNameState();
+        NameField.Reset(extensions, isSaveMode: options.Mode == ResourcePickerMode.Save);
+        UpdatePrimaryButton();
     }
 
     /// <summary>
@@ -349,11 +313,11 @@ public partial class ResourcePickerViewModel : ObservableObject
             {
                 await OpenFolderAsync(item.Resource.GetParent());
                 SelectShownItem(item.Resource);
-                SuggestName(item.Name);
+                NameField.Suggest(item.Name);
                 return null;
             }
 
-            SuggestName(item.Name);
+            NameField.Suggest(item.Name);
             return GetConfirmedChoice();
         }
 
@@ -382,7 +346,7 @@ public partial class ResourcePickerViewModel : ObservableObject
         }
 
         await OpenFolderAsync(namedFolder.Resource);
-        NameText = string.Empty;
+        NameField.Text = string.Empty;
 
         return true;
     }
@@ -410,12 +374,12 @@ public partial class ResourcePickerViewModel : ObservableObject
         {
             if (!_isFolderListed
                 || IsSearching
-                || _saveName is null)
+                || NameField.SaveName is not string saveName)
             {
                 return null;
             }
 
-            return CurrentFolder.Combine(_saveName);
+            return CurrentFolder.Combine(saveName);
         }
 
         if (SelectedItem is { IsFolder: false } selectedFile)
@@ -440,13 +404,15 @@ public partial class ResourcePickerViewModel : ObservableObject
         }
 
         if (Mode != ResourcePickerMode.Save
-            || !_isSaveNameTaken
+            || !NameField.IsSaveNameTaken
             || IsAskingToReplace)
         {
             return choice;
         }
 
-        ReplaceQuestionText = _stringLocalizer.GetString("ResourcePickerDialog_ReplaceQuestion", choice.Value.ResourceName);
+        ReplaceQuestionText = _stringLocalizer.GetString(
+            "ResourcePickerDialog_ReplaceQuestion",
+            choice.Value.ResourceName);
         IsAskingToReplace = true;
 
         return null;
@@ -511,6 +477,7 @@ public partial class ResourcePickerViewModel : ObservableObject
             return await CheckSaveAnswerAsync(resource);
         }
 
+        Guard.IsNotNull(_itemFactory);
         Guard.IsNotNull(_resourceFileSystem);
         var getItemResult = await _resourceFileSystem.GetResourceItemAsync(resource);
         if (getItemResult.IsFailure)
@@ -531,14 +498,12 @@ public partial class ResourcePickerViewModel : ObservableObject
             return Result<ResourceKey>.Fail($"'{resource}' is a folder, and the picker asks for a file.");
         }
 
-        if (!IsListedKind(resourceItem.Resource, resourceItem.IsFolder))
+        if (!_itemFactory.IsListedKind(resourceItem.Resource, resourceItem.IsFolder))
         {
             return Result<ResourceKey>.Fail($"The picker does not list '{resource}', because of its extension.");
         }
 
-        Guard.IsNotNull(_policy);
-        var isHidden = _policy.IsExplorerHidden(resourceItem.Resource, resourceItem.IsFolder);
-        if (!IsShown(isHidden))
+        if (!_itemFactory.IsShown(resourceItem.Resource, resourceItem.IsFolder))
         {
             return Result<ResourceKey>.Fail($"The Explorer hides '{resource}'.");
         }
@@ -557,19 +522,15 @@ public partial class ResourcePickerViewModel : ObservableObject
             return Result<ResourceKey>.Fail($"The folder of '{resource}' does not exist.");
         }
         var folderChildren = listResult.Value;
-        var nameValidator = _nameValidatorFactory.CreateFromListing(
-            folder,
-            folderChildren,
-            ResourceNameKind.FileToSave);
 
         var name = resource.ResourceName;
-        var nameError = GetNameError(nameValidator, name);
+        var nameError = NameField.CheckName(folder, folderChildren, name);
         if (nameError is not null)
         {
             return Result<ResourceKey>.Fail($"'{resource}' cannot be saved: {nameError}");
         }
 
-        return folder.Combine(GetStoredName(folderChildren, name));
+        return folder.Combine(ResourcePickerNameField.GetStoredName(folderChildren, name));
     }
 
     private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -590,19 +551,25 @@ public partial class ResourcePickerViewModel : ObservableObject
                 && !IsSearching
                 && SelectedItem is { IsFolder: false } selectedFile)
             {
-                SuggestName(selectedFile.Name);
+                NameField.Suggest(selectedFile.Name);
             }
         }
         else if (e.PropertyName == nameof(IsSearching))
         {
             UpdatePrimaryButton();
         }
-        else if (e.PropertyName == nameof(NameText))
-        {
-            UpdateNameState();
-        }
         else if (e.PropertyName == nameof(IsAskingToReplace))
         {
+            UpdatePrimaryButton();
+        }
+    }
+
+    // A change to the typed name takes away the question whether to replace a file, and can change the choice.
+    private void NameField_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ResourcePickerNameField.Text))
+        {
+            IsAskingToReplace = false;
             UpdatePrimaryButton();
         }
     }
@@ -676,7 +643,7 @@ public partial class ResourcePickerViewModel : ObservableObject
         }
         else
         {
-            SuggestName(defaultResource.ResourceName);
+            NameField.Suggest(defaultResource.ResourceName);
         }
 
         return true;
@@ -686,6 +653,7 @@ public partial class ResourcePickerViewModel : ObservableObject
     // is dropped.
     private async Task<bool> TryOpenFolderAsync(ResourceKey folder)
     {
+        Guard.IsNotNull(_itemFactory);
         Guard.IsNotNull(_resourceFileSystem);
 
         _folderListingCount++;
@@ -704,15 +672,19 @@ public partial class ResourcePickerViewModel : ObservableObject
         var folderChildren = listResult.Value;
 
         // Save mode checks the typed name against this listing. The checks then always match the listed folder.
-        _nameValidator = _nameValidatorFactory.CreateFromListing(
-            folder,
-            folderChildren,
-            ResourceNameKind.FileToSave);
+        if (Mode == ResourcePickerMode.Save)
+        {
+            NameField.SetFolder(folder, folderChildren);
+        }
 
         var items = new List<ResourcePickerItem>();
         foreach (var folderChild in folderChildren)
         {
-            var item = CreateItem(folderChild.Resource, folderChild.IsFolder, folderChild.Attributes, showsPath: false);
+            var item = _itemFactory.CreateItem(
+                folderChild.Resource,
+                folderChild.IsFolder,
+                folderChild.Attributes,
+                showsPath: false);
             if (item is not null)
             {
                 items.Add(item);
@@ -720,13 +692,12 @@ public partial class ResourcePickerViewModel : ObservableObject
         }
 
         _folderItems = items;
-        _folderChildren = folderChildren;
         _isFolderListed = true;
         CurrentFolder = folder;
         Crumbs = BuildCrumbs(folder);
 
         UpdateShownItems();
-        UpdateNameState();
+        UpdatePrimaryButton();
 
         return true;
     }
@@ -773,187 +744,7 @@ public partial class ResourcePickerViewModel : ObservableObject
 
         return _folderItems.FirstOrDefault(item =>
             item.IsFolder
-            && item.Name.Equals(NameText, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private void SuggestName(string name)
-    {
-        NameText = name;
-        NameSuggested?.Invoke(this, EventArgs.Empty);
-    }
-
-    // Checks the typed name in save mode, and sets the save name for the choice. Any change to the name or to the
-    // folder takes away the question whether to replace a file.
-    private void UpdateNameState()
-    {
-        IsAskingToReplace = false;
-        _saveName = null;
-        _isSaveNameTaken = false;
-
-        // The name is checked only in save mode, once the picker has listed a folder.
-        if (Mode != ResourcePickerMode.Save
-            || _nameValidator is null)
-        {
-            ShowNameError(string.Empty);
-            UpdatePrimaryButton();
-            return;
-        }
-
-        var typedName = NameText;
-        var name = AddSingleExtension(typedName);
-
-        var nameError = GetNameError(_nameValidator, name);
-        if (nameError is not null)
-        {
-            // An empty field disables Save without an error. The field starts empty when there is no suggested name.
-            var shownError = string.IsNullOrEmpty(typedName)
-                ? string.Empty
-                : nameError;
-            ShowNameError(shownError);
-            UpdatePrimaryButton();
-            return;
-        }
-
-        _saveName = GetStoredName(_folderChildren, name);
-        _isSaveNameTaken = _folderChildren.Any(child =>
-            !child.IsFolder
-            && child.Resource.ResourceName == _saveName);
-
-        ShowNameError(string.Empty);
-        UpdatePrimaryButton();
-    }
-
-    // Returns why the name of a file to save can't be used, or null when the name can be used. The validator checks
-    // the name against the listing of the file's folder.
-    private string? GetNameError(IValidator nameValidator, string name)
-    {
-        var validationResult = nameValidator.Validate(name);
-        if (!validationResult.IsValid)
-        {
-            return validationResult.Errors.FirstOrDefault() ?? string.Empty;
-        }
-
-        if (!HasAllowedExtension(name))
-        {
-            var extensions = _extensions.Select(extension => $".{extension}");
-            var extensionList = string.Join(", ", extensions);
-            return _stringLocalizer.GetString("ResourcePickerDialog_ExtensionRequired", extensionList);
-        }
-
-        return null;
-    }
-
-    private void ShowNameError(string error)
-    {
-        NameErrorText = error;
-        IsNameErrorVisible = !string.IsNullOrEmpty(error);
-    }
-
-    // With one allowed extension, adds the extension to a name typed without it.
-    private string AddSingleExtension(string typedName)
-    {
-        if (_extensions.Count != 1
-            || string.IsNullOrWhiteSpace(typedName))
-        {
-            return typedName;
-        }
-
-        var extension = $".{_extensions[0]}";
-        if (typedName.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
-        {
-            return typedName;
-        }
-
-        return typedName + extension;
-    }
-
-    // Returns true if the name ends in one of the allowed extensions, or when every extension is allowed.
-    private bool HasAllowedExtension(string name)
-    {
-        if (_extensions.Count == 0)
-        {
-            return true;
-        }
-
-        return _extensions.Any(extension => name.EndsWith($".{extension}", StringComparison.OrdinalIgnoreCase));
-    }
-
-    // Returns the name stored on disk when a file in the folder has the name in another letter case. A key names an
-    // existing file only by its stored name.
-    private static string GetStoredName(IReadOnlyList<FolderChild> folderChildren, string name)
-    {
-        var existingFile = folderChildren.FirstOrDefault(child =>
-            !child.IsFolder
-            && child.Resource.ResourceName.Equals(name, StringComparison.OrdinalIgnoreCase));
-
-        return existingFile?.Resource.ResourceName ?? name;
-    }
-
-    // Returns true if the mode and the extensions let the picker list the resource. Folder mode lists folders only.
-    // Open and save modes list folders and the files with an allowed extension.
-    private bool IsListedKind(ResourceKey resource, bool isFolder)
-    {
-        if (isFolder)
-        {
-            return true;
-        }
-
-        if (Mode == ResourcePickerMode.Folder)
-        {
-            return false;
-        }
-
-        return HasAllowedExtension(resource.ResourceName);
-    }
-
-    // Returns true if the picker shows an item, given whether the Explorer hides it. The picker follows the
-    // Explorer's Show Hidden Files toggle.
-    private bool IsShown(bool isHidden)
-    {
-        return !isHidden
-            || _showHiddenFiles;
-    }
-
-    // Returns null when the picker leaves the resource out. Runs on both the UI thread and the walk's worker thread.
-    private ResourcePickerItem? CreateItem(ResourceKey resource, bool isFolder, FileSystemAttributes attributes, bool showsPath)
-    {
-        if (!IsListedKind(resource, isFolder))
-        {
-            return null;
-        }
-
-        Guard.IsNotNull(_policy);
-        Guard.IsNotNull(_rootHandlerRegistry);
-
-        var isHidden = _policy.IsExplorerHidden(resource, isFolder);
-        if (!IsShown(isHidden))
-        {
-            return null;
-        }
-
-        var writableState = WritableStatePriority.Compute(resource, attributes, _rootHandlerRegistry);
-        var readOnlyMessage = _readOnlyMessages.GetValueOrDefault(writableState, string.Empty);
-        var state = new ResourcePickerItemState(isHidden, writableState, readOnlyMessage);
-
-        var iconDefinition = GetIcon(resource, isFolder);
-
-        return new ResourcePickerItem(resource, isFolder, iconDefinition, state, showsPath);
-    }
-
-    private IconDefinition GetIcon(ResourceKey resource, bool isFolder)
-    {
-        if (isFolder)
-        {
-            return _iconService.DefaultFolderIcon;
-        }
-
-        var getIconResult = _iconService.GetFileIconForFileName(resource.ResourceName);
-        if (getIconResult.IsSuccess)
-        {
-            return getIconResult.Value;
-        }
-
-        return _iconService.DefaultFileIcon;
+            && item.Name.Equals(NameField.Text, StringComparison.OrdinalIgnoreCase));
     }
 
     private void UpdateShownItems()
@@ -983,7 +774,7 @@ public partial class ResourcePickerViewModel : ObservableObject
             return;
         }
 
-        if (!_isWalkFinished)
+        if (!_search.IsWalkFinished)
         {
             SetLoading(true);
             ShowItems([], isSearchResult: true);
@@ -993,78 +784,8 @@ public partial class ResourcePickerViewModel : ObservableObject
         SetLoading(false);
 
         // The list shows only the first MaxShownMatches matches, so only those matches get a mark on their path.
-        var matches = new List<ResourcePickerItem>();
-        if (IsWildcardPattern(search))
-        {
-            // A pattern that is still being typed, like one with an open brace, fails to compile. Such a pattern
-            // matches nothing until the user completes it.
-            var compileResult = SearchFilter.Compile(search, string.Empty);
-            if (compileResult.IsSuccess)
-            {
-                var filter = compileResult.Value;
-                foreach (var item in _searchItems)
-                {
-                    if (filter.IsMatch(item.Resource.Path, item.IsFolder))
-                    {
-                        var match = matches.Count < MaxShownMatches
-                            ? MarkPatternMatch(filter, item)
-                            : item;
-                        matches.Add(match);
-                    }
-                }
-            }
-        }
-        else
-        {
-            var searchLower = search.ToLowerInvariant();
-            foreach (var item in _searchItems)
-            {
-                var matchStart = item.PathLower.IndexOf(searchLower, StringComparison.Ordinal);
-                if (matchStart >= 0)
-                {
-                    var match = matches.Count < MaxShownMatches
-                        ? item.WithPathMark(matchStart, searchLower.Length)
-                        : item;
-                    matches.Add(match);
-                }
-            }
-        }
-
+        var matches = _search.FindMatches(search, MaxShownMatches);
         ShowItems(matches, isSearchResult: true);
-    }
-
-    // A pattern says whether a path matches, but not which characters matched. A matched folder brings everything
-    // inside it. So this method tests each folder above the item, starting at the top, and marks the first folder to
-    // match the pattern. When no folder above the item matches, the item matched by itself, and the mark goes on the
-    // item's name.
-    private static ResourcePickerItem MarkPatternMatch(SearchFilter filter, ResourcePickerItem item)
-    {
-        var path = item.Resource.Path;
-        var segmentStart = 0;
-        while (true)
-        {
-            var segmentEnd = path.IndexOf('/', segmentStart);
-            if (segmentEnd < 0)
-            {
-                break;
-            }
-
-            if (filter.IsMatch(path[..segmentEnd], isFolder: true))
-            {
-                return item.WithPathMark(segmentStart, segmentEnd - segmentStart);
-            }
-
-            segmentStart = segmentEnd + 1;
-        }
-
-        return item.WithPathMark(segmentStart, path.Length - segmentStart);
-    }
-
-    // Text with a star or a question mark is a file filter in SearchFilter's dialect. Other text matches any path
-    // that contains it, so a name with brackets or braces is found as typed.
-    private static bool IsWildcardPattern(string search)
-    {
-        return search.IndexOfAny(['*', '?']) >= 0;
     }
 
     private void ShowItems(List<ResourcePickerItem> items, bool isSearchResult)
@@ -1112,51 +833,14 @@ public partial class ResourcePickerViewModel : ObservableObject
             : Visibility.Collapsed;
     }
 
-    // Walks the project once on a worker thread, and keeps the items the search can find. A walk that fails leaves
-    // the search with nothing to find, and the picker stays usable.
+    // Walks the project once for the search. The walk lists items by the rules of the setup that starts the walk. A
+    // search typed during the walk shows its matches when the walk finishes.
     private async Task WalkProjectAsync()
     {
-        try
-        {
-            var walker = _workspaceWrapper.WorkspaceService.ResourceService.Walker;
+        Guard.IsNotNull(_itemFactory);
 
-            IPathMatcher? filter = null;
-            if (!_showHiddenFiles)
-            {
-                Guard.IsNotNull(_policy);
-                filter = new ExplorerShownPathMatcher(_policy);
-            }
-
-            _searchItems = await Task.Run(async () =>
-            {
-                var walkResult = await walker.WalkAsync(ResourceKey.Empty, applySearchExclude: false, filter);
-                if (walkResult.IsFailure)
-                {
-                    _logger.LogWarning(walkResult, "Failed to walk the project for the resource picker");
-                    return [];
-                }
-                var walkedItems = walkResult.Value;
-
-                var items = new List<ResourcePickerItem>();
-                foreach (var walkedItem in walkedItems)
-                {
-                    var item = CreateItem(walkedItem.Resource, walkedItem.IsFolder, walkedItem.Attributes, showsPath: true);
-                    if (item is not null)
-                    {
-                        items.Add(item);
-                    }
-                }
-
-                return items;
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to walk the project for the resource picker");
-            _searchItems = [];
-        }
-
-        _isWalkFinished = true;
+        var walker = _workspaceWrapper.WorkspaceService.ResourceService.Walker;
+        await _search.WalkAsync(walker, _itemFactory);
 
         if (IsSearching)
         {
@@ -1216,29 +900,5 @@ public partial class ResourcePickerViewModel : ObservableObject
     {
         PreviewImageVisibility = Visibility.Collapsed;
         PreviewImage = null;
-    }
-
-    // Matches each path shown in the Explorer. The walk calls only CanMatchInside, so the walk skips the contents of
-    // each hidden folder.
-    private sealed class ExplorerShownPathMatcher : IPathMatcher
-    {
-        private readonly IResourcePolicy _policy;
-
-        public ExplorerShownPathMatcher(IResourcePolicy policy)
-        {
-            _policy = policy;
-        }
-
-        public bool IsMatch(string path, bool isFolder)
-        {
-            var resource = new ResourceKey(path);
-            return !_policy.IsExplorerHidden(resource, isFolder);
-        }
-
-        public bool CanMatchInside(string folderPath)
-        {
-            var folder = new ResourceKey(folderPath);
-            return !_policy.IsExplorerHidden(folder, isFolder: true);
-        }
     }
 }

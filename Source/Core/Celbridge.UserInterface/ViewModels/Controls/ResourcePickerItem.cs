@@ -18,7 +18,10 @@ public class ResourcePickerItem
 
     public bool IsFolder { get; }
 
-    public IconDefinition IconDefinition { get; }
+    /// <summary>
+    /// The icon for a file's type. Null for a folder, which shows the folder icon.
+    /// </summary>
+    public IconDefinition? FileIcon { get; }
 
     /// <summary>
     /// The item's name, for example "photo.png".
@@ -60,7 +63,7 @@ public class ResourcePickerItem
     public bool IsHidden { get; }
 
     /// <summary>
-    /// Returns true if the row is dimmed. Read-only and hidden resources both dim. The Explorer dims the same rows.
+    /// Returns true if the row is dimmed. Read-only and hidden resources both dim.
     /// </summary>
     public bool IsDimmed => IsReadOnly || IsHidden;
 
@@ -99,13 +102,13 @@ public class ResourcePickerItem
     public ResourcePickerItem(
         ResourceKey resource,
         bool isFolder,
-        IconDefinition iconDefinition,
+        IconDefinition? fileIcon,
         ResourcePickerItemState state,
         bool showsPath)
     {
         Resource = resource;
         IsFolder = isFolder;
-        IconDefinition = iconDefinition;
+        FileIcon = fileIcon;
         Name = resource.ResourceName;
         MarkedPath = MarkedText.Unmarked(showsPath
             ? resource.Path
@@ -122,7 +125,7 @@ public class ResourcePickerItem
     {
         Resource = item.Resource;
         IsFolder = item.IsFolder;
-        IconDefinition = item.IconDefinition;
+        FileIcon = item.FileIcon;
         Name = item.Name;
         PathLower = item.PathLower;
         WritableState = item.WritableState;

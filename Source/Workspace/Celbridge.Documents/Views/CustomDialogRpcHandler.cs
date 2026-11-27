@@ -13,6 +13,16 @@ namespace Celbridge.Documents.Views;
 /// </summary>
 internal sealed class CustomDialogRpcHandler : IHostDialog
 {
+    // The modes a page can ask for, by the names the client API uses. A page's names stay fixed when a C# name
+    // changes, and a mode reaches pages only once it is listed here.
+    private static readonly IReadOnlyDictionary<string, ResourcePickerMode> PickerModesByName =
+        new Dictionary<string, ResourcePickerMode>
+        {
+            ["open"] = ResourcePickerMode.Open,
+            ["save"] = ResourcePickerMode.Save,
+            ["folder"] = ResourcePickerMode.Folder
+        };
+
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IMessengerService _messengerService;
@@ -98,10 +108,13 @@ internal sealed class CustomDialogRpcHandler : IHostDialog
         string? title = null,
         bool preview = false)
     {
-        if (!TryParseMode(mode, out var pickerMode))
+        // A request that leaves out the mode fails with the same error as an unknown mode.
+        if (mode is null
+            || !PickerModesByName.TryGetValue(mode, out var pickerMode))
         {
+            var modeNames = string.Join(", ", PickerModesByName.Keys.Select(name => $"'{name}'"));
             throw new ArgumentException(
-                $"Unknown resource picker mode: '{mode}'. Expected 'open', 'save' or 'folder'.",
+                $"Unknown resource picker mode: '{mode}'. Expected one of: {modeNames}.",
                 nameof(mode));
         }
 
@@ -218,28 +231,6 @@ internal sealed class CustomDialogRpcHandler : IHostDialog
         }
 
         return new OpenDocumentAction(actionResource, label, line, column);
-    }
-
-    private static bool TryParseMode(string mode, out ResourcePickerMode parsedMode)
-    {
-        switch (mode)
-        {
-            case "open":
-                parsedMode = ResourcePickerMode.Open;
-                return true;
-
-            case "save":
-                parsedMode = ResourcePickerMode.Save;
-                return true;
-
-            case "folder":
-                parsedMode = ResourcePickerMode.Folder;
-                return true;
-
-            default:
-                parsedMode = ResourcePickerMode.Open;
-                return false;
-        }
     }
 
     private static bool TryParseSeverity(string severity, out ReportSeverity parsedSeverity)

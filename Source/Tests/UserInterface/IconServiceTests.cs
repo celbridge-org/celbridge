@@ -146,15 +146,15 @@ public class IconServiceTests
             new Dictionary<string, IconDefinition> { ["Makefile"] = nameIcon, ["package.json"] = nameIcon });
 
         // No extension to fall back on, so only the name lookup can match.
-        iconService.GetFileIconForFileName("Makefile").Value.Should().Be(nameIcon);
-        iconService.GetFileIconForFileName("makefile").Value.Should().Be(nameIcon);
+        iconService.GetFileIconForFileName("Makefile").Should().Be(nameIcon);
+        iconService.GetFileIconForFileName("makefile").Should().Be(nameIcon);
 
         // The name wins even though the extension also has an override.
-        iconService.GetFileIconForFileName("package.json").Value.Should().Be(nameIcon);
-        iconService.GetFileIconForFileName("other.json").Value.Should().Be(extensionIcon);
+        iconService.GetFileIconForFileName("package.json").Should().Be(nameIcon);
+        iconService.GetFileIconForFileName("other.json").Should().Be(extensionIcon);
 
         // An unknown extensionless name falls through to the default file icon.
-        iconService.GetFileIconForFileName("LICENSE").Value.Should().Be(iconService.DefaultFileIcon);
+        iconService.GetFileIconForFileName("LICENSE").Should().Be(iconService.DefaultFileIcon);
     }
 
     [Test]
@@ -174,11 +174,11 @@ public class IconServiceTests
             },
             new Dictionary<string, IconDefinition>());
 
-        iconService.GetFileIconForFileName("code.editor.toml").Value.Should().Be(manifestIcon);
-        iconService.GetFileIconForFileName("markdown.editor.toml").Value.Should().Be(manifestIcon);
+        iconService.GetFileIconForFileName("code.editor.toml").Should().Be(manifestIcon);
+        iconService.GetFileIconForFileName("markdown.editor.toml").Should().Be(manifestIcon);
 
         // A plain TOML file matches only the shorter suffix.
-        iconService.GetFileIconForFileName("settings.toml").Value.Should().Be(tomlIcon);
+        iconService.GetFileIconForFileName("settings.toml").Should().Be(tomlIcon);
     }
 
     [Test]
@@ -193,8 +193,8 @@ public class IconServiceTests
             new Dictionary<string, IconDefinition> { [".md"] = markdownIcon },
             new Dictionary<string, IconDefinition>());
 
-        iconService.GetFileIconForFileName(".md").Value.Should().Be(markdownIcon);
-        iconService.GetFileIconForFileName("readme.md").Value.Should().Be(markdownIcon);
+        iconService.GetFileIconForFileName(".md").Should().Be(markdownIcon);
+        iconService.GetFileIconForFileName("readme.md").Should().Be(markdownIcon);
 
         // A dotfile keeps resolving through its own key rather than being read as a stem.
         var ignoreIcon = iconService.CreateIcon("bs-gear", "#00FF00").Value;
@@ -202,7 +202,7 @@ public class IconServiceTests
             new Dictionary<string, IconDefinition> { [".gitignore"] = ignoreIcon },
             new Dictionary<string, IconDefinition>());
 
-        iconService.GetFileIconForFileName(".gitignore").Value.Should().Be(ignoreIcon);
+        iconService.GetFileIconForFileName(".gitignore").Should().Be(ignoreIcon);
     }
 
     /// <summary>
@@ -280,20 +280,20 @@ public class IconServiceTests
     }
 
     [Test]
-    public void GetFileIconForExtension_OverrideWins_AndEachSetReplacesTheLast()
+    public void GetFileIconForFileName_ExtensionOverrideWins_AndEachSetReplacesTheLast()
     {
         var iconService = new IconService();
-        var defaultIcon = iconService.GetFileIconForExtension(".cs").Value;
+        var defaultIcon = iconService.GetFileIconForFileName("main.cs");
         var glyphIcon = iconService.CreateIcon("bs-journal-text", "#FF8800").Value;
 
         iconService.SetFileIconOverrides(new Dictionary<string, IconDefinition> { [".cs"] = glyphIcon }, new Dictionary<string, IconDefinition>());
 
-        // The resource tree looks up the dot-free form; the resource picker uses the dotted form.
-        iconService.GetFileIconForExtension(".cs").Value.Should().Be(glyphIcon);
-        iconService.GetFileIconForExtension("cs").Value.Should().Be(glyphIcon);
+        // A whole name and a bare extension both resolve through the extension's override.
+        iconService.GetFileIconForFileName("main.cs").Should().Be(glyphIcon);
+        iconService.GetFileIconForFileName(".cs").Should().Be(glyphIcon);
 
         // A later discovery pass supplies the whole set, so an override it omits is gone.
         iconService.SetFileIconOverrides(new Dictionary<string, IconDefinition>(), new Dictionary<string, IconDefinition>());
-        iconService.GetFileIconForExtension(".cs").Value.Should().Be(defaultIcon);
+        iconService.GetFileIconForFileName("main.cs").Should().Be(defaultIcon);
     }
 }
