@@ -39,9 +39,9 @@ public partial class ResourcePickerViewModel : ObservableObject
     public const int MaxShownFolderItems = 200;
 
     /// <summary>
-    /// The most matches a search shows. A count of the other matches shows below the list. The list draws its rows
-    /// again on every keystroke, so a search shows fewer rows than a folder's listing. Typing then stays quick in a
-    /// large project.
+    /// The most matches a search shows. A count of the other matches shows below the list. The list's panel doesn't
+    /// virtualize, so the list draws every row it shows. The list draws a search's rows again on every keystroke. So a
+    /// search shows fewer rows than a folder's listing, and typing stays quick in a large project.
     /// </summary>
     public const int MaxShownMatches = 50;
 
@@ -783,7 +783,9 @@ public partial class ResourcePickerViewModel : ObservableObject
 
         SetLoading(false);
 
-        // The list shows only the first MaxShownMatches matches, so only those matches get a mark on their path.
+        // The match runs on the UI thread. A worker thread would save little, because drawing the matched rows usually
+        // costs more than the match. The list shows only the first MaxShownMatches matches, so only those matches get a
+        // mark on their path.
         var matches = _search.FindMatches(search, MaxShownMatches);
         ShowItems(matches, isSearchResult: true);
     }
