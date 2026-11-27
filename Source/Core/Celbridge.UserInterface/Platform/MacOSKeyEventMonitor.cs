@@ -137,6 +137,16 @@ internal static class MacOSKeyEventMonitor
                 return IntPtr.Zero;
             }
 
+            // A Command chord that names a character never reaches a focused text control. So Command+F in a dialog's
+            // text control goes to the dialog as a find request.
+            if (IsDialogOpen()
+                && _textControlEditing?.IsTextControlFocused == true
+                && IsFindShortcut(ResolveShortcutCharacter(nsEvent, keyCode), modifierFlags))
+            {
+                _messengerService?.Send(new DialogFindRequestedMessage());
+                return IntPtr.Zero;
+            }
+
             // Only act while a document is focused. Tab still navigates the managed panels (Explorer, Search,
             // and so on) everywhere else, the close shortcuts must not close a hidden document from another
             // panel, and Command+F falls through to the Find menu item, which drives the same document. The focused

@@ -10,6 +10,9 @@ public sealed partial class FileIcon : UserControl
     private readonly IIconService _iconService;
     private bool _isIconDefinitionSetExternally;
 
+    // True while the control sets IconDefinition itself, from Source or as the default.
+    private bool _isResolvingIconDefinition;
+
     /// <summary>
     /// The file extension the icon is resolved from, with or without its leading dot.
     /// </summary>
@@ -49,7 +52,7 @@ public sealed partial class FileIcon : UserControl
         // Set default icon after InitializeComponent so bindings can override
         if (IconDefinition is null)
         {
-            IconDefinition = _iconService.DefaultFileIcon;
+            SetResolvedIconDefinition(_iconService.DefaultFileIcon);
         }
 
         ApplyForeground();
@@ -95,8 +98,10 @@ public sealed partial class FileIcon : UserControl
     {
         if (d is FileIcon fileIcon && e.NewValue is not null)
         {
-            // Track that IconDefinition was set externally (not from Source)
-            fileIcon._isIconDefinitionSetExternally = true;
+            if (!fileIcon._isResolvingIconDefinition)
+            {
+                fileIcon._isIconDefinitionSetExternally = true;
+            }
             fileIcon.ApplyForeground();
             fileIcon.ApplySize();
         }
@@ -162,12 +167,25 @@ public sealed partial class FileIcon : UserControl
         {
             _isIconDefinitionSetExternally = false;
 
-            IconDefinition = _iconService.GetFileIconForFileName(Source);
+            SetResolvedIconDefinition(_iconService.GetFileIconForFileName(Source));
         }
         else if (!_isIconDefinitionSetExternally)
         {
             // Only set default if IconDefinition wasn't set externally
-            IconDefinition = _iconService.DefaultFileIcon;
+            SetResolvedIconDefinition(_iconService.DefaultFileIcon);
+        }
+    }
+
+    private void SetResolvedIconDefinition(IconDefinition iconDefinition)
+    {
+        _isResolvingIconDefinition = true;
+        try
+        {
+            IconDefinition = iconDefinition;
+        }
+        finally
+        {
+            _isResolvingIconDefinition = false;
         }
     }
 }

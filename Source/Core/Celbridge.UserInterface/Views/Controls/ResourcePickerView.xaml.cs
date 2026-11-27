@@ -15,6 +15,7 @@ namespace Celbridge.UserInterface.Views.Controls;
 public sealed partial class ResourcePickerView : UserControl
 {
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IMessengerService _messengerService;
 
     // The view model's latest suggested name. The view clears this field once the name field shows the suggested name
     // with the base name selected.
@@ -44,6 +45,7 @@ public sealed partial class ResourcePickerView : UserControl
     public ResourcePickerView()
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         ViewModel = ServiceLocator.AcquireService<ResourcePickerViewModel>();
 
         this.InitializeComponent();
@@ -52,6 +54,30 @@ public sealed partial class ResourcePickerView : UserControl
         ListArea.CornerRadius = new CornerRadius(panelCornerRadius);
 
         ViewModel.NameField.NameSuggested += NameField_NameSuggested;
+
+        Loaded += ResourcePickerView_Loaded;
+        Unloaded += ResourcePickerView_Unloaded;
+    }
+
+    private void ResourcePickerView_Loaded(object sender, RoutedEventArgs e)
+    {
+        _messengerService.Register<DialogFindRequestedMessage>(this, OnDialogFindRequested);
+    }
+
+    private void ResourcePickerView_Unloaded(object sender, RoutedEventArgs e)
+    {
+        _messengerService.UnregisterAll(this);
+        Loaded -= ResourcePickerView_Loaded;
+        Unloaded -= ResourcePickerView_Unloaded;
+    }
+
+    // A dialog can host the view on a hidden page, and a hidden view ignores the request.
+    private void OnDialogFindRequested(object recipient, DialogFindRequestedMessage message)
+    {
+        if (Visibility == Visibility.Visible)
+        {
+            FocusSearchBox();
+        }
     }
 
     /// <summary>
@@ -79,8 +105,8 @@ public sealed partial class ResourcePickerView : UserControl
     }
 
     /// <summary>
-    /// Gives the list the keyboard, after the list opens a folder or goes up. An empty folder gives the keyboard to
-    /// the search box.
+    /// Gives the list the keyboard, after the list opens a folder or goes up. The selected row takes the keyboard, so
+    /// the arrow keys move on from it. An empty folder gives the keyboard to the search box.
     /// </summary>
     private void FocusList()
     {
@@ -93,6 +119,15 @@ public sealed partial class ResourcePickerView : UserControl
         }
 
         ResourceList.UpdateLayout();
+
+        var selectedItem = ViewModel.SelectedItem;
+        if (selectedItem is not null
+            && ResourceList.ContainerFromItem(selectedItem) is ListViewItem selectedRow)
+        {
+            selectedRow.Focus(FocusState.Keyboard);
+            return;
+        }
+
         ResourceList.Focus(FocusState.Keyboard);
     }
 
