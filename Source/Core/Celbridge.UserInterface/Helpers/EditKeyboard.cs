@@ -12,14 +12,15 @@ namespace Celbridge.UserInterface.Helpers;
 /// Command on macOS. The delete key is Delete on every head, plus Backspace on macOS. A drag copies with Control
 /// held on Windows and Linux, and with Option held on macOS.
 ///
-/// macOS answers every modifier question from AppKit rather than from the key state Uno accumulates: a
-/// modifier released while a native web view holds the keyboard never reaches Uno's managed key pipeline,
-/// so its cached state stays down and every later keystroke reads as a chord.
+/// Each modifier read reports the keys held for the input event being handled, so call the reads from input
+/// handlers. macOS reads AppKit's current event. Uno's own key state misses a modifier released while a native web
+/// view has the keyboard. That modifier then stays down for Uno, and every later keystroke reads as a chord.
 /// </summary>
 public static class EditKeyboard
 {
     /// <summary>
-    /// Whether the platform command modifier (Control, or Command on macOS) is currently down.
+    /// Returns true if the platform command modifier (Control, or Command on macOS) is down for the input event being
+    /// handled.
     /// </summary>
     public static bool IsCommandModifierDown()
     {
@@ -49,7 +50,7 @@ public static class EditKeyboard
     }
 
     /// <summary>
-    /// Whether the Shift modifier is currently down.
+    /// Returns true if Shift is down for the input event being handled.
     /// </summary>
     public static bool IsShiftDown()
     {
@@ -63,7 +64,7 @@ public static class EditKeyboard
     }
 
     /// <summary>
-    /// Whether the Alt modifier (Option on macOS) is currently down.
+    /// Returns true if Alt (Option on macOS) is down for the input event being handled.
     /// </summary>
     public static bool IsAltDown()
     {
@@ -77,7 +78,8 @@ public static class EditKeyboard
     }
 
     /// <summary>
-    /// Returns true if the modifier that makes a drag copy is down: Control, or Option on macOS.
+    /// Returns true if the modifier that makes a drag copy is down for the input event being handled: Control, or
+    /// Option on macOS.
     /// </summary>
     public static bool IsCopyDragModifierDown()
     {

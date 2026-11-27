@@ -1,5 +1,3 @@
-using Celbridge.UserInterface;
-
 namespace Celbridge.Explorer;
 
 /// <summary>
@@ -47,9 +45,4 @@ public interface IExplorerService
     /// Open the specified resource in the associated application.
     /// </summary>
     Task<Result> OpenApplication(ResourceKey resource);
-
-    /// <summary>
-    /// Returns the icon for a file, chosen by the file's name.
-    /// </summary>
-    IconDefinition GetIconForFile(ResourceKey file);
 }

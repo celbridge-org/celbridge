@@ -1,3 +1,4 @@
+using Celbridge.UserInterface.Helpers;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -33,19 +34,9 @@ public partial class SearchMatchLineViewModel : ObservableObject, ISelectableSea
     public string LineText { get; }
 
     /// <summary>
-    /// Text before the match (for display).
+    /// The line's text, split around the match for display.
     /// </summary>
-    public string TextBeforeMatch { get; }
-
-    /// <summary>
-    /// The matched text (for highlighted display).
-    /// </summary>
-    public string MatchedText { get; }
-
-    /// <summary>
-    /// Text after the match (for display).
-    /// </summary>
-    public string TextAfterMatch { get; }
+    public MarkedText MarkedLine { get; }
 
     /// <summary>
     /// The position where the match starts in the display text.
@@ -79,26 +70,19 @@ public partial class SearchMatchLineViewModel : ObservableObject, ISelectableSea
         // Use cached tooltip from grandparent to avoid ServiceLocator call per item
         ReplaceMatchTooltip = parent.Parent.ReplaceMatchTooltip;
 
-        // Split the line text into before, match, and after segments for highlighting
-        var displayText = match.LineText;
+        // Split the line around the match. A match that starts outside the line leaves the line unmarked. A match
+        // that runs past the end of the line is cut short at the end.
+        var lineText = match.LineText;
         var matchStart = match.MatchStart;
-        var matchLength = match.MatchLength;
-
-        // Ensure bounds are valid
-        if (matchStart >= 0 && matchStart < displayText.Length)
+        if (matchStart >= 0
+            && matchStart < lineText.Length)
         {
-            var matchEnd = Math.Min(matchStart + matchLength, displayText.Length);
-
-            TextBeforeMatch = displayText.Substring(0, matchStart);
-            MatchedText = displayText.Substring(matchStart, matchEnd - matchStart);
-            TextAfterMatch = matchEnd < displayText.Length ? displayText.Substring(matchEnd) : string.Empty;
+            var matchLength = Math.Min(match.MatchLength, lineText.Length - matchStart);
+            MarkedLine = MarkedText.Create(lineText, matchStart, matchLength);
         }
         else
         {
-            // Fallback if match position is invalid
-            TextBeforeMatch = displayText;
-            MatchedText = string.Empty;
-            TextAfterMatch = string.Empty;
+            MarkedLine = MarkedText.Unmarked(lineText);
         }
 
         // Subscribe to parent's property changes to update IsReplaceModeEnabled binding

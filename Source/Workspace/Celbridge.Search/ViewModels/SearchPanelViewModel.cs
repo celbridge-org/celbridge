@@ -4,6 +4,7 @@ using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Messaging;
 using Celbridge.Resources;
+using Celbridge.UserInterface;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -29,6 +30,7 @@ public partial class SearchPanelViewModel : ObservableObject
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IDialogService _dialogService;
     private readonly IDispatcher _dispatcher;
+    private readonly IIconService _iconService;
 
     // The search that fills the panel's results. Only the current search updates the results and the spinner.
     private SearchRun? _currentSearch;
@@ -161,7 +163,8 @@ public partial class SearchPanelViewModel : ObservableObject
         IWorkspaceWrapper workspaceWrapper,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer,
-        IDispatcher dispatcher)
+        IDispatcher dispatcher,
+        IIconService iconService)
     {
         _searchService = searchService;
         _commandService = commandService;
@@ -170,6 +173,7 @@ public partial class SearchPanelViewModel : ObservableObject
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
         _dispatcher = dispatcher;
+        _iconService = iconService;
 
         TitleText = _stringLocalizer.GetString("SearchPanel_Title");
         SearchPlaceholder = _stringLocalizer.GetString("SearchPanel_Placeholder");
@@ -519,7 +523,7 @@ public partial class SearchPanelViewModel : ObservableObject
     // state instead.
     private SearchFileResultViewModel CreateFileViewModel(SearchFileResult fileResult, bool? keptExpandedState)
     {
-        var fileViewModel = new SearchFileResultViewModel(fileResult, this, _workspaceWrapper);
+        var fileViewModel = new SearchFileResultViewModel(fileResult, this, _iconService);
 
         var isExpanded = keptExpandedState
             ?? (FileResults.Count == 0

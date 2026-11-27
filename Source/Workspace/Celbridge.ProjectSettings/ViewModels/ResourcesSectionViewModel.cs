@@ -122,11 +122,20 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
     }
 
     /// <summary>
-    /// Replaces a package folder row's path with a folder chosen from the project's folders.
+    /// Replaces a package folder row's path with a folder chosen in the project.
     /// </summary>
     public async Task PickPackageFolderAsync(PackageFolderViewModel packageFolder)
     {
-        var pickResult = await _dialogService.ShowFolderPickerDialogAsync(ProjectSettingsLabels.PackageFolderPickerTitle);
+        // The picker opens in the row's folder.
+        ResourceKey.TryCreate(packageFolder.Path, out var startFolder);
+        var options = new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Folder,
+            StartFolder = startFolder,
+            Title = ProjectSettingsLabels.PackageFolderPickerTitle
+        };
+
+        var pickResult = await _dialogService.ShowResourcePickerDialogAsync(options);
 
         // The dialog reports a dismissal as a failure, so the row keeps the path it had.
         if (pickResult.IsFailure)

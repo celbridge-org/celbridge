@@ -21,8 +21,11 @@ public class ClientApiSurfaceTests
         ["api/dialog-api.js"] = new[]
         {
             "pickFile",
+            "pickFolder",
             "pickIcon",
             "pickImage",
+            "pickResource",
+            "pickSaveLocation",
             "showAlert",
             "showNotification"
         },

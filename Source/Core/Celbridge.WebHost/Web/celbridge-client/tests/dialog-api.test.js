@@ -41,6 +41,80 @@ describe('DialogAPI.pickIcon', () => {
     });
 });
 
+describe('DialogAPI.pickResource', () => {
+    function createPickerTransport(resource) {
+        const transport = createTransport();
+        transport.request = async (method, params) => {
+            transport.requests.push({ method, params });
+            return { resource };
+        };
+        return transport;
+    }
+
+    it('sends the options over one request, and returns the chosen key', async () => {
+        const transport = createPickerTransport('project:images/hero.png');
+        const dialog = new DialogAPI(transport);
+
+        const resource = await dialog.pickResource({
+            mode: 'open',
+            extensions: ['.png'],
+            defaultResource: 'project:images/hero.png',
+            title: 'Choose Artwork',
+            preview: true
+        });
+
+        expect(resource).toBe('project:images/hero.png');
+        expect(transport.requests).toEqual([{
+            method: 'dialog/pickResource',
+            params: {
+                mode: 'open',
+                extensions: ['.png'],
+                defaultResource: 'project:images/hero.png',
+                title: 'Choose Artwork',
+                preview: true
+            }
+        }]);
+    });
+
+    it('asks where to save in save mode', async () => {
+        const transport = createPickerTransport('project:exports/hero-export.png');
+        const dialog = new DialogAPI(transport);
+
+        const resource = await dialog.pickSaveLocation('project:exports/hero-export.png', ['.png']);
+
+        expect(resource).toBe('project:exports/hero-export.png');
+        expect(transport.requests[0].params).toEqual({
+            mode: 'save',
+            extensions: ['.png'],
+            defaultResource: 'project:exports/hero-export.png',
+            title: undefined,
+            preview: false
+        });
+    });
+
+    it('asks for a folder in folder mode', async () => {
+        const transport = createPickerTransport('project:');
+        const dialog = new DialogAPI(transport);
+
+        const resource = await dialog.pickFolder();
+
+        expect(resource).toBe('project:');
+        expect(transport.requests[0].params).toEqual({
+            mode: 'folder',
+            extensions: undefined,
+            defaultResource: undefined,
+            title: undefined,
+            preview: false
+        });
+    });
+
+    it('returns null when the user cancels', async () => {
+        const dialog = new DialogAPI(createPickerTransport(null));
+
+        await expect(dialog.pickSaveLocation('project:notes.md')).resolves.toBeNull();
+    });
+});
+
 describe('DialogAPI.showNotification', () => {
     it('sends the severity and message over the bridge', async () => {
         const transport = createTransport();
@@ -127,6 +201,7 @@ describe('DialogAPI dialogs that wait for the user', () => {
     it.each([
         ['pickImage', (dialog) => dialog.pickImage(['.png']), { path: '/tmp/late.png' }, '/tmp/late.png'],
         ['pickFile', (dialog) => dialog.pickFile(['.txt']), { path: '/tmp/late.txt' }, '/tmp/late.txt'],
+        ['pickResource', (dialog) => dialog.pickSaveLocation('project:late.txt'), { resource: 'project:late.txt' }, 'project:late.txt'],
         ['pickIcon', (dialog) => dialog.pickIcon(''), { iconName: 'bs-gear' }, 'bs-gear'],
         ['showAlert', (dialog) => dialog.showAlert('Title', 'Message'), {}, undefined]
     ])('resolves %s when the user answers long after the default timeout', async (_, open, result, expected) => {

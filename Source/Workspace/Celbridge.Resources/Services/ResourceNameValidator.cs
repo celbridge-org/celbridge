@@ -5,40 +5,33 @@ using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Resources.Services;
 
-public class ResourceNameValidator : IResourceNameValidator
+/// <summary>
+/// Validates a name for a resource in one folder. The validator compares the name with a listing of the folder made
+/// when the validator was created. An item added to the folder after that is not seen.
+/// </summary>
+internal sealed class ResourceNameValidator : IValidator
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-
-    private ResourceKey? _parentFolder;
-    private IReadOnlyList<FolderChild> _parentFolderChildren = [];
-
-    public List<string> ValidNames { get; } = new();
-
-    public bool ValidateAsFolder { get; set; }
+    private readonly ResourceKey _parentFolder;
+    private readonly IReadOnlyList<FolderChild> _parentFolderChildren;
+    private readonly ResourceNameKind _kind;
+    private readonly string? _currentName;
 
     public ResourceNameValidator(
         IStringLocalizer stringLocalizer,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        ResourceKey parentFolder,
+        IReadOnlyList<FolderChild> parentFolderChildren,
+        ResourceNameKind kind,
+        string? currentName)
     {
         _stringLocalizer = stringLocalizer;
         _workspaceWrapper = workspaceWrapper;
-    }
-
-    public async Task<Result> SetParentFolderAsync(ResourceKey parentFolder)
-    {
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(parentFolder);
-        if (enumerateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to list the parent folder: '{parentFolder}'")
-                .WithErrors(enumerateResult);
-        }
-
         _parentFolder = parentFolder;
-        _parentFolderChildren = enumerateResult.Value;
-
-        return Result.Ok();
+        _parentFolderChildren = parentFolderChildren;
+        _kind = kind;
+        _currentName = currentName;
     }
 
     public ValidationResult Validate(string input)
@@ -46,6 +39,16 @@ public class ResourceNameValidator : IResourceNameValidator
         bool isValid = true;
 
         var errorList = new List<string>();
+
+        var isFolder = _kind == ResourceNameKind.Folder;
+
+        if (_kind == ResourceNameKind.FileToSave
+            && string.IsNullOrWhiteSpace(input))
+        {
+            isValid = false;
+            var errorText = _stringLocalizer.GetString("Validation_FileNameRequired");
+            errorList.Add(errorText);
+        }
 
         // Check for invalid characters
         var invalidCharacters = Path.GetInvalidFileNameChars();
@@ -67,10 +70,9 @@ public class ResourceNameValidator : IResourceNameValidator
             errorList.Add(errorText);
         }
 
-        // .cel is reserved for project metadata sidecars; reject any file
-        // name that lands inside the namespace. Folders are not gated — the
-        // reservation is about the file extension.
-        if (!ValidateAsFolder
+        // A file name may not end in .cel, which is reserved for the project's metadata sidecars. A folder name may end
+        // in .cel.
+        if (!isFolder
             && _workspaceWrapper.IsWorkspaceLoaded
             && _workspaceWrapper.WorkspaceService.ResourceService.Sidecars.IsSidecarFileName(input))
         {
@@ -79,40 +81,38 @@ public class ResourceNameValidator : IResourceNameValidator
             errorList.Add(errorText);
         }
 
-        // Check for naming conflict with other resources in the parent folder.
-        // Use case-insensitive comparison since Windows file system is case-insensitive.
-        // Any name listed in ValidNames is always accepted as valid.
-        if (!ValidNames.Any(name => name.Equals(input, StringComparison.OrdinalIgnoreCase)))
+        // Check for a clash with an item in the parent folder. The comparison ignores letter case, because the
+        // Windows file system does. The current name never counts as taken, so a rename can keep the current name.
+        var isCurrentName = _currentName is not null
+            && _currentName.Equals(input, StringComparison.OrdinalIgnoreCase);
+        if (!isCurrentName)
         {
             foreach (var folderChild in _parentFolderChildren)
             {
                 var itemName = folderChild.Resource.ResourceName;
                 if (itemName.Equals(input, StringComparison.OrdinalIgnoreCase))
                 {
-                    var errorKey = folderChild.IsFolder
-                        ? "Validation_FolderNameAlreadyExists"
-                        : "Validation_FileNameAlreadyExists";
-                    var errorText = _stringLocalizer.GetString(errorKey, itemName);
-                    errorList.Add(errorText);
-                    isValid = false;
+                    var conflictError = GetConflictError(folderChild);
+                    if (conflictError is not null)
+                    {
+                        errorList.Add(conflictError);
+                        isValid = false;
+                    }
                     break;
                 }
             }
         }
 
-        // Policy gate: reject a name the resource policy would refuse, a reserved
-        // path or a read-only root, so the user corrects it inline instead of
-        // confirming a create the operation layer will then deny. Runs only for a
-        // valid, non-empty name, with a parent folder set and a workspace loaded.
+        // Ask the resource policy whether the item can be created. A reserved path or a read-only root then shows its
+        // error while the user types.
         if (isValid
-            && _parentFolder is ResourceKey parentFolder
             && !string.IsNullOrWhiteSpace(input)
             && _workspaceWrapper.IsWorkspaceLoaded)
         {
             var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-            var destinationKey = parentFolder.Combine(input);
+            var destinationKey = _parentFolder.Combine(input);
 
-            var policyResult = resourceService.Operations.CanCreateResource(destinationKey, ValidateAsFolder);
+            var policyResult = resourceService.Operations.CanCreateResource(destinationKey, isFolder);
             if (policyResult.IsFailure)
             {
                 isValid = false;
@@ -121,5 +121,30 @@ public class ResourceNameValidator : IResourceNameValidator
         }
 
         return new ValidationResult(isValid, errorList);
+    }
+
+    // Returns the error when an item in the parent folder already has the name. Returns null when a save may replace
+    // that item.
+    private string? GetConflictError(FolderChild folderChild)
+    {
+        var itemName = folderChild.Resource.ResourceName;
+
+        if (folderChild.IsFolder)
+        {
+            return _stringLocalizer.GetString("Validation_FolderNameAlreadyExists", itemName);
+        }
+
+        if (_kind != ResourceNameKind.FileToSave)
+        {
+            return _stringLocalizer.GetString("Validation_FileNameAlreadyExists", itemName);
+        }
+
+        var isReadOnly = (folderChild.Attributes & FileSystemAttributes.ReadOnly) != 0;
+        if (isReadOnly)
+        {
+            return _stringLocalizer.GetString("Validation_FileIsReadOnly", itemName);
+        }
+
+        return null;
     }
 }

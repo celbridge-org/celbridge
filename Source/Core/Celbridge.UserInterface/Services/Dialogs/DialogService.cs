@@ -346,7 +346,7 @@ public class DialogService : IDialogService
         return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
     }
 
-    public async Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false)
+    public async Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(ResourcePickerOptions options)
     {
         if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
@@ -358,24 +358,7 @@ public class DialogService : IDialogService
             return RefuseSecondDialog();
         }
 
-        var dialog = _dialogFactory.CreateResourcePickerDialog(extensions, title, showPreview);
-        _answerScheduler.OnDialogShown(DialogKind.ResourcePicker);
-        return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
-    }
-
-    public async Task<Result<ResourceKey>> ShowFolderPickerDialogAsync(string? title = null)
-    {
-        if (!_workspaceWrapper.IsWorkspaceLoaded)
-        {
-            return Result<ResourceKey>.Fail("Cannot show folder picker: no project is currently loaded.");
-        }
-
-        if (!await WaitForClosingDialogAsync())
-        {
-            return RefuseSecondDialog();
-        }
-
-        var dialog = _dialogFactory.CreateFolderPickerDialog(title);
+        var dialog = _dialogFactory.CreateResourcePickerDialog(options);
         _answerScheduler.OnDialogShown(DialogKind.ResourcePicker);
         return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
     }

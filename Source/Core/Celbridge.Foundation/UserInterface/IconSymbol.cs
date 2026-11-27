@@ -43,6 +43,7 @@ public enum IconSymbol
     ChevronLeft,
     ChevronRight,
     ChevronUp,
+    ArrowUp,
     MatchCase,
     Replace,
     Filter,

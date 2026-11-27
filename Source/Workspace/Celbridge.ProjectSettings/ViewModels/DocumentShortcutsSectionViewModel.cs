@@ -88,11 +88,16 @@ public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
     public async Task PickResourceAsync(DocumentShortcutViewModel shortcut)
     {
         // No extension filter: a shortcut opens whatever editor the file resolves to, so every file is a
-        // candidate.
-        var extensions = Array.Empty<string>();
+        // candidate. The picker opens with the shortcut's file selected.
+        ResourceKey.TryCreate(shortcut.Resource, out var shortcutResource);
+        var options = new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Open,
+            DefaultResource = shortcutResource,
+            Title = ProjectSettingsLabels.ShortcutPickerTitle
+        };
 
-        var pickResult = await _dialogService.ShowResourcePickerDialogAsync(
-            extensions, ProjectSettingsLabels.ShortcutPickerTitle);
+        var pickResult = await _dialogService.ShowResourcePickerDialogAsync(options);
 
         // The dialog reports a dismissal as a failure, so the shortcut keeps the resource it had.
         if (pickResult.IsFailure)

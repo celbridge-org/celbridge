@@ -17,10 +17,10 @@ public static class ServiceConfiguration
 
         services.AddSingleton<IResourceOperationService, ResourceOperationService>();
         services.AddSingleton<IFileTemplateService, FileTemplateService>();
+        services.AddSingleton<IResourceNameValidatorFactory, ResourceNameValidatorFactory>();
 
         services.AddTransient<IResourceService, ResourceService>();
         services.AddTransient<IResourceTransferService, ResourceTransferService>();
-        services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
         services.AddTransient<IResourceMonitor, ResourceMonitor>();
         services.AddTransient<IResourceFileSystem, LocalResourceFileSystem>();
         services.AddTransient<IResourcePolicy, ResourcePolicy>();

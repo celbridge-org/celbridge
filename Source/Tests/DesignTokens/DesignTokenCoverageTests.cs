@@ -45,9 +45,6 @@ public class DesignTokenCoverageTests
         // WorkspaceConstants; the web names carry the same floor for a document sizing itself against it.
         "--cel-document-min-width",
         "--cel-document-min-height",
-        // The native side paints match highlighting with SearchMatchHighlightBrush. The web name carries
-        // the same value for a package rendering its own results.
-        "--cel-search-highlight",
         // The workspace rail drops a selected button to this tone while its panel is unfocused, drawn from
         // ButtonActiveBackgroundBrush. An editor's own rail deliberately holds its accent fill for as long as
         // the surface is open, so nothing on the web side takes the tone.
@@ -152,7 +149,6 @@ public class DesignTokenCoverageTests
         "--cel-rail-item-size",
         "--cel-rail-stack-threshold",
         "--cel-rail-width",
-        "--cel-search-highlight",
         "--cel-section-footer-gap",
         "--cel-section-inset",
         "--cel-section-nav-width",

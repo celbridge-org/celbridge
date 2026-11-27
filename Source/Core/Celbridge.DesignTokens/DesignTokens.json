@@ -482,15 +482,6 @@
           "comment": "The caution colour of a graphic: a warning glyph or a status pip. Caution text keeps WinUI's SystemFillColorCaution, because text needs more contrast than a graphic does. Lighter than WinUI's caution, so a caution pip reads apart from a critical one at the same size, while holding 3:1 against the chrome.",
           "darkComment": "WinUI's own caution, which already reads apart from the critical pink."
         },
-        "search-highlight": {
-          "targets": ["xaml", "css"],
-          "xaml": "SearchMatchHighlightColor",
-          "xamlBrush": "SearchMatchHighlightBrush",
-          "css": "--cel-search-highlight",
-          "light": "#C66300",
-          "dark": "#FFD966",
-          "published": true
-        },
         "selection-background": {
           "targets": ["xaml", "css"],
           "xaml": "SelectionBackgroundColor",

@@ -122,9 +122,10 @@ public interface IResourcePolicy
     Result Evaluate(ResourceKey resource, ResourceAction action, bool isFolder = false);
 
     /// <summary>
-    /// Returns true if the project's Explorer list excludes the resource.
+    /// Returns true if the Explorer hides the resource with Show Hidden Files off. The Explorer hides .cel files and
+    /// the paths matched by the project's Explorer list.
     /// </summary>
-    bool IsExplorerExcluded(ResourceKey resource, bool isFolder);
+    bool IsExplorerHidden(ResourceKey resource, bool isFolder);
 
     /// <summary>
     /// Returns true if the project's search list excludes the resource.

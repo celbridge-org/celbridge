@@ -115,25 +115,10 @@ public class DialogFactory : IDialogFactory
         return WithFocusGuard(dialog);
     }
 
-    public IResourcePickerDialog CreateResourcePickerDialog(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false)
+    public IResourcePickerDialog CreateResourcePickerDialog(ResourcePickerOptions options)
     {
         var dialog = new ResourcePickerDialog();
-        dialog.ViewModel.Initialize(extensions, showPreview);
-        if (title is not null)
-        {
-            dialog.SetTitle(title);
-        }
-        return WithFocusGuard(dialog);
-    }
-
-    public IResourcePickerDialog CreateFolderPickerDialog(string? title = null)
-    {
-        var dialog = new ResourcePickerDialog();
-        dialog.ViewModel.InitializeForFolders(listProjectFolder: false);
-        if (title is not null)
-        {
-            dialog.SetTitle(title);
-        }
+        dialog.ViewModel.Initialize(options);
         return WithFocusGuard(dialog);
     }
 

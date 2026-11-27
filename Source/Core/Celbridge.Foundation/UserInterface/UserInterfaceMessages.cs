@@ -65,6 +65,11 @@ public record CloseActiveDocumentRequestedMessage();
 public record CloseAllDocumentsRequestedMessage();
 
 /// <summary>
+/// Sent to ask the open dialog to give its search box the keyboard. A dialog with no search box ignores it.
+/// </summary>
+public record DialogFindRequestedMessage();
+
+/// <summary>
 /// Sent to request a brief attention flash on an open document's tab. A transient view effect with no state
 /// change, so it is a notification rather than a command. A no-op when the document is not open.
 /// </summary>

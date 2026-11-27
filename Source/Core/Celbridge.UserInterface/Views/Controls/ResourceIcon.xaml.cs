@@ -1,6 +1,4 @@
-using Celbridge.UserInterface;
-
-namespace Celbridge.Explorer.Views;
+namespace Celbridge.UserInterface.Views.Controls;
 
 /// <summary>
 /// A control that displays the appropriate icon for a file or folder resource.

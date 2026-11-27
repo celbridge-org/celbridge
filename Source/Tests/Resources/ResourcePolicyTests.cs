@@ -111,45 +111,63 @@ public class ResourcePolicyTests
     }
 
     [Test]
-    public void IsExplorerExcluded_MatchesPatternsAndTheirSubtrees()
+    public void IsExplorerHidden_MatchesPatternsAndTheirSubtrees()
     {
         var policy = BuildPolicy(explorerExclude: new[] { ".gitignore", "drafts" });
 
-        policy.IsExplorerExcluded(new ResourceKey(".gitignore"), isFolder: false).Should().BeTrue();
-        policy.IsExplorerExcluded(new ResourceKey("drafts"), isFolder: true).Should().BeTrue();
-        policy.IsExplorerExcluded(new ResourceKey("drafts/notes.md"), isFolder: false).Should().BeTrue();
-        policy.IsExplorerExcluded(new ResourceKey("notes.md"), isFolder: false).Should().BeFalse();
+        policy.IsExplorerHidden(new ResourceKey(".gitignore"), isFolder: false).Should().BeTrue();
+        policy.IsExplorerHidden(new ResourceKey("drafts"), isFolder: true).Should().BeTrue();
+        policy.IsExplorerHidden(new ResourceKey("drafts/notes.md"), isFolder: false).Should().BeTrue();
+        policy.IsExplorerHidden(new ResourceKey("notes.md"), isFolder: false).Should().BeFalse();
     }
 
     [Test]
-    public void IsExplorerExcluded_ReadsTheListAsGitignoreLines()
+    public void IsExplorerHidden_ReadsTheListAsGitignoreLines()
     {
         var policy = BuildPolicy(explorerExclude: new[] { "*.log", "!keep.log", "/build", "# draft", "data?.csv" });
 
-        policy.IsExplorerExcluded(new ResourceKey("logs/run.log"), isFolder: false).Should().BeTrue();
-        policy.IsExplorerExcluded(new ResourceKey("logs/keep.log"), isFolder: false).Should().BeFalse();
-        policy.IsExplorerExcluded(new ResourceKey("build"), isFolder: true).Should().BeTrue();
-        policy.IsExplorerExcluded(new ResourceKey("src/build"), isFolder: true).Should().BeFalse();
-        policy.IsExplorerExcluded(new ResourceKey("# draft"), isFolder: false).Should().BeFalse();
-        policy.IsExplorerExcluded(new ResourceKey("data1.csv"), isFolder: false).Should().BeTrue();
+        policy.IsExplorerHidden(new ResourceKey("logs/run.log"), isFolder: false).Should().BeTrue();
+        policy.IsExplorerHidden(new ResourceKey("logs/keep.log"), isFolder: false).Should().BeFalse();
+        policy.IsExplorerHidden(new ResourceKey("build"), isFolder: true).Should().BeTrue();
+        policy.IsExplorerHidden(new ResourceKey("src/build"), isFolder: true).Should().BeFalse();
+        policy.IsExplorerHidden(new ResourceKey("# draft"), isFolder: false).Should().BeFalse();
+        policy.IsExplorerHidden(new ResourceKey("data1.csv"), isFolder: false).Should().BeTrue();
     }
 
     [Test]
-    public void IsExplorerExcluded_MatchesExactLetterCase()
+    public void IsExplorerHidden_MatchesExactLetterCase()
     {
         var policy = BuildPolicy(explorerExclude: new[] { "Drafts" });
 
-        policy.IsExplorerExcluded(new ResourceKey("Drafts"), isFolder: true).Should().BeTrue();
-        policy.IsExplorerExcluded(new ResourceKey("drafts"), isFolder: true).Should().BeFalse();
+        policy.IsExplorerHidden(new ResourceKey("Drafts"), isFolder: true).Should().BeTrue();
+        policy.IsExplorerHidden(new ResourceKey("drafts"), isFolder: true).Should().BeFalse();
     }
 
     [Test]
-    public void IsExplorerExcluded_ReportsFalse_WithNoPatterns()
+    public void IsExplorerHidden_ReportsFalse_WithNoPatterns()
     {
         var policy = BuildPolicy();
 
-        policy.IsExplorerExcluded(new ResourceKey(".gitignore"), isFolder: false).Should().BeFalse();
-        policy.IsExplorerExcluded(new ResourceKey("bin"), isFolder: true).Should().BeFalse();
+        policy.IsExplorerHidden(new ResourceKey(".gitignore"), isFolder: false).Should().BeFalse();
+        policy.IsExplorerHidden(new ResourceKey("bin"), isFolder: true).Should().BeFalse();
+    }
+
+    [Test]
+    public void IsExplorerHidden_HidesCelFiles_InEveryRoot()
+    {
+        var policy = BuildPolicy();
+
+        policy.IsExplorerHidden(new ResourceKey("notes.md.cel"), isFolder: false).Should().BeTrue();
+        policy.IsExplorerHidden(new ResourceKey("Notes.MD.CEL"), isFolder: false).Should().BeTrue();
+        policy.IsExplorerHidden(new ResourceKey("temp:notes.md.cel"), isFolder: false).Should().BeTrue();
+    }
+
+    [Test]
+    public void IsExplorerHidden_ShowsAFolderNamedLikeACelFile()
+    {
+        var policy = BuildPolicy();
+
+        policy.IsExplorerHidden(new ResourceKey("archive.cel"), isFolder: true).Should().BeFalse();
     }
 
     [Test]
@@ -183,7 +201,7 @@ public class ResourcePolicyTests
     {
         var policy = BuildPolicy(explorerExclude: new[] { "run.log" }, searchExclude: new[] { "run.log" });
 
-        policy.IsExplorerExcluded(new ResourceKey("logs:run.log"), isFolder: false).Should().BeFalse();
+        policy.IsExplorerHidden(new ResourceKey("logs:run.log"), isFolder: false).Should().BeFalse();
         policy.IsSearchExcluded(new ResourceKey("logs:run.log"), isFolder: false).Should().BeFalse();
     }
 
@@ -192,7 +210,7 @@ public class ResourcePolicyTests
     {
         var policy = BuildPolicy(explorerExclude: new[] { ".gitignore" }, searchExclude: new[] { "dist" });
 
-        policy.IsExplorerExcluded(new ResourceKey("dist"), isFolder: true).Should().BeFalse();
+        policy.IsExplorerHidden(new ResourceKey("dist"), isFolder: true).Should().BeFalse();
         policy.IsSearchExcluded(new ResourceKey(".gitignore"), isFolder: false).Should().BeFalse();
     }
 }

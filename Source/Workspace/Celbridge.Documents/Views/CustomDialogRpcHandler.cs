@@ -9,10 +9,20 @@ namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Handles IHostDialog RPC methods for contribution document views.
-/// Provides image picking, file picking, alert dialogs, and notifications.
+/// Provides the resource picker, alert dialogs, and notifications.
 /// </summary>
 internal sealed class CustomDialogRpcHandler : IHostDialog
 {
+    // The modes a page can ask for, by the names the client API uses. A page's names stay fixed when a C# name
+    // changes, and a mode reaches pages only once it is listed here.
+    private static readonly IReadOnlyDictionary<string, ResourcePickerMode> PickerModesByName =
+        new Dictionary<string, ResourcePickerMode>
+        {
+            ["open"] = ResourcePickerMode.Open,
+            ["save"] = ResourcePickerMode.Save,
+            ["folder"] = ResourcePickerMode.Folder
+        };
+
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IMessengerService _messengerService;
@@ -47,8 +57,15 @@ internal sealed class CustomDialogRpcHandler : IHostDialog
             ];
         }
 
-        var title = _stringLocalizer.GetString("Extension_SelectImage_Title");
-        var result = await _dialogService.ShowResourcePickerDialogAsync(extensionsArray, title, showPreview: true);
+        var options = new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Open,
+            Extensions = extensionsArray,
+            StartFolder = GetDocumentFolder(),
+            Title = _stringLocalizer.GetString("Extension_SelectImage_Title"),
+            ShowPreview = true
+        };
+        var result = await _dialogService.ShowResourcePickerDialogAsync(options);
 
         if (result.IsSuccess)
         {
@@ -65,9 +82,14 @@ internal sealed class CustomDialogRpcHandler : IHostDialog
 
     public async Task<PickFileResult> PickFileAsync(IReadOnlyList<string>? extensions = null)
     {
-        var title = _stringLocalizer.GetString("Extension_SelectFile_Title");
-        var extensionsArray = extensions?.ToArray() ?? [];
-        var result = await _dialogService.ShowResourcePickerDialogAsync(extensionsArray, title);
+        var options = new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Open,
+            Extensions = extensions?.ToArray() ?? [],
+            StartFolder = GetDocumentFolder(),
+            Title = _stringLocalizer.GetString("Extension_SelectFile_Title")
+        };
+        var result = await _dialogService.ShowResourcePickerDialogAsync(options);
 
         if (result.IsSuccess)
         {
@@ -77,6 +99,51 @@ internal sealed class CustomDialogRpcHandler : IHostDialog
         }
 
         return new PickFileResult(null);
+    }
+
+    public async Task<PickResourceResult> PickResourceAsync(
+        string mode,
+        IReadOnlyList<string>? extensions = null,
+        string? defaultResource = null,
+        string? title = null,
+        bool preview = false)
+    {
+        // A request that leaves out the mode fails with the same error as an unknown mode.
+        if (mode is null
+            || !PickerModesByName.TryGetValue(mode, out var pickerMode))
+        {
+            var modeNames = string.Join(", ", PickerModesByName.Keys.Select(name => $"'{name}'"));
+            throw new ArgumentException(
+                $"Unknown resource picker mode: '{mode}'. Expected one of: {modeNames}.",
+                nameof(mode));
+        }
+
+        // The picker ignores a default resource that is not a valid key, and starts at the document's folder.
+        ResourceKey? defaultKey = null;
+        if (!string.IsNullOrEmpty(defaultResource)
+            && ResourceKey.TryCreate(defaultResource, out var parsedKey))
+        {
+            defaultKey = parsedKey;
+        }
+
+        var options = new ResourcePickerOptions
+        {
+            Mode = pickerMode,
+            Extensions = extensions?.ToArray() ?? [],
+            DefaultResource = defaultKey,
+            StartFolder = GetDocumentFolder(),
+            Title = string.IsNullOrEmpty(title) ? null : title,
+            ShowPreview = preview
+        };
+        var result = await _dialogService.ShowResourcePickerDialogAsync(options);
+
+        if (result.IsSuccess)
+        {
+            var chosenResource = result.Value;
+            return new PickResourceResult(chosenResource.ToString());
+        }
+
+        return new PickResourceResult(null);
     }
 
     public async Task<PickIconResult> PickIconAsync(string? searchText = null)
@@ -130,6 +197,19 @@ internal sealed class CustomDialogRpcHandler : IHostDialog
         _messengerService.Send(notification);
 
         return new ShowNotificationResult();
+    }
+
+    // The picker opens on the folder of the document that asked. A document outside the project, for example a
+    // utility's document, gives an empty key. The picker then opens on the project folder.
+    private ResourceKey GetDocumentFolder()
+    {
+        var documentResource = _viewModel.FileResource;
+        if (documentResource.Root != ResourceKey.DefaultRoot)
+        {
+            return ResourceKey.Empty;
+        }
+
+        return documentResource.GetParent();
     }
 
     private static OpenDocumentAction? ComposeAction(string? resource, string? label, int line, int column)

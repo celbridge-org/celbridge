@@ -31,17 +31,11 @@ public interface IIconService
     Result LoadDefinitions();
 
     /// <summary>
-    /// Returns the file-type icon definition for the specified file extension. A registered override for
-    /// the extension wins over the default file icon.
-    /// </summary>
-    Result<IconDefinition> GetFileIconForExtension(string fileExtension);
-
-    /// <summary>
     /// Returns the file-type icon definition for a whole file name. An override registered for the name
     /// wins over one registered for the extension, so a file with no usable extension can still be
-    /// recognised.
+    /// recognised. A name with no override gets the default file icon.
     /// </summary>
-    Result<IconDefinition> GetFileIconForFileName(string fileName);
+    IconDefinition GetFileIconForFileName(string fileName);
 
     /// <summary>
     /// Builds an icon definition from a prefixed icon name and an optional hex colour, failing when the
@@ -62,11 +56,6 @@ public interface IIconService
     /// The default icon definition for file resources.
     /// </summary>
     IconDefinition DefaultFileIcon { get; }
-
-    /// <summary>
-    /// The default icon definition for folder resources.
-    /// </summary>
-    IconDefinition DefaultFolderIcon { get; }
 
     /// <summary>
     /// Returns the glyph for a known IconSymbol.

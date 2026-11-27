@@ -13,7 +13,6 @@ public class ExplorerService : IExplorerService, IDisposable
 
     private readonly ILogger<ExplorerService> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IIconService _iconService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IFileManagerLauncher _fileManagerLauncher;
     private readonly ISpotlightService _spotlightService;
@@ -46,7 +45,6 @@ public class ExplorerService : IExplorerService, IDisposable
         IServiceProvider serviceProvider,
         ILogger<ExplorerService> logger,
         IMessengerService messengerService,
-        IIconService iconService,
         IWorkspaceWrapper workspaceWrapper,
         IFileManagerLauncher fileManagerLauncher,
         ISpotlightService spotlightService)
@@ -56,7 +54,6 @@ public class ExplorerService : IExplorerService, IDisposable
 
         _logger = logger;
         _messengerService = messengerService;
-        _iconService = iconService;
         _workspaceWrapper = workspaceWrapper;
         _fileManagerLauncher = fileManagerLauncher;
         _spotlightService = spotlightService;
@@ -198,18 +195,6 @@ public class ExplorerService : IExplorerService, IDisposable
         }
 
         return Result.Ok();
-    }
-
-    public IconDefinition GetIconForFile(ResourceKey file)
-    {
-        // Match on the whole name so a file with no extension is recognised.
-        var getIconResult = _iconService.GetFileIconForFileName(file.ResourceName);
-        if (getIconResult.IsSuccess)
-        {
-            return getIconResult.Value;
-        }
-
-        return _iconService.DefaultFileIcon;
     }
 
     private bool _disposed;

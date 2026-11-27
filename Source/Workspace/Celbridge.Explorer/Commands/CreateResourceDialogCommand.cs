@@ -19,20 +19,20 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
     public ResourceType ResourceType { get; set; }
     public ResourceKey DestFolderResource { get; set; }
 
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IResourceNameValidatorFactory _nameValidatorFactory;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IDialogService _dialogService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public CreateResourceDialogCommand(
-        IServiceProvider serviceProvider,
+        IResourceNameValidatorFactory nameValidatorFactory,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IDialogService dialogService,
         IWorkspaceWrapper workspaceWrapper)
     {
-        _serviceProvider = serviceProvider;
+        _nameValidatorFactory = nameValidatorFactory;
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _dialogService = dialogService;
@@ -98,14 +98,15 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
             return Result.Fail($"Failed to show new file dialog because workspace is not loaded");
         }
 
-        var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
-        var setParentResult = await validator.SetParentFolderAsync(DestFolderResource);
-        if (setParentResult.IsFailure)
+        var createValidatorResult = await _nameValidatorFactory.CreateAsync(
+            DestFolderResource,
+            ResourceNameKind.File);
+        if (createValidatorResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve destination folder: '{DestFolderResource}'")
-                .WithErrors(setParentResult);
+                .WithErrors(createValidatorResult);
         }
-        validator.ValidateAsFolder = false;
+        var validator = createValidatorResult.Value;
 
         var defaultFileName = await FindDefaultFileNameAsync(DestFolderResource);
 
@@ -140,14 +141,15 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
             return Result.Fail($"Failed to show new folder dialog because workspace is not loaded");
         }
 
-        var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
-        var setParentResult = await validator.SetParentFolderAsync(DestFolderResource);
-        if (setParentResult.IsFailure)
+        var createValidatorResult = await _nameValidatorFactory.CreateAsync(
+            DestFolderResource,
+            ResourceNameKind.Folder);
+        if (createValidatorResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve destination folder: '{DestFolderResource}'")
-                .WithErrors(setParentResult);
+                .WithErrors(createValidatorResult);
         }
-        validator.ValidateAsFolder = true;
+        var validator = createValidatorResult.Value;
 
         var defaultText = await FindDefaultFolderNameAsync(DestFolderResource);
 

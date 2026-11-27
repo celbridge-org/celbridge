@@ -13,7 +13,7 @@ public class ExtractArchiveDialogCommand : CommandBase, IExtractArchiveDialogCom
     public ResourceKey ArchiveResource { get; set; }
 
     private readonly ILogger<ExtractArchiveDialogCommand> _logger;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IResourceNameValidatorFactory _nameValidatorFactory;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IDialogService _dialogService;
@@ -21,14 +21,14 @@ public class ExtractArchiveDialogCommand : CommandBase, IExtractArchiveDialogCom
 
     public ExtractArchiveDialogCommand(
         ILogger<ExtractArchiveDialogCommand> logger,
-        IServiceProvider serviceProvider,
+        IResourceNameValidatorFactory nameValidatorFactory,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IDialogService dialogService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
-        _serviceProvider = serviceProvider;
+        _nameValidatorFactory = nameValidatorFactory;
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _dialogService = dialogService;
@@ -65,12 +65,14 @@ public class ExtractArchiveDialogCommand : CommandBase, IExtractArchiveDialogCom
         var titleString = _stringLocalizer.GetString("ResourceTree_ExtractArchiveTitle", archiveName);
         var messageString = _stringLocalizer.GetString("ResourceTree_EnterExtractFolderName");
 
-        var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
-        var setParentResult = await validator.SetParentFolderAsync(ArchiveResource.GetParent());
-        if (setParentResult.IsFailure)
+        var createValidatorResult = await _nameValidatorFactory.CreateAsync(
+            ArchiveResource.GetParent(),
+            ResourceNameKind.Folder);
+        if (createValidatorResult.IsFailure)
         {
-            return Result.Fail(setParentResult);
+            return Result.Fail(createValidatorResult);
         }
+        var validator = createValidatorResult.Value;
 
         var showResult = await _dialogService.ShowInputTextDialogAsync(
             titleString,

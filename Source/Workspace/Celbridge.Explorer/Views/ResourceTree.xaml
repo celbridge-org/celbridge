@@ -41,16 +41,16 @@
                     FontSize="12"/>
         </Button>
 
-        <!-- Resource icon. Dims with the name when the resource is read-only or hidden. -->
-        <local:ResourceIcon Grid.Column="1"
-                            IsFolder="{x:Bind IsFolder}"
-                            FileIcon="{x:Bind FileIcon}"
-                            Opacity="{x:Bind IsDimmed, Converter={StaticResource BoolToDimmedOpacityConverter}, ConverterParameter=Inverted}"
-                            Margin="0,0,8,0"
-                            VerticalAlignment="Center"
-                            HorizontalAlignment="Left" />
+        <!-- Resource icon -->
+        <controls:ResourceIcon Grid.Column="1"
+                               IsFolder="{x:Bind IsFolder}"
+                               FileIcon="{x:Bind FileIcon}"
+                               Opacity="{x:Bind IsDimmed, Converter={StaticResource BoolToDimmedOpacityConverter}, ConverterParameter=Inverted}"
+                               Margin="0,0,8,0"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Left" />
 
-        <!-- Resource name (semi-bold for project folder, dimmed when read-only or hidden) -->
+        <!-- Resource name -->
         <TextBlock Grid.Column="2"
                    Text="{x:Bind Name}"
                    Opacity="{x:Bind IsDimmed, Converter={StaticResource BoolToDimmedOpacityConverter}, ConverterParameter=Inverted}"

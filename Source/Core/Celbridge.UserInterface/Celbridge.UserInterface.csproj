@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
+    <ProjectReference Include="..\..\Core\Celbridge.Patterns\Celbridge.Patterns.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.WebHost\Celbridge.WebHost.csproj" />
     <!-- Generates Resources/ColorTokens.xaml. UndefineProperties stops a global TargetFramework
          (e.g. dotnet build -f net10.0-desktop) from forcing that framework onto the net10.0 generator. -->

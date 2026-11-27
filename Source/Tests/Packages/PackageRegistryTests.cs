@@ -130,9 +130,8 @@ public class PackageServiceTests
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        // The resource tree strips the leading dot before it asks, so the published override has to
-        // answer to the dot-free form.
-        var icon = _iconService.GetFileIconForExtension("iconed").Value;
+        // A file with the package's extension takes the package's icon.
+        var icon = _iconService.GetFileIconForFileName("notes.iconed");
         icon.FontCharacter.Should().Be(_iconService.GetGlyph("bs-journal-text").FontCharacter);
         icon.FontColor.Should().Be("#FF8800");
     }
@@ -145,7 +144,7 @@ public class PackageServiceTests
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var icon = _iconService.GetFileIconForExtension("iconed").Value;
+        var icon = _iconService.GetFileIconForFileName("notes.iconed");
         icon.Should().Be(_iconService.DefaultFileIcon);
     }
 

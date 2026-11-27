@@ -70,8 +70,7 @@ public class DialogServiceAnswerTests
         _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
         var fakeResourcePicker = Substitute.For<IResourcePickerDialog>();
         fakeResourcePicker.ShowDialogAsync().Returns(Task.FromResult(Result<ResourceKey>.Fail("cancelled")));
-        _dialogFactory.CreateResourcePickerDialog(
-            Arg.Any<IReadOnlyList<string>>(), Arg.Any<string?>(), Arg.Any<bool>()).Returns(fakeResourcePicker);
+        _dialogFactory.CreateResourcePickerDialog(Arg.Any<ResourcePickerOptions>()).Returns(fakeResourcePicker);
 
         var canceledAnswer = new DownloadFileAnswer(DownloadFileChoice.Cancel, ResourceKey.Empty);
         var fakeDownloadFile = Substitute.For<IDownloadFileDialog>();
@@ -200,7 +199,11 @@ public class DialogServiceAnswerTests
     {
         _dialogService.ScheduleAnswer(DialogKind.ResourcePicker, payload: "Folder/picked.txt", delayMs: 0);
 
-        await _dialogService.ShowResourcePickerDialogAsync(new List<string> { "txt" });
+        var options = new ResourcePickerOptions
+        {
+            Extensions = [".txt"]
+        };
+        await _dialogService.ShowResourcePickerDialogAsync(options);
         await WaitForBroadcast<DialogAnswerMessage>();
 
         var sent = _messengerService.Sent<DialogAnswerMessage>();

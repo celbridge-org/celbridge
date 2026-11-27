@@ -60,6 +60,11 @@ public record PickImageResult(string? Path);
 public record PickFileResult(string? Path);
 
 /// <summary>
+/// Result of the dialog/pickResource request: the chosen resource key, or null when the user cancelled.
+/// </summary>
+public record PickResourceResult(string? Resource);
+
+/// <summary>
 /// Result of the dialog/pickIcon request.
 /// </summary>
 public record PickIconResult(string? IconName);

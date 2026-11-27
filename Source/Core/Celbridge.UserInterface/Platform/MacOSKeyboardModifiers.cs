@@ -3,14 +3,14 @@ using static Celbridge.Utilities.Platform.ObjectiveCRuntime;
 namespace Celbridge.UserInterface.Platform;
 
 /// <summary>
-/// The modifier keys held at the moment the state was read.
+/// The modifier keys held for an AppKit event.
 /// </summary>
 internal record MacOSModifierState(bool Command, bool Control, bool Shift, bool Option);
 
 /// <summary>
-/// Reads the modifier keys AppKit reports as held right now. Uno derives its own modifier state from the
-/// managed key events it raises, so a modifier whose release it never sees stays down for every later key.
-/// AppKit answers for the hardware instead. macOS-only.
+/// Reads the modifier keys from AppKit. Uno tracks the modifier keys from the managed key events. When Uno misses
+/// the release of a modifier key, Uno reports that key down for every later key. AppKit reports the hardware.
+/// macOS-only.
 /// </summary>
 internal static class MacOSKeyboardModifiers
 {
@@ -21,7 +21,8 @@ internal static class MacOSKeyboardModifiers
     public const ulong CommandFlag = 1UL << 20;
 
     /// <summary>
-    /// The modifier keys currently held, or null on every other platform.
+    /// Returns the modifier keys held when AppKit's current event was sent, or null on every other platform. With no
+    /// current event, returns the modifier keys held now.
     /// </summary>
     public static MacOSModifierState? GetCurrentState()
     {
@@ -30,7 +31,20 @@ internal static class MacOSKeyboardModifiers
             return null;
         }
 
-        var modifierFlags = (ulong)SendMessageReturnNuint(GetClass("NSEvent"), GetSelector("modifierFlags"));
+        // An input handler gets the keys held for its own event. A synthetic chord can release its modifier before
+        // the handler runs, so the keys held now can lack that modifier.
+        var application = SendMessage(GetClass("NSApplication"), GetSelector("sharedApplication"));
+        var currentEvent = SendMessage(application, GetSelector("currentEvent"));
+
+        ulong modifierFlags;
+        if (currentEvent != IntPtr.Zero)
+        {
+            modifierFlags = (ulong)SendMessageReturnNuint(currentEvent, GetSelector("modifierFlags"));
+        }
+        else
+        {
+            modifierFlags = (ulong)SendMessageReturnNuint(GetClass("NSEvent"), GetSelector("modifierFlags"));
+        }
 
         var command = (modifierFlags & CommandFlag) != 0;
         var control = (modifierFlags & ControlFlag) != 0;
