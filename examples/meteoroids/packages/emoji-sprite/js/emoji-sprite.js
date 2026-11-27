@@ -47,7 +47,6 @@ const glyphInput = document.getElementById('glyph-input');
 const sizeInput = document.getElementById('size-input');
 const folderInput = document.getElementById('folder-input');
 const folderBrowse = document.getElementById('folder-browse');
-const folderList = document.getElementById('folder-list');
 const generateBtn = document.getElementById('generate-btn');
 const glyphCount = document.getElementById('glyph-count');
 const statusEl = document.getElementById('status');
@@ -289,32 +288,43 @@ function addResult(glyph, resource, canvas, error) {
 
 // --- Folder picker ---
 
-// The field holds a project folder key, so the choices are the project's own folders. It stays an
-// editable text field rather than a fixed list: the output folder usually does not exist yet, and
-// the run creates it.
-async function loadFolderList() {
+const PROJECT_ROOT = 'project:';
+
+// The field contains a folder's path in the project. The field stays editable, because the output
+// folder usually does not exist until a run creates it. Browse opens the host's folder picker at the
+// field's folder, and fills the field with the chosen folder's path.
+async function browseForFolder() {
+    const set = currentSet();
+    if (!set) return;
+
+    const folder = folderInput.value.trim().replace(/^\/+|\/+$/g, '');
+    const defaultResource = folder ? PROJECT_ROOT + folder : undefined;
+
+    let chosen = null;
     try {
-        const tree = JSON.parse(await cel.file.getTree('', 12, '', 'folder'));
-
-        const folders = [];
-        (function walk(node, prefix) {
-            for (const child of node.children ?? []) {
-                const key = prefix ? `${prefix}/${child.name}` : child.name;
-                folders.push(key);
-                walk(child, key);
-            }
-        })(tree, '');
-
-        folders.sort();
-        folderList.replaceChildren(...folders.map(folder => {
-            const option = document.createElement('option');
-            option.value = folder;
-            return option;
-        }));
+        chosen = await client.dialog.pickFolder(defaultResource);
     } catch (e) {
         // Browsing is a convenience; the field still takes a typed folder.
-        console.warn('[Emoji Sprite] Could not list the project folders:', e);
+        console.warn('[Emoji Sprite] Could not open the folder picker:', e);
+        return;
     }
+    if (chosen === null) return;
+
+    // Sprites go in a folder inside the project. When the user chooses the project folder, the
+    // field stays unchanged, and a notice asks for a folder inside the project.
+    if (chosen === PROJECT_ROOT) {
+        showNotice('EmojiSprite_Error_ProjectFolder');
+        return;
+    }
+
+    const path = chosen.startsWith(PROJECT_ROOT) ? chosen.slice(PROJECT_ROOT.length) : chosen;
+    folderInput.value = path;
+    set.folder = path;
+    save();
+
+    // The chosen folder now fills the field, so any notice still showing is out of date. Generate checks every
+    // field again before it runs.
+    showNotice(null);
 }
 
 // --- Sprite sets ---
@@ -509,9 +519,6 @@ async function runGeneration(setName, glyphs, size, folder) {
     await cel.app.log(`[Emoji Sprite] ${setName}: ${statusEl.textContent} at ${size}px`);
 
     if (written > 0) {
-        // The run may have created the folder, so it is a choice for next time.
-        await loadFolderList();
-
         try {
             // Don't raise the Explorer panel: this utility may be docked there.
             await cel.explorer.select(folder, false);
@@ -668,12 +675,7 @@ folderInput.addEventListener('input', () => {
     save();
 });
 
-folderBrowse.addEventListener('click', () => {
-    folderInput.focus();
-    // Drops the folder list open. Not every engine implements showPicker for a datalist, and the list
-    // opens on typing regardless, so a failure here costs nothing.
-    try { folderInput.showPicker(); } catch { /* focused is enough */ }
-});
+folderBrowse.addEventListener('click', browseForFolder);
 
 generateBtn.addEventListener('click', generate);
 
@@ -746,7 +748,6 @@ async function initialize() {
         await seedFallbackStrings();
         const result = await client.initialize();
         applyState(parseState(result.content));
-        await loadFolderList();
 
         // The host's readiness contract (and the webview devtools surface) wait on
         // this before dispatching against the document.

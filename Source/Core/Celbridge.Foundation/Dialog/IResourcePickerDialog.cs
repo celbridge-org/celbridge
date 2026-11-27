@@ -11,6 +11,12 @@ public enum ResourcePickerMode
     Open,
 
     /// <summary>
+    /// A place to save a file: a folder, and a name the user types. The name can name an existing file. The user then
+    /// agrees to replace the file.
+    /// </summary>
+    Save,
+
+    /// <summary>
     /// A folder in the project, the project folder included.
     /// </summary>
     Folder
@@ -28,21 +34,21 @@ public record ResourcePickerOptions
     public ResourcePickerMode Mode { get; init; } = ResourcePickerMode.Open;
 
     /// <summary>
-    /// The file extensions the picker lists, for example ".png". An empty list lists every file. Folder mode ignores
-    /// the list.
+    /// The file extensions the picker lists, for example ".png". An empty list lists every file. In save mode, the
+    /// name of the file to save must end in one of the extensions. Folder mode ignores the list.
     /// </summary>
     public IReadOnlyList<string> Extensions { get; init; } = [];
 
     /// <summary>
-    /// A file or folder to select when the picker opens. The picker opens on the resource's folder. Empty for none.
-    /// Applies to open mode only.
+    /// Where the picker starts, or null for none. In open mode, a file to select in its folder. In save mode, a
+    /// folder and a suggested name for the file to save. In folder mode, a folder to open. The picker ignores a
+    /// resource outside the project, and a resource in a folder that is missing.
     /// </summary>
-    public ResourceKey InitialSelection { get; init; } = ResourceKey.Empty;
+    public ResourceKey? DefaultResource { get; init; }
 
     /// <summary>
-    /// The folder the picker opens on when there is no initial selection, or the initial selection's folder is
-    /// missing. Empty for the project folder. In folder mode, the primary button returns this folder until the user
-    /// opens another.
+    /// The folder the picker opens on when the default resource is null or ignored. Empty for the project folder. A
+    /// missing folder gives way to the project folder. In folder mode, the primary button chooses the open folder.
     /// </summary>
     public ResourceKey StartFolder { get; init; } = ResourceKey.Empty;
 
@@ -58,13 +64,13 @@ public record ResourcePickerOptions
 }
 
 /// <summary>
-/// A modal dialog that allows the user to pick a resource from the project.
+/// A modal dialog that asks the user to choose a file to open, a place to save a file, or a folder, in the project.
 /// </summary>
 public interface IResourcePickerDialog
 {
     /// <summary>
-    /// Present the Resource Picker Dialog to the user.
-    /// Returns the selected resource key on success, or fails if the dialog was cancelled.
+    /// Present the Resource Picker Dialog to the user. Returns the chosen resource key, or fails if the dialog was
+    /// cancelled. In save mode, the key names a file in an existing folder, and the file may not exist yet.
     /// </summary>
     Task<Result<ResourceKey>> ShowDialogAsync();
 }

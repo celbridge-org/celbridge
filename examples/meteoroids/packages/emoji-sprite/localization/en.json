@@ -32,6 +32,7 @@
     "EmojiSprite_Error_NoGlyphs": "Enter at least one emoji character.",
     "EmojiSprite_Error_Size": "Resolution must be between 16 and 1024 pixels.",
     "EmojiSprite_Error_NoFolder": "Enter an output folder.",
+    "EmojiSprite_Error_ProjectFolder": "Choose a folder inside the project.",
     "EmojiSprite_Error_Failed": "Generation failed: {0}",
     "EmojiSprite_Error_InitFailed": "Failed to initialize the Celbridge connection.",
     "EmojiSprite_Error_NamesUnavailable": "Emoji names are unavailable, so sprites are being named by code point.",

@@ -87,8 +87,9 @@ public interface IDialogService
     Task<Result<NewFileConfig>> ShowNewFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator);
 
     /// <summary>
-    /// Display a Resource Picker Dialog, which asks the user to choose a file or a folder in the project. Returns the
-    /// chosen resource. Fails if the user cancels, or if no project is currently loaded.
+    /// Display a Resource Picker Dialog. The dialog asks the user to choose a file to open, a place to save a file, or
+    /// a folder, in the project. Returns the chosen resource. Fails if the user cancels, or if no project is currently
+    /// loaded.
     /// </summary>
     Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(ResourcePickerOptions options);
 

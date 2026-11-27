@@ -9,7 +9,7 @@ namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Handles IHostDialog RPC methods for contribution document views.
-/// Provides image picking, file picking, alert dialogs, and notifications.
+/// Provides the resource picker, alert dialogs, and notifications.
 /// </summary>
 internal sealed class CustomDialogRpcHandler : IHostDialog
 {
@@ -89,6 +89,48 @@ internal sealed class CustomDialogRpcHandler : IHostDialog
         }
 
         return new PickFileResult(null);
+    }
+
+    public async Task<PickResourceResult> PickResourceAsync(
+        string mode,
+        IReadOnlyList<string>? extensions = null,
+        string? defaultResource = null,
+        string? title = null,
+        bool preview = false)
+    {
+        if (!TryParseMode(mode, out var pickerMode))
+        {
+            throw new ArgumentException(
+                $"Unknown resource picker mode: '{mode}'. Expected 'open', 'save' or 'folder'.",
+                nameof(mode));
+        }
+
+        // The picker ignores a default resource that is not a valid key, and starts at the document's folder.
+        ResourceKey? defaultKey = null;
+        if (!string.IsNullOrEmpty(defaultResource)
+            && ResourceKey.TryCreate(defaultResource, out var parsedKey))
+        {
+            defaultKey = parsedKey;
+        }
+
+        var options = new ResourcePickerOptions
+        {
+            Mode = pickerMode,
+            Extensions = extensions?.ToArray() ?? [],
+            DefaultResource = defaultKey,
+            StartFolder = GetDocumentFolder(),
+            Title = string.IsNullOrEmpty(title) ? null : title,
+            ShowPreview = preview
+        };
+        var result = await _dialogService.ShowResourcePickerDialogAsync(options);
+
+        if (result.IsSuccess)
+        {
+            var chosenResource = result.Value;
+            return new PickResourceResult(chosenResource.ToString());
+        }
+
+        return new PickResourceResult(null);
     }
 
     public async Task<PickIconResult> PickIconAsync(string? searchText = null)
@@ -176,6 +218,28 @@ internal sealed class CustomDialogRpcHandler : IHostDialog
         }
 
         return new OpenDocumentAction(actionResource, label, line, column);
+    }
+
+    private static bool TryParseMode(string mode, out ResourcePickerMode parsedMode)
+    {
+        switch (mode)
+        {
+            case "open":
+                parsedMode = ResourcePickerMode.Open;
+                return true;
+
+            case "save":
+                parsedMode = ResourcePickerMode.Save;
+                return true;
+
+            case "folder":
+                parsedMode = ResourcePickerMode.Folder;
+                return true;
+
+            default:
+                parsedMode = ResourcePickerMode.Open;
+                return false;
+        }
     }
 
     private static bool TryParseSeverity(string severity, out ReportSeverity parsedSeverity)

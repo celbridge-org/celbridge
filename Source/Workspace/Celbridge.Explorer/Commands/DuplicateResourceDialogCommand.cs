@@ -13,20 +13,20 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
 
     public ResourceKey Resource { get; set; }
 
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IResourceNameValidatorFactory _nameValidatorFactory;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IDialogService _dialogService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public DuplicateResourceDialogCommand(
-        IServiceProvider serviceProvider,
+        IResourceNameValidatorFactory nameValidatorFactory,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IDialogService dialogService,
         IWorkspaceWrapper workspaceWrapper)
     {
-        _serviceProvider = serviceProvider;
+        _nameValidatorFactory = nameValidatorFactory;
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _dialogService = dialogService;
@@ -72,13 +72,15 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
         var duplicateResourceString = _stringLocalizer.GetString("ResourceTree_DuplicateResource", resourceName);
         var enterNameString = _stringLocalizer.GetString("ResourceTree_DuplicateResourceEnterName");
 
-        var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
-        var setParentResult = await validator.SetParentFolderAsync(Resource.GetParent());
-        if (setParentResult.IsFailure)
+        var nameKind = resourceItem.IsFolder
+            ? ResourceNameKind.Folder
+            : ResourceNameKind.File;
+        var createValidatorResult = await _nameValidatorFactory.CreateAsync(Resource.GetParent(), nameKind);
+        if (createValidatorResult.IsFailure)
         {
-            return Result.Fail(setParentResult);
+            return Result.Fail(createValidatorResult);
         }
-        validator.ValidateAsFolder = resourceItem.IsFolder;
+        var validator = createValidatorResult.Value;
 
         var showResult = await _dialogService.ShowInputTextDialogAsync(
             duplicateResourceString,

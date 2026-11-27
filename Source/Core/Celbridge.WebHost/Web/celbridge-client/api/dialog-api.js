@@ -19,9 +19,10 @@ export class DialogAPI {
     }
 
     /**
-     * Opens an image picker dialog.
+     * Opens the resource picker in open mode, with a preview of the selected image.
      * @param {string[]} extensions - Allowed file extensions (e.g., ['.png', '.jpg']).
-     * @returns {Promise<string|null>} - The selected path, or null if cancelled.
+     * @returns {Promise<string|null>} - The chosen file's path relative to the calling document, or null if
+     *   cancelled. Use pickResource for a resource key.
      */
     async pickImage(extensions) {
         const result = await this.#transport.request('dialog/pickImage', { extensions }, WAITS_FOR_USER);
@@ -29,13 +30,66 @@ export class DialogAPI {
     }
 
     /**
-     * Opens a file picker dialog.
+     * Opens the resource picker in open mode.
      * @param {string[]} extensions - Allowed file extensions.
-     * @returns {Promise<string|null>} - The selected path, or null if cancelled.
+     * @returns {Promise<string|null>} - The chosen file's path relative to the calling document, or null if
+     *   cancelled. Use pickResource for a resource key.
      */
     async pickFile(extensions) {
         const result = await this.#transport.request('dialog/pickFile', { extensions }, WAITS_FOR_USER);
         return result.path;
+    }
+
+    /**
+     * Asks the user to choose a file to open, a place to save a new file, or a folder, in the project. The picker
+     * writes nothing. In save mode, the caller may write the returned key. The folder exists, the name is valid, the
+     * extension is allowed and the file is not read-only. If the file exists, the user has agreed to replace it.
+     *
+     * The picker starts at `defaultResource`. Without one, the picker starts in the folder of the calling document.
+     * A document outside the project starts the picker in the project folder. A `defaultResource` that is
+     * malformed, outside the project, or in a folder that does not exist is ignored.
+     *
+     * @param {Object} options
+     * @param {'open'|'save'|'folder'} options.mode - What the user chooses.
+     * @param {string[]} [options.extensions] - Allowed extensions, for example ['.png']. Empty or left out for
+     *   any. In save mode with one extension, the picker adds the extension to a name typed without it.
+     * @param {string} [options.defaultResource] - Where to start. For 'save', a suggested folder and name, for
+     *   example 'project:images/hero-export.png'. For 'open', a file to select. For 'folder', a folder to open.
+     * @param {string} [options.title] - The dialog's title, already localized. Each mode has its own default.
+     * @param {boolean} [options.preview] - Show a preview of image files. 'open' only.
+     * @returns {Promise<string|null>} - The chosen resource key, for example 'project:images/hero-export.png', or
+     *   null if cancelled.
+     */
+    async pickResource(options) {
+        const result = await this.#transport.request('dialog/pickResource', {
+            mode: options.mode,
+            extensions: options.extensions,
+            defaultResource: options.defaultResource,
+            title: options.title,
+            preview: options.preview ?? false
+        }, WAITS_FOR_USER);
+        return result.resource;
+    }
+
+    /**
+     * Asks the user where to save a new file in the project. Opens the picker in save mode.
+     * @param {string} [defaultResource] - A suggested folder and name, for example
+     *   'project:images/hero-export.png'.
+     * @param {string[]} [extensions] - Allowed extensions, for example ['.png'].
+     * @returns {Promise<string|null>} - The resource key to write, or null if cancelled.
+     */
+    pickSaveLocation(defaultResource, extensions) {
+        return this.pickResource({ mode: 'save', defaultResource, extensions });
+    }
+
+    /**
+     * Asks the user to choose a folder in the project. Opens the picker in folder mode.
+     * @param {string} [defaultResource] - A folder to start in, for example 'project:images'.
+     * @returns {Promise<string|null>} - The chosen folder's resource key, or null if cancelled. The project folder
+     *   is 'project:'.
+     */
+    pickFolder(defaultResource) {
+        return this.pickResource({ mode: 'folder', defaultResource });
     }
 
     /**

@@ -163,7 +163,7 @@ Core tokens:
 | `--cel-divider` | Separator and control-border color, for a hairline within a surface. |
 | `--cel-panel-edge` | The outline of a region carved out of the chrome surface. Stronger than a divider, so the carve reads as an object. |
 | `--cel-accent` | Accent color (hardcoded per theme; the CSS `AccentColor` keyword renders transparent in WebView2). |
-| `--cel-error-text`, `--cel-warning-text`, `--cel-search-highlight` | Semantic status colors. |
+| `--cel-error-text`, `--cel-warning-text` | Semantic status colors. |
 | `--cel-radius-control`, `--cel-radius-button`, `--cel-radius-card` | Corner radii for controls, flat icon buttons, and larger cards. |
 | `--cel-page-zoom` | The scale the web engine applied on top of the host's own, carrying the Windows accessibility text size. See below. |
 
@@ -335,6 +335,24 @@ const list = createCardList({
 ```
 
 Prefer this over a delimited text field (`a | b | c` per line) for anything Celbridge-specific: it removes a syntax the user has to learn and a parser you have to maintain. The exception is a setting whose data has a canonical text form elsewhere — command-line arguments, `requirements.txt` entries, `KEY=value` environment pairs — where a plain textarea is the better control, because it lets the user paste from the file the data already lives in.
+
+## Asking for a file or a folder
+
+`client.dialog.pickResource(options)` opens the host's resource picker, which browses the project one folder at a time. The picker asks the user for a file to open, a place to save a new file, or a folder. The call returns the chosen resource key, or null when the user cancels.
+
+```javascript
+const resource = await client.dialog.pickSaveLocation('project:exports/hero-export.png', ['.png']);
+if (resource) {
+    await cel.file.writeBinary(resource, base64Png);
+}
+```
+
+`pickSaveLocation(defaultResource, extensions)` and `pickFolder(defaultResource)` call `pickResource` with the mode set to `'save'` and `'folder'`. `pickResource` also takes a `title`, which must already be localized. In open mode, `preview: true` shows a preview of the selected image.
+
+- **The picker writes nothing.** Save mode returns a key, and your page writes the file. The key is safe to write: the folder exists, the name is valid, the extension is allowed and the file is not read-only. If the file exists, the user has agreed to replace it.
+- **The default resource sets where the picker starts.** In save mode, it is a folder and a suggested name. In open mode, it is a file to select. In folder mode, it is a folder to open. Without one, the picker starts in your document's folder. A document outside the project starts the picker in the project folder. The picker ignores a default resource that is malformed, outside the project, or in a folder that does not exist.
+- **The extensions limit what the user can choose.** In save mode with one extension, the picker adds the extension to a name typed without it. With several, the name must end in one of them.
+- **Keys go in and out, never paths.** The project folder's key is `project:`. The older `pickFile` and `pickImage` return a path relative to your document.
 
 ## Telling the user something
 

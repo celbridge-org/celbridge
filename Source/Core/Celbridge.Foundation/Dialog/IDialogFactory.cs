@@ -54,8 +54,8 @@ public interface IDialogFactory
     INewFileDialog CreateNewFileDialog(string defaultFileName, Range selectionRange, IValidator validator);
 
     /// <summary>
-    /// Create a Resource Picker Dialog, which asks the user to choose a file or a folder in the project.
-    /// Requires a loaded workspace.
+    /// Create a Resource Picker Dialog. The dialog asks the user to choose a file to open, a place to save a file, or
+    /// a folder, in the project. Requires a loaded workspace.
     /// </summary>
     IResourcePickerDialog CreateResourcePickerDialog(ResourcePickerOptions options);
 

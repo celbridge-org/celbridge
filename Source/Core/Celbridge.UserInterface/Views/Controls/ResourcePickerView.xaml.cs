@@ -1,22 +1,30 @@
-using Celbridge.UserInterface.Helpers;
+using Celbridge.Dialog;
 using Celbridge.UserInterface.ViewModels.Controls;
+using Celbridge.Utilities;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;
 
 namespace Celbridge.UserInterface.Views.Controls;
 
 /// <summary>
-/// Browses the project one folder at a time, for a dialog that asks the user to choose a file or a folder. A
-/// location bar with a breadcrumb sits above the folder's contents. Text typed in the search box lists the matches
-/// from the whole project in place of the folder.
+/// Browses the project one folder at a time. A dialog hosts the view to ask the user for a file to open, a place to
+/// save a file, or a folder. A location bar with a breadcrumb sits above the folder's contents. Text typed in the
+/// search box lists the matches from the whole project in place of the folder. In save mode, a name field sits under
+/// the list.
 /// </summary>
 public sealed partial class ResourcePickerView : UserControl
 {
     private readonly IStringLocalizer _stringLocalizer;
 
+    // The view model's latest suggested name. The view clears this field once the name field shows the suggested name
+    // with the base name selected.
+    private string? _suggestedName;
+
     /// <summary>
-    /// Raised when the user chooses a file from the list in open mode, with Enter or a double-click on the file. In
-    /// folder mode, Enter or a double-click only opens a folder, and the primary button chooses the current folder.
+    /// Raised when the user chooses a resource without the primary button. In open mode, that is Enter or a
+    /// double-click on a file. In save mode, that is Enter in the name field, or Enter or a double-click on a file. An
+    /// existing file's name needs the user to agree to replace the file first. In folder mode, Enter or a double-click
+    /// only opens a folder, and the primary button chooses the current folder.
     /// </summary>
     public event EventHandler<ResourceKey>? ResourceChosen;
 
@@ -31,6 +39,7 @@ public sealed partial class ResourcePickerView : UserControl
     private string SearchPlaceholderString => _stringLocalizer.GetString("ResourcePickerDialog_SearchPlaceholder");
     private string SearchLocationString => _stringLocalizer.GetString("ResourcePickerDialog_SearchLocation");
     private string UpString => _stringLocalizer.GetString("ResourcePickerDialog_Up");
+    private string NameString => _stringLocalizer.GetString("ResourcePickerDialog_Name");
 
     public ResourcePickerView()
     {
@@ -41,6 +50,24 @@ public sealed partial class ResourcePickerView : UserControl
 
         var panelCornerRadius = (double)Application.Current.Resources["PanelCornerRadius"];
         ListArea.CornerRadius = new CornerRadius(panelCornerRadius);
+
+        ViewModel.NameSuggested += ViewModel_NameSuggested;
+    }
+
+    /// <summary>
+    /// The field that takes the keyboard when the picker opens. In save mode, it is the name field. In the other
+    /// modes, it is the search box.
+    /// </summary>
+    public Control FirstField => ViewModel.Mode == ResourcePickerMode.Save
+        ? NameTextBox
+        : SearchTextBox;
+
+    /// <summary>
+    /// Gives the keyboard to the field that FirstField names.
+    /// </summary>
+    public void FocusFirstField()
+    {
+        FirstField.Focus(FocusState.Programmatic);
     }
 
     /// <summary>
@@ -174,6 +201,67 @@ public sealed partial class ResourcePickerView : UserControl
             e.Handled = true;
             EscapePressed?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    // Enter on the name of a listed folder opens the folder. Otherwise Enter saves, with the primary button's checks.
+    // The key is marked handled, so the dialog's default button never sees it.
+    private void NameTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter)
+        {
+            e.Handled = true;
+            if (ViewModel.NamesListedFolder())
+            {
+                _ = OpenNamedFolderAsync();
+                return;
+            }
+
+            var choice = ViewModel.GetConfirmedChoice();
+            if (choice is not null)
+            {
+                ResourceChosen?.Invoke(this, choice.Value);
+            }
+        }
+        else if (e.Key == VirtualKey.Escape)
+        {
+            e.Handled = true;
+            EscapePressed?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private async Task OpenNamedFolderAsync()
+    {
+        await ViewModel.OpenNamedFolderAsync();
+        NameTextBox.Focus(FocusState.Programmatic);
+    }
+
+    // Selects the suggested name without its extension, so typing replaces the name and keeps the file type. A
+    // suggestion can arrive before the view's bindings have put the name in the field. The field's text then changes
+    // later, and the selection waits for that change.
+    private void ViewModel_NameSuggested(object? sender, EventArgs e)
+    {
+        _suggestedName = ViewModel.NameText;
+        SelectSuggestedBaseName();
+    }
+
+    private void NameTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        SelectSuggestedBaseName();
+    }
+
+    private void SelectSuggestedBaseName()
+    {
+        if (_suggestedName is null
+            || NameTextBox.Text != _suggestedName)
+        {
+            return;
+        }
+        _suggestedName = null;
+
+        var name = NameTextBox.Text;
+        var selectionRange = ResourceNameHelper.GetNameSelectionRange(name);
+        var (offset, length) = selectionRange.GetOffsetAndLength(name.Length);
+        NameTextBox.Select(offset, length);
     }
 
     // A double-click on the empty space below the rows leaves the selected item alone.

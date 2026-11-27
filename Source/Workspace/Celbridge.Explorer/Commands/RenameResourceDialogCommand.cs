@@ -13,20 +13,20 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
 
     public ResourceKey Resource { get; set; }
 
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IResourceNameValidatorFactory _nameValidatorFactory;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IDialogService _dialogService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public RenameResourceDialogCommand(
-        IServiceProvider serviceProvider,
+        IResourceNameValidatorFactory nameValidatorFactory,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IDialogService dialogService,
         IWorkspaceWrapper workspaceWrapper)
     {
-        _serviceProvider = serviceProvider;
+        _nameValidatorFactory = nameValidatorFactory;
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
@@ -77,14 +77,18 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
 
         var defaultText = resourceName;
 
-        var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
-        var setParentResult = await validator.SetParentFolderAsync(Resource.GetParent());
-        if (setParentResult.IsFailure)
+        var nameKind = resourceItem.IsFolder
+            ? ResourceNameKind.Folder
+            : ResourceNameKind.File;
+        var createValidatorResult = await _nameValidatorFactory.CreateAsync(
+            Resource.GetParent(),
+            nameKind,
+            currentName: resourceName);
+        if (createValidatorResult.IsFailure)
         {
-            return Result.Fail(setParentResult);
+            return Result.Fail(createValidatorResult);
         }
-        validator.ValidateAsFolder = resourceItem.IsFolder;
-        validator.ValidNames.Add(resourceName); // The original name is always valid when renaming
+        var validator = createValidatorResult.Value;
 
         var enterNewNameString = _stringLocalizer.GetString("ResourceTree_EnterNewName");
 

@@ -442,12 +442,12 @@
                                    HorizontalAlignment="Right"
                                    Margin="0,0,8,0"/>
 
-                        <!-- Line Text with Highlighted Match -->
+                        <!-- The line's text. The match is semibold, so the mark doesn't rely on a color. -->
                         <TextBlock Grid.Column="1"
                                    TextTrimming="CharacterEllipsis"
                                    ToolTipService.ToolTip="{x:Bind LineText}">
-                          <Run Text="{x:Bind TextBeforeMatch}"/><Run Text="{x:Bind MatchedText}"
-                               Foreground="{ThemeResource SearchMatchHighlightBrush}"/><Run Text="{x:Bind TextAfterMatch}"/>
+                          <Run Text="{x:Bind MarkedLine.Before}"/><Run Text="{x:Bind MarkedLine.Mark}"
+                               FontWeight="SemiBold"/><Run Text="{x:Bind MarkedLine.After}"/>
                         </TextBlock>
 
                         <!-- Per-result Replace button (visible on hover or selection when replace mode is enabled) -->

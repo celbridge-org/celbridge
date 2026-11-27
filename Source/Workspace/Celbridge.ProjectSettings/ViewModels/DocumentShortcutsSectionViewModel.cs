@@ -89,11 +89,11 @@ public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
     {
         // No extension filter: a shortcut opens whatever editor the file resolves to, so every file is a
         // candidate. The picker opens with the shortcut's file selected.
-        ResourceKey.TryCreate(shortcut.Resource, out var initialSelection);
+        ResourceKey.TryCreate(shortcut.Resource, out var shortcutResource);
         var options = new ResourcePickerOptions
         {
             Mode = ResourcePickerMode.Open,
-            InitialSelection = initialSelection,
+            DefaultResource = shortcutResource,
             Title = ProjectSettingsLabels.ShortcutPickerTitle
         };
 

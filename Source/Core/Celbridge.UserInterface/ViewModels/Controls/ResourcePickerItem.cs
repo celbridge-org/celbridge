@@ -8,11 +8,11 @@ public record ResourcePickerItemState(bool IsHidden, WritableState WritableState
 
 /// <summary>
 /// Represents a single file or folder in the resource picker's list. A folder's listing shows each item by its name.
-/// A search result also shows the item's folder.
+/// A search result also shows the item's full path, with a mark on the part of the path that matched the search.
 /// </summary>
 public class ResourcePickerItem
 {
-    private readonly bool _showsFolder;
+    private readonly bool _showsPath;
 
     public ResourceKey Resource { get; }
 
@@ -26,17 +26,17 @@ public class ResourcePickerItem
     public string Name { get; }
 
     /// <summary>
-    /// Returns the path of the item's folder, which shows beside a search result's name. Empty in a folder's
-    /// listing, and for an item in the project folder.
+    /// A search result's path, split around the part that matched the search. The whole path is in Before when
+    /// nothing is marked. Every part is empty in a folder's listing.
     /// </summary>
-    public string FolderText { get; }
+    public MarkedText MarkedPath { get; }
 
     /// <summary>
-    /// Shows the folder text when the item has one.
+    /// Shows the path for a search result, and hides it in a folder's listing.
     /// </summary>
-    public Visibility FolderTextVisibility => string.IsNullOrEmpty(FolderText)
-        ? Visibility.Collapsed
-        : Visibility.Visible;
+    public Visibility PathVisibility => _showsPath
+        ? Visibility.Visible
+        : Visibility.Collapsed;
 
     /// <summary>
     /// The item's path in lowercase. The search matches typed text against this path.
@@ -71,39 +71,83 @@ public class ResourcePickerItem
     public string ReadOnlyMessage { get; }
 
     /// <summary>
-    /// The tooltip shown when the user hovers the item. A read-only item shows the read-only reason. A writable item
-    /// returns null, which leaves the tooltip element out.
+    /// The tooltip shown when the user hovers the item. A search result shows its full path, since a long path can
+    /// be cut short in the row. A read-only item also shows the read-only reason. A writable item in a folder's
+    /// listing returns null, which leaves the tooltip element out.
     /// </summary>
-    public string? TooltipText => string.IsNullOrEmpty(ReadOnlyMessage)
-        ? null
-        : ReadOnlyMessage;
+    public string? TooltipText
+    {
+        get
+        {
+            var path = _showsPath
+                ? Resource.Path
+                : string.Empty;
+
+            if (string.IsNullOrEmpty(ReadOnlyMessage))
+            {
+                return string.IsNullOrEmpty(path)
+                    ? null
+                    : path;
+            }
+
+            return string.IsNullOrEmpty(path)
+                ? ReadOnlyMessage
+                : $"{path}\n{ReadOnlyMessage}";
+        }
+    }
 
     public ResourcePickerItem(
         ResourceKey resource,
         bool isFolder,
         IconDefinition iconDefinition,
         ResourcePickerItemState state,
-        bool showsFolder)
+        bool showsPath)
     {
         Resource = resource;
         IsFolder = isFolder;
         IconDefinition = iconDefinition;
         Name = resource.ResourceName;
-        FolderText = showsFolder
-            ? resource.GetParent().Path
-            : string.Empty;
+        MarkedPath = MarkedText.Unmarked(showsPath
+            ? resource.Path
+            : string.Empty);
         PathLower = resource.Path.ToLowerInvariant();
         WritableState = state.WritableState;
         IsHidden = state.IsHidden;
         ReadOnlyMessage = state.ReadOnlyMessage;
-        _showsFolder = showsFolder;
+        _showsPath = showsPath;
+    }
+
+    // Copies an item, and marks part of the copy's path.
+    private ResourcePickerItem(ResourcePickerItem item, int markStart, int markLength)
+    {
+        Resource = item.Resource;
+        IsFolder = item.IsFolder;
+        IconDefinition = item.IconDefinition;
+        Name = item.Name;
+        PathLower = item.PathLower;
+        WritableState = item.WritableState;
+        IsHidden = item.IsHidden;
+        ReadOnlyMessage = item.ReadOnlyMessage;
+        _showsPath = item._showsPath;
+        MarkedPath = MarkedText.Create(item.Resource.Path, markStart, markLength);
+    }
+
+    /// <summary>
+    /// Returns a copy of a search result with a mark on part of its path. The start and length count characters in
+    /// the path. The search shares its items between searches, so each search marks copies.
+    /// </summary>
+    public ResourcePickerItem WithPathMark(int markStart, int markLength)
+    {
+        Guard.IsTrue(_showsPath);
+
+        return new ResourcePickerItem(this, markStart, markLength);
     }
 
     /// <summary>
     /// Gives the list item its accessible name, since the list reads an item's name from ToString. A search result
     /// is named by its path, so two results with the same name can be told apart.
     /// </summary>
-    public override string ToString() => _showsFolder
+    public override string ToString() => _showsPath
         ? Resource.Path
         : Name;
 }

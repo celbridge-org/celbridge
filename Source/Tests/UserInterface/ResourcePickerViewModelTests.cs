@@ -14,7 +14,8 @@ namespace Celbridge.Tests.UserInterface;
 /// The resource picker browses the project one folder at a time, and searches a walk of the whole project. These
 /// tests cover what a folder lists in each mode, and what the picker hides with Show Hidden Files off and on. They
 /// also cover the order of the search's matches, where the picker starts, the primary button and the checks on an
-/// automated answer.
+/// automated answer. The save mode tests cover the name field's checks, the extension rules and the question before
+/// replacing a file.
 /// </summary>
 [TestFixture]
 public class ResourcePickerViewModelTests
@@ -24,6 +25,7 @@ public class ResourcePickerViewModelTests
 
     // Each folder's children, in the order a folder's listing gives them: folders first, then files.
     private Dictionary<ResourceKey, List<FolderChild>> _folders = null!;
+    private IResourceFileSystem _fileSystem = null!;
     private IResourceWalker _walker = null!;
     private IBindableWorkspaceSettings _workspaceSettings = null!;
     private ResourcePickerViewModel _viewModel = null!;
@@ -45,8 +47,8 @@ public class ResourcePickerViewModelTests
         AddFolder("docs/images", File("docs/images/logo.png"));
         AddFolder("drafts", File("drafts/plan.md"));
 
-        var fileSystem = Substitute.For<IResourceFileSystem>();
-        fileSystem.EnumerateFolderAsync(Arg.Any<ResourceKey>()).Returns(callInfo =>
+        _fileSystem = Substitute.For<IResourceFileSystem>();
+        _fileSystem.EnumerateFolderAsync(Arg.Any<ResourceKey>()).Returns(callInfo =>
         {
             var folder = callInfo.Arg<ResourceKey>();
             if (_folders.TryGetValue(folder, out var children))
@@ -57,7 +59,7 @@ public class ResourcePickerViewModelTests
 
             return Task.FromResult(Result<IReadOnlyList<FolderChild>>.Fail($"Not a folder: '{folder}'"));
         });
-        fileSystem.GetResourceItemAsync(Arg.Any<ResourceKey>()).Returns(callInfo =>
+        _fileSystem.GetResourceItemAsync(Arg.Any<ResourceKey>()).Returns(callInfo =>
         {
             var resource = callInfo.Arg<ResourceKey>();
             var child = _folders.Values
@@ -100,11 +102,20 @@ public class ResourcePickerViewModelTests
 
         var policy = new ResourcePolicy(projectService);
 
+        var sidecars = Substitute.For<ISidecarService>();
+        sidecars.IsSidecarFileName(Arg.Any<string>())
+            .Returns(callInfo => callInfo.Arg<string>().EndsWith(".cel", StringComparison.OrdinalIgnoreCase));
+
+        var operations = Substitute.For<IResourceOperationService>();
+        operations.CanCreateResource(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(Result.Ok());
+
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Walker.Returns(_walker);
-        resourceService.FileSystem.Returns(fileSystem);
+        resourceService.FileSystem.Returns(_fileSystem);
         resourceService.Policy.Returns(policy);
         resourceService.RootHandlers.Returns(rootHandlerRegistry);
+        resourceService.Sidecars.Returns(sidecars);
+        resourceService.Operations.Returns(operations);
 
         _workspaceSettings = Substitute.For<IBindableWorkspaceSettings>();
 
@@ -131,12 +142,15 @@ public class ResourcePickerViewModelTests
             return new LocalizedString(name, $"{name}:{arguments[0]}");
         });
 
+        var nameValidatorFactory = new ResourceNameValidatorFactory(stringLocalizer, workspaceWrapper);
+
         _viewModel = new ResourcePickerViewModel(
             Substitute.For<ILogger<ResourcePickerViewModel>>(),
             workspaceWrapper,
             projectService,
             iconService,
-            stringLocalizer);
+            stringLocalizer,
+            nameValidatorFactory);
     }
 
     [Test]
@@ -218,18 +232,42 @@ public class ResourcePickerViewModelTests
     }
 
     [Test]
-    public async Task FolderMode_OpensTheStartFolder_AndIgnoresTheInitialSelection()
+    public async Task FolderMode_OpensTheDefaultFolder_AndGivesWayToTheStartFolder_ForAFile()
     {
         await OpenAsync(new ResourcePickerOptions
         {
             Mode = ResourcePickerMode.Folder,
-            InitialSelection = new ResourceKey("docs/images"),
+            DefaultResource = new ResourceKey("docs/images"),
+            StartFolder = new ResourceKey("assets")
+        });
+
+        _viewModel.CurrentFolder.Should().Be(new ResourceKey("docs/images"));
+        _viewModel.SelectedItem.Should().BeNull();
+        _viewModel.GetChoice().Should().Be(new ResourceKey("docs/images"));
+
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Folder,
+            DefaultResource = new ResourceKey("readme.md"),
             StartFolder = new ResourceKey("assets")
         });
 
         _viewModel.CurrentFolder.Should().Be(new ResourceKey("assets"));
-        _viewModel.SelectedItem.Should().BeNull();
         _viewModel.GetChoice().Should().Be(new ResourceKey("assets"));
+    }
+
+    [Test]
+    public async Task FolderMode_TheProjectFolder_AsTheDefaultResource_OpensTheProjectFolder()
+    {
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Folder,
+            DefaultResource = ResourceKey.Empty,
+            StartFolder = new ResourceKey("assets")
+        });
+
+        _viewModel.CurrentFolder.Should().Be(ResourceKey.Empty);
+        _viewModel.GetChoice().Should().Be(ResourceKey.Empty);
     }
 
     [Test]
@@ -342,11 +380,11 @@ public class ResourcePickerViewModelTests
     }
 
     [Test]
-    public async Task TheInitialSelection_OpensItsFolder_WithTheResourceSelected()
+    public async Task TheDefaultResource_OpensItsFolder_WithTheResourceSelected()
     {
         await OpenAsync(new ResourcePickerOptions
         {
-            InitialSelection = new ResourceKey("docs/notes.md"),
+            DefaultResource = new ResourceKey("docs/notes.md"),
             StartFolder = new ResourceKey("assets")
         });
 
@@ -385,11 +423,11 @@ public class ResourcePickerViewModelTests
     }
 
     [Test]
-    public async Task AnInitialSelectionInAMissingFolder_GivesWayToTheStartFolder_AndThenTheProjectFolder()
+    public async Task ADefaultResourceInAMissingFolder_GivesWayToTheStartFolder_AndThenTheProjectFolder()
     {
         await OpenAsync(new ResourcePickerOptions
         {
-            InitialSelection = new ResourceKey("missing/notes.md"),
+            DefaultResource = new ResourceKey("missing/notes.md"),
             StartFolder = new ResourceKey("docs")
         });
 
@@ -398,7 +436,7 @@ public class ResourcePickerViewModelTests
 
         await OpenAsync(new ResourcePickerOptions
         {
-            InitialSelection = new ResourceKey("temp:notes.md"),
+            DefaultResource = new ResourceKey("temp:notes.md"),
             StartFolder = new ResourceKey("missing")
         });
 
@@ -417,7 +455,10 @@ public class ResourcePickerViewModelTests
         _viewModel.IsSearching.Should().BeTrue();
         _viewModel.BreadcrumbVisibility.Should().Be(Visibility.Collapsed);
         _viewModel.SearchLocationVisibility.Should().Be(Visibility.Visible);
-        _viewModel.ShownItems[1].FolderText.Should().Be("docs/images");
+        // The mark shows the path's own letters, whatever the case of the typed text.
+        ShownMarks().Should().Equal("docs/", "docs/", "docs/");
+        _viewModel.ShownItems[1].MarkedPath.Before.Should().BeEmpty();
+        _viewModel.ShownItems[1].MarkedPath.After.Should().Be("images/logo.png");
 
         _viewModel.SearchText = "plan";
 
@@ -471,6 +512,26 @@ public class ResourcePickerViewModelTests
 
         _viewModel.SearchText = "docs/*.md";
         ShownPaths().Should().Equal("docs/notes.md");
+    }
+
+    [Test]
+    public async Task TheSearch_WithAWildcardPattern_MarksTheMatchedFolder_OrElseTheName()
+    {
+        await OpenAsync(new ResourcePickerOptions());
+        await _viewModel.LoadSearchItemsAsync();
+
+        // A matched folder takes everything inside it, so each item inside docs has docs marked.
+        _viewModel.SearchText = "d*";
+        ShownMarks().Should().Equal("docs", "docs", "docs", "docs");
+        _viewModel.ShownItems[2].MarkedPath.After.Should().Be("/images/logo.png");
+
+        // No folder above these items matches, so each item's name is marked.
+        _viewModel.SearchText = "n*.md";
+        ShownMarks().Should().Equal("notes.md");
+        _viewModel.ShownItems[0].MarkedPath.Before.Should().Be("docs/");
+
+        _viewModel.SearchText = "**/images/*";
+        ShownMarks().Should().Equal("logo.png");
     }
 
     [Test]
@@ -676,6 +737,350 @@ public class ResourcePickerViewModelTests
         (await _viewModel.CheckAnswerAsync(new ResourceKey("drafts"))).IsFailure.Should().BeTrue();
     }
 
+    [Test]
+    public async Task SaveMode_OpensTheDefaultResourcesFolder_WithItsNameInTheNameField()
+    {
+        var suggestions = 0;
+        _viewModel.NameSuggested += (_, _) => suggestions++;
+
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save,
+            DefaultResource = new ResourceKey("docs/report.md"),
+            StartFolder = new ResourceKey("assets")
+        });
+
+        _viewModel.CurrentFolder.Should().Be(new ResourceKey("docs"));
+        _viewModel.NameText.Should().Be("report.md");
+        suggestions.Should().Be(1);
+        _viewModel.NameFieldVisibility.Should().Be(Visibility.Visible);
+        _viewModel.TitleText.Should().Be("ResourcePickerDialog_SaveTitle");
+        _viewModel.PrimaryButtonText.Should().Be("DialogButton_Save");
+        _viewModel.IsPrimaryButtonEnabled.Should().BeTrue();
+        _viewModel.GetChoice().Should().Be(new ResourceKey("docs/report.md"));
+    }
+
+    [Test]
+    public async Task SaveMode_ADefaultResourceInAMissingFolder_IsIgnored_AndTheNameFieldStartsEmpty()
+    {
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save,
+            DefaultResource = new ResourceKey("missing/report.md"),
+            StartFolder = new ResourceKey("docs")
+        });
+
+        _viewModel.CurrentFolder.Should().Be(new ResourceKey("docs"));
+        _viewModel.NameText.Should().BeEmpty();
+        _viewModel.IsNameErrorVisible.Should().BeFalse();
+        _viewModel.IsPrimaryButtonEnabled.Should().BeFalse();
+        _viewModel.GetChoice().Should().BeNull();
+    }
+
+    [Test]
+    public async Task SaveMode_ListsFolders_AndTheFilesWithAnAllowedExtension()
+    {
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save,
+            Extensions = [".png"],
+            StartFolder = new ResourceKey("docs")
+        });
+
+        ShownNames().Should().Equal("images");
+        _viewModel.ExtensionFilterText.Should().Be("*.png");
+    }
+
+    [Test]
+    public async Task SaveMode_WithOneExtension_AddsTheExtensionToANameTypedWithoutIt()
+    {
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save,
+            Extensions = [".md"]
+        });
+
+        _viewModel.NameText = "summary";
+        _viewModel.GetChoice().Should().Be(new ResourceKey("summary.md"));
+
+        _viewModel.NameText = "summary.MD";
+        _viewModel.GetChoice().Should().Be(new ResourceKey("summary.MD"));
+    }
+
+    [Test]
+    public async Task SaveMode_WithSeveralExtensions_TheNameMustEndInOneOfThem()
+    {
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save,
+            Extensions = [".png", ".jpg"]
+        });
+
+        _viewModel.NameText = "hero";
+
+        _viewModel.IsNameErrorVisible.Should().BeTrue();
+        _viewModel.NameErrorText.Should().Be("ResourcePickerDialog_ExtensionRequired:.png, .jpg");
+        _viewModel.IsPrimaryButtonEnabled.Should().BeFalse();
+
+        _viewModel.NameText = "hero.jpg";
+
+        _viewModel.IsNameErrorVisible.Should().BeFalse();
+        _viewModel.GetChoice().Should().Be(new ResourceKey("hero.jpg"));
+    }
+
+    [Test]
+    public async Task SaveMode_RefusesTheNameOfAFolder_AndOfAReadOnlyFile()
+    {
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save
+        });
+
+        _viewModel.NameText = "docs";
+
+        _viewModel.NameErrorText.Should().Be("Validation_FolderNameAlreadyExists:docs");
+        _viewModel.GetChoice().Should().BeNull();
+
+        _viewModel.NameText = "locked.md";
+
+        _viewModel.NameErrorText.Should().Be("Validation_FileIsReadOnly:locked.md");
+        _viewModel.GetChoice().Should().BeNull();
+
+        _viewModel.NameText = "notes.cel";
+
+        _viewModel.NameErrorText.Should().Be("Validation_CelExtensionReserved");
+        _viewModel.GetChoice().Should().BeNull();
+    }
+
+    [Test]
+    public async Task SaveMode_OpeningTwoFoldersQuickly_ChecksTheNameAgainstTheFolderThatOpens()
+    {
+        // The first listing of assets answers at once. Any later listing of assets answers when the test releases it.
+        IReadOnlyList<FolderChild> assetsChildren = [];
+        var assetsListing = Result<IReadOnlyList<FolderChild>>.Ok(assetsChildren);
+        var lateAssetsListing = new TaskCompletionSource<Result<IReadOnlyList<FolderChild>>>();
+        _fileSystem.EnumerateFolderAsync(new ResourceKey("assets"))
+            .Returns(Task.FromResult(assetsListing), lateAssetsListing.Task);
+
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save
+        });
+
+        var openAssets = _viewModel.OpenFolderAsync(new ResourceKey("assets"));
+        await _viewModel.OpenFolderAsync(new ResourceKey("docs"));
+        lateAssetsListing.SetResult(assetsListing);
+        await openAssets;
+
+        _viewModel.CurrentFolder.Should().Be(new ResourceKey("docs"));
+
+        _viewModel.NameText = "images";
+
+        _viewModel.NameErrorText.Should().Be("Validation_FolderNameAlreadyExists:images");
+        _viewModel.GetChoice().Should().BeNull();
+    }
+
+    [Test]
+    public async Task SaveMode_EnterOnAFoldersName_OpensTheFolder()
+    {
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save
+        });
+
+        _viewModel.NameText = "DOCS";
+        (await _viewModel.OpenNamedFolderAsync()).Should().BeTrue();
+
+        _viewModel.CurrentFolder.Should().Be(new ResourceKey("docs"));
+        _viewModel.NameText.Should().BeEmpty();
+
+        _viewModel.NameText = "notes.md";
+        (await _viewModel.OpenNamedFolderAsync()).Should().BeFalse();
+        _viewModel.CurrentFolder.Should().Be(new ResourceKey("docs"));
+    }
+
+    [Test]
+    public async Task SaveMode_ANewName_IsChosenWithoutAQuestion()
+    {
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save
+        });
+
+        _viewModel.NameText = "new.md";
+
+        _viewModel.GetConfirmedChoice().Should().Be(new ResourceKey("new.md"));
+        _viewModel.IsAskingToReplace.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task SaveMode_AnExistingFile_AsksBeforeReplacing()
+    {
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save
+        });
+        _viewModel.NameText = "readme.md";
+
+        _viewModel.GetConfirmedChoice().Should().BeNull();
+
+        _viewModel.IsAskingToReplace.Should().BeTrue();
+        _viewModel.ReplaceQuestionText.Should().Be("ResourcePickerDialog_ReplaceQuestion:readme.md");
+        _viewModel.PrimaryButtonText.Should().Be("DialogButton_Replace");
+
+        _viewModel.CancelReplace();
+
+        _viewModel.IsAskingToReplace.Should().BeFalse();
+        _viewModel.PrimaryButtonText.Should().Be("DialogButton_Save");
+
+        _viewModel.GetConfirmedChoice().Should().BeNull();
+        _viewModel.GetConfirmedChoice().Should().Be(new ResourceKey("readme.md"));
+    }
+
+    [Test]
+    public async Task SaveMode_ChangingTheName_TakesTheQuestionAway()
+    {
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save
+        });
+        _viewModel.NameText = "readme.md";
+        _viewModel.GetConfirmedChoice();
+
+        _viewModel.NameText = "readme2.md";
+
+        _viewModel.IsAskingToReplace.Should().BeFalse();
+        _viewModel.GetConfirmedChoice().Should().Be(new ResourceKey("readme2.md"));
+    }
+
+    [Test]
+    public async Task SaveMode_AnExistingFileInAnotherCase_IsSavedUnderItsStoredName()
+    {
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save
+        });
+
+        _viewModel.NameText = "README.md";
+
+        _viewModel.GetChoice().Should().Be(new ResourceKey("readme.md"));
+        _viewModel.GetConfirmedChoice().Should().BeNull();
+        _viewModel.IsAskingToReplace.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task SaveMode_ClickingAFile_PutsItsNameInTheNameField()
+    {
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save
+        });
+        var suggestions = 0;
+        _viewModel.NameSuggested += (_, _) => suggestions++;
+
+        _viewModel.SelectedItem = _viewModel.ShownItems.Single(item => item.Name == "readme.md");
+
+        _viewModel.NameText.Should().Be("readme.md");
+        suggestions.Should().Be(1);
+
+        _viewModel.SelectedItem = _viewModel.ShownItems.Single(item => item.Name == "docs");
+
+        _viewModel.NameText.Should().Be("readme.md");
+    }
+
+    [Test]
+    public async Task SaveMode_InvokingAFile_AsksToReplaceIt_AndInvokingItAgainChoosesIt()
+    {
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save
+        });
+        var readmeItem = _viewModel.ShownItems.Single(item => item.Name == "readme.md");
+
+        (await _viewModel.InvokeItemAsync(readmeItem)).Should().BeNull();
+
+        _viewModel.NameText.Should().Be("readme.md");
+        _viewModel.IsAskingToReplace.Should().BeTrue();
+
+        (await _viewModel.InvokeItemAsync(readmeItem)).Should().Be(new ResourceKey("readme.md"));
+    }
+
+    [Test]
+    public async Task SaveMode_OpeningAFileInTheSearch_OpensItsFolder_WithItsName()
+    {
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save
+        });
+        await _viewModel.LoadSearchItemsAsync();
+        _viewModel.SearchText = "logo";
+
+        var logoItem = _viewModel.ShownItems.Single();
+        (await _viewModel.InvokeItemAsync(logoItem)).Should().BeNull();
+
+        _viewModel.SearchText.Should().BeEmpty();
+        _viewModel.CurrentFolder.Should().Be(new ResourceKey("docs/images"));
+        _viewModel.NameText.Should().Be("logo.png");
+        _viewModel.SelectedItem!.Resource.Should().Be(new ResourceKey("docs/images/logo.png"));
+        _viewModel.IsAskingToReplace.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task SaveMode_HasNoChoice_DuringASearch()
+    {
+        await OpenAsync(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save
+        });
+        await _viewModel.LoadSearchItemsAsync();
+        _viewModel.NameText = "new.md";
+
+        _viewModel.SearchText = "notes";
+
+        _viewModel.GetChoice().Should().BeNull();
+        _viewModel.IsPrimaryButtonEnabled.Should().BeFalse();
+
+        _viewModel.ClearSearch();
+
+        _viewModel.GetChoice().Should().Be(new ResourceKey("new.md"));
+        _viewModel.IsPrimaryButtonEnabled.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task AnAnswer_InSaveMode_MustNameAFileTheNameFieldWouldAccept_InAnExistingFolder()
+    {
+        _viewModel.Initialize(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save,
+            Extensions = [".md"]
+        });
+
+        (await _viewModel.CheckAnswerAsync(new ResourceKey("docs/new.md"))).Value
+            .Should().Be(new ResourceKey("docs/new.md"));
+        (await _viewModel.CheckAnswerAsync(new ResourceKey("readme.md"))).Value
+            .Should().Be(new ResourceKey("readme.md"));
+        (await _viewModel.CheckAnswerAsync(new ResourceKey("README.md"))).Value
+            .Should().Be(new ResourceKey("readme.md"));
+
+        (await _viewModel.CheckAnswerAsync(new ResourceKey("missing/new.md"))).IsFailure.Should().BeTrue();
+        (await _viewModel.CheckAnswerAsync(new ResourceKey("locked.md"))).IsFailure.Should().BeTrue();
+        (await _viewModel.CheckAnswerAsync(new ResourceKey("docs/new.png"))).IsFailure.Should().BeTrue();
+        (await _viewModel.CheckAnswerAsync(new ResourceKey("temp:new.md"))).IsFailure.Should().BeTrue();
+        (await _viewModel.CheckAnswerAsync(ResourceKey.Empty)).IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task AnAnswer_InSaveMode_RefusesTheNameOfAFolder()
+    {
+        _viewModel.Initialize(new ResourcePickerOptions
+        {
+            Mode = ResourcePickerMode.Save
+        });
+
+        (await _viewModel.CheckAnswerAsync(new ResourceKey("docs"))).IsFailure.Should().BeTrue();
+        (await _viewModel.CheckAnswerAsync(new ResourceKey("docs/images"))).IsFailure.Should().BeTrue();
+    }
+
     private async Task OpenAsync(ResourcePickerOptions options)
     {
         _viewModel.Initialize(options);
@@ -686,6 +1091,13 @@ public class ResourcePickerViewModelTests
     {
         return _viewModel.ShownItems
             .Select(item => item.Name)
+            .ToList();
+    }
+
+    private List<string> ShownMarks()
+    {
+        return _viewModel.ShownItems
+            .Select(item => item.MarkedPath.Mark)
             .ToList();
     }
 

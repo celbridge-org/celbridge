@@ -14,6 +14,7 @@
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
       <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
     <!-- Location bar: Up, then the breadcrumb of the current folder, then the search box. While the search box has
@@ -180,21 +181,26 @@
                                  Opacity="{x:Bind IsDimmed, Converter={StaticResource BoolToDimmedOpacityConverter}, ConverterParameter=Inverted}"
                                  VerticalAlignment="Center"/>
 
+              <!-- The minimum width lines up the search results' paths in a column. A longer name pushes its path
+                   to the right. -->
               <TextBlock Grid.Column="1"
                          Text="{x:Bind Name}"
+                         MinWidth="200"
                          Opacity="{x:Bind IsDimmed, Converter={StaticResource BoolToDimmedOpacityConverter}, ConverterParameter=Inverted}"
                          VerticalAlignment="Center"
                          Margin="8,0,0,0"
                          TextTrimming="CharacterEllipsis"/>
 
-              <!-- A search result's folder, which tells apart two results with the same name. -->
+              <!-- A search result's full path. The Search panel marks a match in semibold, and so does the picker.
+                   The match also takes the primary text color, so it stands out from the rest of the path without
+                   relying on a hue. The runs sit on one line, since a line break between runs would show as a
+                   space. -->
               <TextBlock Grid.Column="2"
-                         Text="{x:Bind FolderText}"
-                         Visibility="{x:Bind FolderTextVisibility}"
+                         Visibility="{x:Bind PathVisibility}"
                          Style="{StaticResource SupportingTextStyle}"
                          VerticalAlignment="Center"
                          Margin="12,0,8,0"
-                         TextTrimming="CharacterEllipsis"/>
+                         TextTrimming="CharacterEllipsis"><Run Text="{x:Bind MarkedPath.Before}"/><Run Text="{x:Bind MarkedPath.Mark}" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/><Run Text="{x:Bind MarkedPath.After}"/></TextBlock>
             </Grid>
           </DataTemplate>
         </ListView.ItemTemplate>
@@ -221,6 +227,31 @@
                Text="{x:Bind ViewModel.MoreItemsText, Mode=OneWay}"
                Style="{StaticResource SupportingTextStyle}"
                Visibility="{x:Bind ViewModel.MoreItemsVisibility, Mode=OneWay}"/>
+
+    <!-- The name of the file to save, in save mode. Under the field, an error says why the name can't be used, and a
+         question asks before replacing a file. -->
+    <StackPanel Grid.Row="3"
+                Visibility="{x:Bind ViewModel.NameFieldVisibility, Mode=OneWay}">
+      <TextBox x:Name="NameTextBox"
+               Header="{x:Bind NameString}"
+               HeaderTemplate="{StaticResource FieldHeaderTemplate}"
+               Text="{x:Bind ViewModel.NameText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+               IsSpellCheckEnabled="False"
+               AcceptsReturn="False"
+               KeyDown="NameTextBox_KeyDown"
+               TextChanged="NameTextBox_TextChanged"/>
+      <Grid MinHeight="56"
+            Margin="0,8,0,0">
+        <InfoBar Severity="Error"
+                 IsOpen="{x:Bind ViewModel.IsNameErrorVisible, Mode=OneWay}"
+                 IsClosable="False"
+                 Message="{x:Bind ViewModel.NameErrorText, Mode=OneWay}"/>
+        <InfoBar Severity="Warning"
+                 IsOpen="{x:Bind ViewModel.IsAskingToReplace, Mode=OneWay}"
+                 IsClosable="False"
+                 Message="{x:Bind ViewModel.ReplaceQuestionText, Mode=OneWay}"/>
+      </Grid>
+    </StackPanel>
   </Grid>
 
 </UserControl>

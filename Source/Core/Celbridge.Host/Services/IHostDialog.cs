@@ -6,6 +6,7 @@ public static class DialogRpcMethods
 {
     public const string PickImage = "dialog/pickImage";
     public const string PickFile = "dialog/pickFile";
+    public const string PickResource = "dialog/pickResource";
     public const string PickIcon = "dialog/pickIcon";
     public const string ShowAlert = "dialog/showAlert";
     public const string ShowNotification = "dialog/showNotification";
@@ -27,6 +28,19 @@ public interface IHostDialog
     /// </summary>
     [JsonRpcMethod(DialogRpcMethods.PickFile)]
     Task<PickFileResult> PickFileAsync(IReadOnlyList<string>? extensions = null);
+
+    /// <summary>
+    /// Opens the resource picker, which asks the user for a file to open, a place to save a file, or a folder, in the
+    /// project. The mode is "open", "save" or "folder". The default resource and the title are optional, and the
+    /// preview applies to open mode only. Returns the chosen resource key, or null when the user cancels.
+    /// </summary>
+    [JsonRpcMethod(DialogRpcMethods.PickResource)]
+    Task<PickResourceResult> PickResourceAsync(
+        string mode,
+        IReadOnlyList<string>? extensions = null,
+        string? defaultResource = null,
+        string? title = null,
+        bool preview = false);
 
     /// <summary>
     /// Opens the icon picker over the supported icon set, with its search on the given text, and returns

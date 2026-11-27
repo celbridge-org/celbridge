@@ -10,7 +10,9 @@
   IsPrimaryButtonEnabled="{x:Bind ViewModel.IsPrimaryButtonEnabled, Mode=OneWay}"
   DefaultButton="Primary"
   PrimaryButtonClick="Dialog_PrimaryButtonClick"
-  Opened="Dialog_Opened">
+  Opened="Dialog_Opened"
+  Closing="Dialog_Closing"
+  PreviewKeyDown="Dialog_PreviewKeyDown">
 
   <ContentDialog.Resources>
     <!-- Wide enough for the browser and the preview beside it. -->
@@ -18,8 +20,8 @@
   </ContentDialog.Resources>
 
   <!-- The preview's left margin makes the gap before the preview. The gap goes with the preview when the preview is
-       hidden. -->
-  <Grid Height="440">
+       hidden. Code-behind sets the height from the mode. -->
+  <Grid x:Name="ContentGrid">
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="Auto"/>
       <ColumnDefinition Width="Auto"/>
@@ -27,6 +29,7 @@
 
     <controls:ResourcePickerView x:Name="PickerView"
                                  Grid.Column="0"
+                                 GettingFocus="PickerView_GettingFocus"
                                  ResourceChosen="PickerView_ResourceChosen"
                                  EscapePressed="PickerView_EscapePressed"/>
 

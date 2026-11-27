@@ -135,6 +135,9 @@
   <data name="DialogButton_SelectFolder" xml:space="preserve">
     <value>Select Folder</value>
   </data>
+  <data name="DialogButton_Replace" xml:space="preserve">
+    <value>Replace</value>
+  </data>
   <data name="DialogButton_Back" xml:space="preserve">
     <value>Back</value>
   </data>
@@ -211,19 +214,19 @@
     <value>Delete</value>
   </data>
   <data name="ResourceTree_CannotDelete" xml:space="preserve">
-    <value>Cannot delete</value>
+    <value>Cannot Delete</value>
   </data>
   <data name="ResourceTree_CannotRename" xml:space="preserve">
-    <value>Cannot rename</value>
+    <value>Cannot Rename</value>
   </data>
   <data name="ResourceTree_CannotUndo" xml:space="preserve">
-    <value>Cannot undo</value>
+    <value>Cannot Undo</value>
   </data>
   <data name="ResourceTree_CannotUndoMessage" xml:space="preserve">
     <value>The last change in the Explorer panel cannot be undone.</value>
   </data>
   <data name="ResourceTree_CannotRedo" xml:space="preserve">
-    <value>Cannot redo</value>
+    <value>Cannot Redo</value>
   </data>
   <data name="ResourceTree_CannotRedoMessage" xml:space="preserve">
     <value>The last change in the Explorer panel cannot be redone.</value>
@@ -376,6 +379,9 @@ This file could not be saved</value>
   </data>
   <data name="Validation_FolderNameAlreadyExists" xml:space="preserve">
     <value>A folder with the name '{0}' already exists</value>
+  </data>
+  <data name="Validation_FileIsReadOnly" xml:space="preserve">
+    <value>The file '{0}' is read-only</value>
   </data>
   <data name="Validation_NameContainsInvalidCharacters" xml:space="preserve">
     <value>Name contains invalid characters: {0}</value>
@@ -1135,7 +1141,7 @@ Open with default application instead?</value>
     <value>Choose a Folder</value>
   </data>
   <data name="ProjectSettings_PackageFolderPickerTitle" xml:space="preserve">
-    <value>Choose a Package Folder</value>
+    <value>Select Package Folder</value>
   </data>
   <data name="ProjectSettings_RemovePackageFolderTooltip" xml:space="preserve">
     <value>Remove Folder</value>
@@ -1195,7 +1201,7 @@ Open with default application instead?</value>
     <value>Choose a File</value>
   </data>
   <data name="ProjectSettings_ShortcutPickerTitle" xml:space="preserve">
-    <value>Choose a File to Open</value>
+    <value>Select File</value>
   </data>
   <data name="ProjectSettings_ShortcutOpenTooltip" xml:space="preserve">
     <value>Open This Document</value>
@@ -1698,7 +1704,19 @@ Open with default application instead?</value>
     <value>Open File</value>
   </data>
   <data name="ResourcePickerDialog_FolderTitle" xml:space="preserve">
-    <value>Choose Folder</value>
+    <value>Select Folder</value>
+  </data>
+  <data name="ResourcePickerDialog_SaveTitle" xml:space="preserve">
+    <value>Save As</value>
+  </data>
+  <data name="ResourcePickerDialog_Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="ResourcePickerDialog_ExtensionRequired" xml:space="preserve">
+    <value>The name must end in one of these extensions: {0}</value>
+  </data>
+  <data name="ResourcePickerDialog_ReplaceQuestion" xml:space="preserve">
+    <value>'{0}' already exists. Replace it?</value>
   </data>
   <data name="ResourcePickerDialog_Up" xml:space="preserve">
     <value>Up One Level</value>
@@ -1707,7 +1725,7 @@ Open with default application instead?</value>
     <value>Search the project</value>
   </data>
   <data name="ResourcePickerDialog_SearchLocation" xml:space="preserve">
-    <value>Matches from the whole project</value>
+    <value>Search Results</value>
   </data>
   <data name="ResourcePickerDialog_MoreItems_One" xml:space="preserve">
     <value>1 more item is not shown.</value>
