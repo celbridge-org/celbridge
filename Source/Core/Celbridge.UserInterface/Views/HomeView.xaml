@@ -52,8 +52,8 @@
 
     </StackPanel>
 
-    <!-- Community section. The workspace reaches these pages from the Utility Panel rail, so this is where
-         they are available with no project loaded. -->
+    <!-- Community section. The Utility Rail exists only while a project is open, so the Home page links to
+         these pages. -->
     <StackPanel Grid.Row="3"
                 Grid.Column="1">
       <TextBlock Text="{x:Bind CommunityString}"

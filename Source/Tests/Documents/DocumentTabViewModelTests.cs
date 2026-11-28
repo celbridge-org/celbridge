@@ -536,7 +536,7 @@ public class DocumentTabViewModelTests
     {
         // The Explorer shows the project tree, so a document opened from any other root has nothing to
         // reveal and the menu option is hidden.
-        var viewModel = CreateViewModel(new ResourceKey("temp:community.browser"));
+        var viewModel = CreateViewModel(new ResourceKey("temp:workshop.browser"));
 
         viewModel.CanRevealInExplorer.Should().BeFalse();
     }

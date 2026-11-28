@@ -226,7 +226,7 @@ public class DocumentsServiceTests
         _registry.RegisterFactory(CreateFactory(new EditorId("test.default-editor"), ".browser", "Default Editor"));
 
         var result = await _documentsService.OpenWithEditorAsync(
-            new ResourceKey("temp:community.browser"), new EditorId("test.other-editor"));
+            new ResourceKey("temp:workshop.browser"), new EditorId("test.other-editor"));
 
         result.IsSuccess.Should().BeTrue();
         _capturedOpenCommand.Should().NotBeNull();

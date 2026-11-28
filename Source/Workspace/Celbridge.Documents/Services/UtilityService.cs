@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Community;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -7,6 +6,7 @@ using Celbridge.Packages;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.Workshop;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -26,7 +26,7 @@ public class UtilityService : IUtilityService, IDisposable
     // Spotlight landmark ids for the document shortcut rail buttons. The Utility Panel sets each one as
     // the button's AutomationId, which is what a landmark has to match.
     private const string ProjectSettingsLandmarkId = "project-settings-utility-button";
-    private const string CommunityLandmarkId = "community-utility-button";
+    private const string WorkshopLandmarkId = "workshop-utility-button";
 
     // The id scope the project's own document shortcuts are addressed under, matching the built-in ones.
     private const string ProjectShortcutScope = "celbridge";
@@ -304,7 +304,7 @@ public class UtilityService : IUtilityService, IDisposable
     private List<UtilityRailItem> BuildBuiltInShortcutItems()
     {
         var projectService = _serviceProvider.GetRequiredService<IProjectService>();
-        var communityService = _serviceProvider.GetRequiredService<ICommunityService>();
+        var workshopService = _serviceProvider.GetRequiredService<IWorkshopService>();
         var stringLocalizer = _serviceProvider.GetRequiredService<IStringLocalizer>();
         var iconService = _serviceProvider.GetRequiredService<IIconService>();
 
@@ -331,20 +331,20 @@ public class UtilityService : IUtilityService, IDisposable
             shortcutItems.Add(projectSettingsItem);
         }
 
-        string communityName = stringLocalizer.GetString("UtilityPanel_CommunityTooltip");
+        string workshopName = stringLocalizer.GetString("UtilityPanel_WorkshopTooltip");
 
-        var communityItem = UtilityRailItem.CreateDocumentShortcut(
+        var workshopItem = UtilityRailItem.CreateDocumentShortcut(
             RailItemGroup.BuiltInShortcut,
-            BuiltInShortcutIds.Community,
-            CommunityLandmarkId,
-            iconService.GetIconName(IconSymbol.People),
-            communityName,
-            communityName,
-            communityService.DocumentResource,
+            BuiltInShortcutIds.Workshop,
+            WorkshopLandmarkId,
+            iconService.GetIconName(IconSymbol.Workshop),
+            workshopName,
+            workshopName,
+            workshopService.DocumentResource,
             BuiltInEditors.BrowserEditorId,
             WorkspaceArea.Main);
 
-        shortcutItems.Add(communityItem);
+        shortcutItems.Add(workshopItem);
 
         return shortcutItems;
     }

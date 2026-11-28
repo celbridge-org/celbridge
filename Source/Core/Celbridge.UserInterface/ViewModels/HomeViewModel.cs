@@ -2,7 +2,6 @@ using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Projects;
 using Celbridge.UserInterface.Services;
-using Celbridge.Community;
 
 namespace Celbridge.UserInterface.ViewModels;
 
@@ -62,19 +61,19 @@ public partial class HomeViewModel : ObservableObject
     [RelayCommand]
     private void ShowCelbridge()
     {
-        OpenCommunityUrl(CommunityUrls.Celbridge);
+        OpenCommunityUrl(CelbridgeUrls.Celbridge);
     }
 
     [RelayCommand]
     private void ShowLearn()
     {
-        OpenCommunityUrl(CommunityUrls.Learn);
+        OpenCommunityUrl(CelbridgeUrls.Learn);
     }
 
     [RelayCommand]
     private void ShowForum()
     {
-        OpenCommunityUrl(CommunityUrls.Forum);
+        OpenCommunityUrl(CelbridgeUrls.Forum);
     }
 
     // No workspace is loaded on the Home page, so there is nowhere to dock a browser document.

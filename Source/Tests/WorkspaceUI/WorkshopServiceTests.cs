@@ -1,8 +1,8 @@
 using Celbridge.Browser.Helpers;
-using Celbridge.Community;
 using Celbridge.Resources;
 using Celbridge.Tests.Browser;
 using Celbridge.Tests.Localization;
+using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 using Celbridge.WorkspaceUI.Services;
@@ -11,15 +11,15 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.WorkspaceUI;
 
 /// <summary>
-/// Verifies the file from CommunityService: the file's location, and that the browser editor can parse the file back
-/// to one navigable bookmark per section, each with the Celbridge icon.
+/// Tests WorkshopService, which writes the Workshop document under the temp root. The tests parse the written file
+/// back to check the document's one bookmark.
 /// </summary>
 [TestFixture]
-public class CommunityServiceTests
+public class WorkshopServiceTests
 {
     private const string LocalizedPrefix = "localized:";
 
-    private static readonly ResourceKey CommunityResource = new("temp:community.browser");
+    private static readonly ResourceKey WorkshopResource = new("temp:workshop.browser");
 
     private IResourceFileSystem _resourceFileSystem = null!;
     private IStringLocalizer _stringLocalizer = null!;
@@ -59,10 +59,10 @@ public class CommunityServiceTests
         });
     }
 
-    private CommunityService CreateService()
+    private WorkshopService CreateService()
     {
-        return new CommunityService(
-            Substitute.For<ILogger<CommunityService>>(),
+        return new WorkshopService(
+            Substitute.For<ILogger<WorkshopService>>(),
             _stringLocalizer,
             _workspaceWrapper);
     }
@@ -81,23 +81,23 @@ public class CommunityServiceTests
     {
         var service = CreateService();
 
-        service.DocumentResource.Should().Be(CommunityResource);
+        service.DocumentResource.Should().Be(WorkshopResource);
     }
 
     [Test]
-    public async Task SeedDocumentAsync_WritesADocumentThatOpensOnTheLandingPage()
+    public async Task SeedDocumentAsync_WritesOneBookmarkThatOpensOnStart()
     {
         var service = CreateService();
 
         await service.SeedDocumentAsync();
 
         await _resourceFileSystem.Received(1).WriteAllTextAsync(
-            CommunityResource,
+            WorkshopResource,
             Arg.Any<string>());
 
-        var openOnStart = ReadWrittenDocument().Bookmarks.Where(bookmark => bookmark.OpenOnStart);
-        openOnStart.Should().ContainSingle()
-            .Which.Url.Should().Be(CommunityUrls.Celbridge);
+        var bookmark = ReadWrittenDocument().Bookmarks.Should().ContainSingle().Which;
+        bookmark.Url.Should().Be(CelbridgeUrls.Workshop);
+        bookmark.OpenOnStart.Should().BeTrue();
     }
 
     [Test]
@@ -109,8 +109,8 @@ public class CommunityServiceTests
 
         Received.InOrder(() =>
         {
-            _resourceFileSystem.WriteAllTextAsync(CommunityResource, Arg.Any<string>());
-            _resourceFileSystem.SetAttributesAsync(CommunityResource, FileSystemAttributes.ReadOnly, true);
+            _resourceFileSystem.WriteAllTextAsync(WorkshopResource, Arg.Any<string>());
+            _resourceFileSystem.SetAttributesAsync(WorkshopResource, FileSystemAttributes.ReadOnly, true);
         });
         await _resourceFileSystem.Received(1).SetAttributesAsync(
             Arg.Any<ResourceKey>(),
@@ -119,41 +119,27 @@ public class CommunityServiceTests
     }
 
     [Test]
-    public async Task SeedDocumentAsync_BookmarksEverySectionOfTheSite()
+    public async Task SeedDocumentAsync_WritesTheLocalizedNameOfTheBookmark()
     {
-        var service = CreateService();
-
-        await service.SeedDocumentAsync();
-
-        // Every section, the landing page included, is a bookmark, so the bookmark list covers the whole site.
-        var urls = ReadWrittenDocument().Bookmarks.Select(bookmark => bookmark.Url);
-
-        urls.Should().Equal(CommunityUrls.Celbridge, CommunityUrls.Learn, CommunityUrls.Forum);
-    }
-
-    [Test]
-    public async Task SeedDocumentAsync_WritesTheLocalizedNameOfEveryBookmark()
-    {
-        // A key with no entry bakes the raw key into the document as the bookmark's label, so the keys the
-        // service reads are checked against the strings the application actually ships.
+        // Check the bookmark's name key against the application's strings. A missing key would put the raw key in the
+        // document as the bookmark's label.
         var strings = TestLocalizerService.LoadStrings();
 
         var service = CreateService();
 
         await service.SeedDocumentAsync();
 
-        foreach (var bookmark in ReadWrittenDocument().Bookmarks)
-        {
-            // The name is resolved at seed time, so the file carries localized text rather than the key.
-            bookmark.Name.Should().StartWith(LocalizedPrefix);
+        var bookmark = ReadWrittenDocument().Bookmarks.Should().ContainSingle().Which;
 
-            var nameKey = bookmark.Name.Substring(LocalizedPrefix.Length);
-            strings.Should().ContainKey(nameKey);
-        }
+        // The service resolves the name when it writes the file, so the file carries the localized text.
+        bookmark.Name.Should().StartWith(LocalizedPrefix);
+
+        var nameKey = bookmark.Name.Substring(LocalizedPrefix.Length);
+        strings.Should().ContainKey(nameKey);
     }
 
     [Test]
-    public async Task SeedDocumentAsync_GivesEveryBookmarkTheCelbridgeIcon()
+    public async Task SeedDocumentAsync_GivesTheBookmarkTheCelbridgeIcon()
     {
         var service = CreateService();
 
@@ -161,12 +147,11 @@ public class CommunityServiceTests
 
         // The parse drops an icon unless the icon is a PNG within the size limit. An icon in the parsed file therefore
         // passed that check. A browser document also drops an icon that fails to decode, so the test decodes the icon.
-        var icons = ReadWrittenDocument().Bookmarks.Select(bookmark => bookmark.Favicon).ToList();
+        var icon = ReadWrittenDocument().Bookmarks.Should().ContainSingle().Which.Favicon;
 
-        icons.Should().HaveCount(3).And.AllSatisfy(icon => icon.Should().NotBeNull());
-        icons.Should().AllSatisfy(icon => icon.Should().Equal(icons[0]));
-        FaviconEncoder.CanDecode(icons[0]!).Should().BeTrue();
-        TestFavicons.SizeOf(icons[0]!).Should().Be((32, 32));
+        icon.Should().NotBeNull();
+        FaviconEncoder.CanDecode(icon!).Should().BeTrue();
+        TestFavicons.SizeOf(icon!).Should().Be((32, 32));
     }
 
     [Test]
@@ -194,6 +179,6 @@ public class CommunityServiceTests
 
         await service.SeedDocumentAsync();
 
-        await _resourceFileSystem.Received(1).WriteAllTextAsync(CommunityResource, Arg.Any<string>());
+        await _resourceFileSystem.Received(1).WriteAllTextAsync(WorkshopResource, Arg.Any<string>());
     }
 }

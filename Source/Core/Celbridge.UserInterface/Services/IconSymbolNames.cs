@@ -39,7 +39,7 @@ internal static class IconSymbolNames
         { IconSymbol.Presentation, "bs-easel" },
         { IconSymbol.Save, "bs-floppy" },
         { IconSymbol.ExitFullScreen, "bs-fullscreen-exit" },
-        { IconSymbol.People, "bs-people" },
+        { IconSymbol.Workshop, "bs-hammer" },
         { IconSymbol.Chat, "bs-chat-dots" },
         { IconSymbol.Upload, "bs-upload" },
         { IconSymbol.Download, "bs-download" },

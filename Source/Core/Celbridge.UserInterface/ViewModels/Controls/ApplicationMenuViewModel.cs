@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Community;
 using Celbridge.Projects;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Services;
@@ -110,7 +109,7 @@ public partial class ApplicationMenuViewModel : ObservableObject
 
     public void ShowWebsite()
     {
-        _commandService.Execute<IOpenSystemBrowserCommand>(command => command.URL = CommunityUrls.Celbridge);
+        _commandService.Execute<IOpenSystemBrowserCommand>(command => command.URL = CelbridgeUrls.Celbridge);
     }
 
     public void ShowAbout()

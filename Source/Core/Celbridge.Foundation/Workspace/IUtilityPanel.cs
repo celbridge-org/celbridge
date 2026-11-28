@@ -32,9 +32,9 @@ public static class BuiltInShortcutIds
     public static readonly EditorId ProjectSettings = EditorId.Create("celbridge", "project-settings");
 
     /// <summary>
-    /// The Community shortcut's rail id.
+    /// The Workshop shortcut's rail id.
     /// </summary>
-    public static readonly EditorId Community = EditorId.Create("celbridge", "community");
+    public static readonly EditorId Workshop = EditorId.Create("celbridge", "workshop");
 }
 
 /// <summary>

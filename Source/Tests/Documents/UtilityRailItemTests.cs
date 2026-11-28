@@ -82,12 +82,12 @@ public class UtilityRailItemTests
     {
         var railItem = UtilityRailItem.CreateDocumentShortcut(
             RailItemGroup.BuiltInShortcut,
-            BuiltInShortcutIds.Community,
-            "community-utility-button",
-            "people",
-            "Community",
-            "Community",
-            new ResourceKey("temp:community.browser"),
+            BuiltInShortcutIds.Workshop,
+            "workshop-utility-button",
+            "hammer",
+            "Workshop",
+            "Workshop",
+            new ResourceKey("temp:workshop.browser"),
             BuiltInEditors.BrowserEditorId,
             WorkspaceArea.Main);
 
