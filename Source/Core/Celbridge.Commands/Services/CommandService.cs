@@ -492,7 +492,7 @@ public class CommandService : ICommandService
     {
         bool failed = false;
 
-        // Application-scope settings (theme, window geometry, Workshop config) are
+        // Application-scope settings (theme, window geometry, recent projects) are
         // written on the UI thread but deferred, so the disk write happens here, off
         // the UI thread. FlushAsync is a no-op when nothing changed since the last tick.
         var flushResult = await _settingsService.FlushAsync();

@@ -44,11 +44,6 @@ public interface IDialogFactory
     IInputTextDialog CreateInputTextDialog(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator, string? submitButtonKey = null);
 
     /// <summary>
-    /// Create a Secret Input Dialog that masks the entered value.
-    /// </summary>
-    ISecretInputDialog CreateSecretInputDialog(string titleText, string headerText, string? submitButtonKey = null);
-
-    /// <summary>
     /// Create an Add File Dialog.
     /// </summary>
     INewFileDialog CreateNewFileDialog(string defaultFileName, Range selectionRange, IValidator validator);

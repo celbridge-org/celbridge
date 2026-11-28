@@ -29,7 +29,7 @@ public partial class AppTools
     /// <summary>List the project's packages as the project loaded, with their package versions, folders and load failures.</summary>
     [McpServerTool(Name = "app_list_packages", ReadOnly = true, Idempotent = true)]
     [ToolAlias("app.list_packages")]
-    [RelatedGuides("packages_overview")]
+    [RelatedGuides("packages_overview", "document_editor_contributions", "utility_documents")]
     public partial CallToolResult ListPackages()
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();

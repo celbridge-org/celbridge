@@ -30,7 +30,7 @@ editors = ["my-editor.editor.toml"]
 
 A package name is lowercase ASCII alphanumeric with single interior hyphens as the only separator, 1-64 characters. The manifest carries no author field.
 
-The `package-version` is three dot-separated numbers, such as `1.2.0`, with no `v` prefix and no suffix. A manifest without one is version `1.0.0`. A malformed version stops the package loading, and `app_list_packages` lists it among the load failures. The package version belongs to the package, and is separate from the version numbers the workshop assigns when a package is published.
+The `package-version` is three dot-separated numbers, for example `1.2.0`, written without a `v` prefix or a suffix. A manifest without one is version `1.0.0`. A malformed version stops the package loading, and `app_list_packages` lists it among the load failures.
 
 ## Installed packages
 

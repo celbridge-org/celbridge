@@ -8,7 +8,5 @@ public static class SettingsDialogSections
 {
     public const string Appearance = "Appearance";
 
-    public const string Workshop = "Workshop";
-
     public const string WebView = "WebView";
 }

@@ -85,7 +85,7 @@ public static class ServiceConfiguration
         services.AddTransient<HomeViewModel>();
         services.AddTransient<SettingsDialogViewModel>();
         services.AddTransient<AppearanceSettingsViewModel>();
-        services.AddTransient<WorkshopSettingsViewModel>();
+        services.AddTransient<SecretFieldViewModel>();
         services.AddTransient<WebViewSettingsViewModel>();
         services.AddTransient<TitleBarViewModel>();
         services.AddTransient<ProjectSwitcherViewModel>();
@@ -99,7 +99,6 @@ public static class ServiceConfiguration
         services.AddTransient<ProgressDialogViewModel>();
         services.AddTransient<NewProjectDialogViewModel>();
         services.AddTransient<InputTextDialogViewModel>();
-        services.AddTransient<SecretInputDialogViewModel>();
         services.AddTransient<NewFileDialogViewModel>();
         services.AddTransient<ResourcePickerViewModel>();
         services.AddTransient<DownloadFileDialogViewModel>();

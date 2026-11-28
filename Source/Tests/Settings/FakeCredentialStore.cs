@@ -4,8 +4,8 @@ namespace Celbridge.Tests.Settings;
 
 /// <summary>
 /// In-memory credential store for tests. Round-trips the secret bytes without encryption. Presence and
-/// delete operate on the dictionary. The Available and FailRetrieve flags simulate an unavailable store and
-/// a read failure.
+/// delete operate on the dictionary. The Available, FailStore, FailRetrieve and FailDelete flags simulate an
+/// unavailable store, a write failure, a read failure and a delete failure.
 /// </summary>
 public sealed class FakeCredentialStore : ICredentialStore
 {
@@ -13,12 +13,21 @@ public sealed class FakeCredentialStore : ICredentialStore
 
     public bool Available { get; set; } = true;
 
+    public bool FailStore { get; set; }
+
     public bool FailRetrieve { get; set; }
+
+    public bool FailDelete { get; set; }
 
     public bool IsAvailable => Available;
 
     public Result StoreCredential(string key, byte[] secret)
     {
+        if (FailStore)
+        {
+            return Result.Fail("Simulated store failure");
+        }
+
         _store[key] = secret;
 
         return Result.Ok();
@@ -46,6 +55,11 @@ public sealed class FakeCredentialStore : ICredentialStore
 
     public Result DeleteCredential(string key)
     {
+        if (FailDelete)
+        {
+            return Result.Fail("Simulated delete failure");
+        }
+
         _store.Remove(key);
 
         return Result.Ok();

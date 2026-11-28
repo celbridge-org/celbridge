@@ -605,84 +605,6 @@ This file could not be saved</value>
   <data name="Settings_Appearance_Theme" xml:space="preserve">
     <value>Application Theme</value>
   </data>
-  <data name="Settings_Workshop_SectionHeader" xml:space="preserve">
-    <value>Workshop</value>
-  </data>
-  <data name="Settings_Workshop_Description" xml:space="preserve">
-    <value>Connect to a Workshop to publish and install packages and pages.</value>
-  </data>
-  <data name="Settings_Workshop_Url" xml:space="preserve">
-    <value>Workshop URL</value>
-  </data>
-  <data name="Settings_Workshop_UrlTooltip" xml:space="preserve">
-    <value>The web address of your Workshop server, where packages and pages are published.</value>
-  </data>
-  <data name="Settings_Workshop_Key" xml:space="preserve">
-    <value>Workshop Key</value>
-  </data>
-  <data name="Settings_Workshop_KeyTooltip" xml:space="preserve">
-    <value>The secret key issued by your Workshop. Keep it private; it authenticates your requests.</value>
-  </data>
-  <data name="Settings_Workshop_Author" xml:space="preserve">
-    <value>Author Name</value>
-  </data>
-  <data name="Settings_Workshop_AuthorTooltip" xml:space="preserve">
-    <value>Your name, recorded with the packages and pages you publish to the workshop.</value>
-  </data>
-  <data name="Settings_Workshop_AuthorPlaceholder" xml:space="preserve">
-    <value>Your name</value>
-  </data>
-  <data name="Settings_Workshop_KeySet" xml:space="preserve">
-    <value>Set Workshop Key</value>
-  </data>
-  <data name="Settings_Workshop_KeyChange" xml:space="preserve">
-    <value>Change</value>
-  </data>
-  <data name="Settings_Workshop_KeyRemove" xml:space="preserve">
-    <value>Remove</value>
-  </data>
-  <data name="Settings_Workshop_TestConnection" xml:space="preserve">
-    <value>Test Connection</value>
-  </data>
-  <data name="Settings_Workshop_KeySaveButton" xml:space="preserve">
-    <value>Save</value>
-  </data>
-  <data name="Settings_Workshop_KeyRemoveMessage" xml:space="preserve">
-    <value>Remove the stored Workshop Key? You will need to enter it again to reconnect to the workshop.</value>
-  </data>
-  <data name="Settings_Workshop_StoreUnavailable" xml:space="preserve">
-    <value>Credential storage is not available on this platform. The Workshop connection cannot be configured.</value>
-  </data>
-  <data name="Settings_Workshop_UrlInvalid" xml:space="preserve">
-    <value>The Workshop URL must be an https:// address. http:// is only allowed for localhost.</value>
-  </data>
-  <data name="Settings_Workshop_UrlEmpty" xml:space="preserve">
-    <value>Enter a valid Workshop URL.</value>
-  </data>
-  <data name="Settings_Workshop_KeyEmpty" xml:space="preserve">
-    <value>Enter a Workshop Key.</value>
-  </data>
-  <data name="Settings_Workshop_AuthorRequired" xml:space="preserve">
-    <value>Add an Author Name to publish packages and pages.</value>
-  </data>
-  <data name="Settings_Workshop_ConnectionSaveFailed" xml:space="preserve">
-    <value>Failed to save the Workshop connection.</value>
-  </data>
-  <data name="Settings_Workshop_KeyRemoved" xml:space="preserve">
-    <value>Workshop Key removed. Set a new key to reconnect.</value>
-  </data>
-  <data name="Settings_Workshop_ConnectionChecking" xml:space="preserve">
-    <value>Checking connection to the workshop...</value>
-  </data>
-  <data name="Settings_Workshop_ConnectionVerified" xml:space="preserve">
-    <value>Connected to the workshop.</value>
-  </data>
-  <data name="Settings_Workshop_KeyRejected" xml:space="preserve">
-    <value>The workshop rejected this key. Check that you copied the whole key and that it is still valid.</value>
-  </data>
-  <data name="Settings_Workshop_ConnectionUnverified" xml:space="preserve">
-    <value>Workshop Key saved, but the connection couldn't be verified right now.</value>
-  </data>
   <data name="Settings_WebView_SectionHeader" xml:space="preserve">
     <value>Web</value>
   </data>
@@ -1793,6 +1715,30 @@ Open with default application instead?</value>
   <data name="IconPicker_NoResults" xml:space="preserve">
     <value>No icons match this search.</value>
   </data>
+  <data name="SecretField_Set" xml:space="preserve">
+    <value>Set</value>
+  </data>
+  <data name="SecretField_Change" xml:space="preserve">
+    <value>Change</value>
+  </data>
+  <data name="SecretField_Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="SecretField_Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="SecretField_RemoveMessage" xml:space="preserve">
+    <value>Remove the stored value? You will need to enter it again.</value>
+  </data>
+  <data name="SecretField_SaveFailed" xml:space="preserve">
+    <value>Could not store the value.</value>
+  </data>
+  <data name="SecretField_RemoveFailed" xml:space="preserve">
+    <value>Could not remove the stored value.</value>
+  </data>
+  <data name="SecretField_StoreUnavailable" xml:space="preserve">
+    <value>This platform has no secure storage, so this setting is unavailable.</value>
+  </data>
   <data name="Validation_FileNameRequired" xml:space="preserve">
     <value>A file name is required</value>
   </data>
@@ -2005,66 +1951,6 @@ Open with default application instead?</value>
   </data>
   <data name="SearchPanel_InvalidFilter" xml:space="preserve">
     <value>A file filter is not valid.</value>
-  </data>
-  <data name="Workshop_PublishPackageConfirm_Title" xml:space="preserve">
-    <value>Publish Package</value>
-  </data>
-  <data name="Workshop_PublishPackageConfirm_Message" xml:space="preserve">
-    <value>Publish a new workshop version of package '{0}'?</value>
-  </data>
-  <data name="Workshop_PublishPackageStaleConfirm_Message" xml:space="preserve">
-    <value>Publish '{0}'? Workshop version {1} is installed but the latest is now {2} — publishing may overwrite newer work.</value>
-  </data>
-  <data name="Workshop_PublishPackageUnreadableRecordConfirm_Message" xml:space="preserve">
-    <value>Publish '{0}'? Its install record (HISTORY.md) can't be read, so it may be behind the latest workshop version.</value>
-  </data>
-  <data name="Workshop_InstallPackageConfirm_Title" xml:space="preserve">
-    <value>Install Package</value>
-  </data>
-  <data name="Workshop_InstallPackageConfirm_Message" xml:space="preserve">
-    <value>Install workshop version {1} of package '{0}' into '{2}'?</value>
-  </data>
-  <data name="Workshop_ReplacePackageConfirm_Title" xml:space="preserve">
-    <value>Replace Package</value>
-  </data>
-  <data name="Workshop_ReplacePackageConfirm_Message" xml:space="preserve">
-    <value>'{0}' already contains package '{1}' (workshop version {2}). Installing workshop version {3} replaces its contents, moving the current files to the trash. Continue?</value>
-  </data>
-  <data name="Workshop_ReplacePackageConfirm_MessageUnknownVersion" xml:space="preserve">
-    <value>'{0}' already contains package '{1}'. Installing workshop version {2} replaces its contents, moving the current files to the trash. Continue?</value>
-  </data>
-  <data name="Workshop_DeletePackageConfirm_Title" xml:space="preserve">
-    <value>Delete Workshop Version</value>
-  </data>
-  <data name="Workshop_DeletePackageConfirm_Message" xml:space="preserve">
-    <value>Delete workshop version {0} of package '{1}'? Its content will be permanently removed and cannot be recovered.</value>
-  </data>
-  <data name="Workshop_DeletePackageConfirm_MessageWithAliases" xml:space="preserve">
-    <value>Delete workshop version {0} of package '{1}'? Its content will be permanently removed and cannot be recovered. These aliases will be left pointing at the deleted workshop version: {2}.</value>
-  </data>
-  <data name="Workshop_UnpublishPackageConfirm_Title" xml:space="preserve">
-    <value>Unpublish Package</value>
-  </data>
-  <data name="Workshop_UnpublishPackageConfirm_Message" xml:space="preserve">
-    <value>Unpublish package '{0}' from the workshop? The package and all its workshop versions will be permanently removed and cannot be recovered.</value>
-  </data>
-  <data name="Workshop_PublishPageConfirm_Title" xml:space="preserve">
-    <value>Publish Page</value>
-  </data>
-  <data name="Workshop_PublishPageConfirm_Message" xml:space="preserve">
-    <value>Publish this folder as a page at '{0}'? It will be served publicly on the workshop.</value>
-  </data>
-  <data name="Workshop_UnpublishPageConfirm_Title" xml:space="preserve">
-    <value>Unpublish Page</value>
-  </data>
-  <data name="Workshop_UnpublishPageConfirm_Message" xml:space="preserve">
-    <value>Unpublish the page at '{0}' from the workshop? It will no longer be served.</value>
-  </data>
-  <data name="Workshop_PublishBlocked_Title" xml:space="preserve">
-    <value>Cannot Publish</value>
-  </data>
-  <data name="Workshop_PublishBlocked_Message" xml:space="preserve">
-    <value>No Author is set. Add one on the Application Settings page, then try again.</value>
   </data>
   <data name="DocumentEditor_BrowserEditor" xml:space="preserve">
     <value>Browser Editor</value>

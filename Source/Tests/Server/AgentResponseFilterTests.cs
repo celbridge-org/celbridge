@@ -687,8 +687,6 @@ public class AgentResponseFilterTests
 
         public Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator, string? submitButtonKey = null) => throw new NotSupportedException();
 
-        public Task<Result<string>> ShowSecretInputDialogAsync(string titleText, string headerText, string? submitButtonKey = null) => throw new NotSupportedException();
-
         public Task<Result<NewFileConfig>> ShowNewFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator) => throw new NotSupportedException();
 
         public Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(ResourcePickerOptions options) => throw new NotSupportedException();

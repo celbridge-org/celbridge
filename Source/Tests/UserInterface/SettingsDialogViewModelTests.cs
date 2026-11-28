@@ -22,8 +22,8 @@ public class SettingsDialogViewModelTests
     private static readonly SettingsSection Appearance =
         new("Appearance", "bs-palette", "Appearance", "How Celbridge looks.", "appearance-content");
 
-    private static readonly SettingsSection Workshop =
-        new("Workshop", "bs-shop", "Workshop", "Connect to a Workshop.", "workshop-content");
+    private static readonly SettingsSection Editors =
+        new("Editors", "bs-pencil", "Editors", "How editors behave.", "editors-content");
 
     private static readonly SettingsSection WebView =
         new("WebView", "bs-globe", "Web View", "How web content behaves.", "webview-content");
@@ -63,11 +63,11 @@ public class SettingsDialogViewModelTests
     [Test]
     public void ReopeningTheDialog_RestoresTheStoredCategory()
     {
-        _settingsService.Set(SettingCatalog.Application.SettingsDialogSelectedSection, "Workshop");
+        _settingsService.Set(SettingCatalog.Application.SettingsDialogSelectedSection, "Editors");
 
         var viewModel = CreateViewModel();
 
-        viewModel.SelectedSection.Should().Be(Workshop);
+        viewModel.SelectedSection.Should().Be(Editors);
     }
 
     [Test]
@@ -81,7 +81,7 @@ public class SettingsDialogViewModelTests
         {
             WebView,
             Appearance,
-            Workshop,
+            Editors,
         };
 
         var viewModel = new SettingsDialogViewModel(_settingsService);
@@ -111,11 +111,11 @@ public class SettingsDialogViewModelTests
         // A single-selection list still lets the user deselect, which would leave every binding in the
         // content pane resolving to null and the dialog showing nothing.
         var viewModel = CreateViewModel();
-        viewModel.SelectedSection = Workshop;
+        viewModel.SelectedSection = Editors;
 
         viewModel.SelectedSection = null;
 
-        viewModel.SelectedSection.Should().Be(Workshop);
+        viewModel.SelectedSection.Should().Be(Editors);
     }
 
     [Test]
@@ -134,7 +134,7 @@ public class SettingsDialogViewModelTests
     {
         // A caller opening the dialog on a category is answering its own question, not returning the user
         // to where they were.
-        _settingsService.Set(SettingCatalog.Application.SettingsDialogSelectedSection, "Workshop");
+        _settingsService.Set(SettingCatalog.Application.SettingsDialogSelectedSection, "Editors");
 
         var viewModel = CreateViewModel(requestedSectionKey: "WebView");
 
@@ -146,22 +146,22 @@ public class SettingsDialogViewModelTests
     {
         // The jump is the caller's choice rather than the user's, so the category they chose for
         // themselves is still there the next time they open the dialog from the menu.
-        _settingsService.Set(SettingCatalog.Application.SettingsDialogSelectedSection, "Workshop");
+        _settingsService.Set(SettingCatalog.Application.SettingsDialogSelectedSection, "Editors");
 
         CreateViewModel(requestedSectionKey: "WebView");
 
         var storedKey = _settingsService.Get(SettingCatalog.Application.SettingsDialogSelectedSection);
-        storedKey.Should().Be("Workshop");
+        storedKey.Should().Be("Editors");
     }
 
     [Test]
     public void AnUnknownRequestedKey_FallsBackToTheStoredCategory()
     {
-        _settingsService.Set(SettingCatalog.Application.SettingsDialogSelectedSection, "Workshop");
+        _settingsService.Set(SettingCatalog.Application.SettingsDialogSelectedSection, "Editors");
 
         var viewModel = CreateViewModel(requestedSectionKey: "Retired");
 
-        viewModel.SelectedSection.Should().Be(Workshop);
+        viewModel.SelectedSection.Should().Be(Editors);
     }
 
     [Test]
@@ -179,7 +179,7 @@ public class SettingsDialogViewModelTests
         var sections = new List<SettingsSection>
         {
             Appearance,
-            Workshop,
+            Editors,
             WebView,
         };
 

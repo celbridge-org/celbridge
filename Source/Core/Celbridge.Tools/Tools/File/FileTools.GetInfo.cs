@@ -116,9 +116,8 @@ public partial class FileTools
         }
         var hash = hashResult.Value;
 
-        // Convert.ToHexString (the gateway's hash) is uppercase; lower it so the
-        // value matches the git / sha256sum / workshop content_hash convention an
-        // agent compares against.
+        // Convert.ToHexString (the gateway's hash) is uppercase. Agents compare the hash with the output of
+        // git and sha256sum, so lower it to match.
         return hash.ToLowerInvariant();
     }
 }
