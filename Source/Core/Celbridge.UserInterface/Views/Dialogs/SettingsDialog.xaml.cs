@@ -55,12 +55,6 @@ public sealed partial class SettingsDialog : ContentDialog, ISettingsDialog
                 _stringLocalizer.GetString("Settings_Appearance_Description"),
                 new AppearanceSettingsView()),
             new(
-                SettingsDialogSections.Workshop,
-                "bs-shop",
-                _stringLocalizer.GetString("Settings_Workshop_SectionHeader"),
-                _stringLocalizer.GetString("Settings_Workshop_Description"),
-                new WorkshopSettingsView()),
-            new(
                 SettingsDialogSections.WebView,
                 "bs-globe",
                 _stringLocalizer.GetString("Settings_WebView_SectionHeader"),

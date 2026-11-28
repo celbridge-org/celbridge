@@ -165,24 +165,4 @@ public static class SettingCatalog
         public static readonly SettingDescriptor<string> PreviousNewProjectTemplateName =
             new("Project.PreviousNewProjectTemplateName", SettingScope.Application, "");
     }
-
-    /// <summary>
-    /// Workshop connection. The URL, Author, and key hint are non-secret and
-    /// stored in the clear. The key itself is Protected, transparently encrypted
-    /// and decrypted at the service.
-    /// </summary>
-    public static class Workshop
-    {
-        public static readonly SettingDescriptor<string> Url =
-            new("Workshop.Url", SettingScope.Application, "");
-
-        public static readonly SettingDescriptor<string> Author =
-            new("Workshop.Author", SettingScope.Application, "");
-
-        public static readonly SettingDescriptor<string> Key =
-            new("Workshop.Key", SettingScope.Protected, "");
-
-        public static readonly SettingDescriptor<string> KeyHint =
-            new("Workshop.KeyHint", SettingScope.Application, "");
-    }
 }

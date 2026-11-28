@@ -68,10 +68,8 @@ public sealed class PackageToolsRpcHandler
             };
         }
 
-        // The webview_* and workshop_* namespaces are reserved for agents and Python. Blocking webview_*
-        // closes the cross-document attack vector where a custom editor's JS could call webview.eval
-        // against another open document. Blocking workshop_* keeps package code from publishing,
-        // installing or moving aliases with the user's Workshop Key.
+        // The webview_* namespace is reserved for agents and Python. Blocking it closes the cross-document
+        // attack vector where a custom editor's JS could call webview.eval against another open document.
         if (IsCustomEditorRestricted(name))
         {
             throw new LocalRpcException($"Tool '{name}' is not accessible from custom editors")
@@ -98,15 +96,14 @@ public sealed class PackageToolsRpcHandler
     }
 
     /// <summary>
-    /// Returns true if the tool is forbidden inside custom editor WebViews: the webview_* and workshop_*
-    /// namespaces. Both MCP-style names and alias dotted names are matched.
+    /// Returns true if the tool is forbidden inside custom editor WebViews: the webview_* namespace. Both
+    /// MCP-style names and alias dotted names are matched.
     /// </summary>
     private static bool IsCustomEditorRestricted(string name)
     {
         var mcpName = ToMcpName(name);
 
-        return mcpName.StartsWith("webview_", StringComparison.Ordinal)
-            || mcpName.StartsWith("workshop_", StringComparison.Ordinal);
+        return mcpName.StartsWith("webview_", StringComparison.Ordinal);
     }
 
     // An alias is the MCP name with its first underscore swapped for a dot, so swapping it back lets one

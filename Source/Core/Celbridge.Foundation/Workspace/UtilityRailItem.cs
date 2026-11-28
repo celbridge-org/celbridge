@@ -47,7 +47,7 @@ public enum RailItemGroup
 
     /// <summary>
     /// A document shortcut the application ships, pinned at the end of the rail. Project Settings and
-    /// Community are these.
+    /// the Workshop are these.
     /// </summary>
     BuiltInShortcut
 }

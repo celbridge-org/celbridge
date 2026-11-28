@@ -10,8 +10,8 @@ namespace Celbridge.Tests.Settings;
 [TestFixture]
 public class DpapiCredentialStoreTests
 {
-    private const string TestKey = "Test.WorkshopKey";
-    private static readonly byte[] TestSecret = Encoding.UTF8.GetBytes("kpf_abc123_supersecretvalue");
+    private const string TestKey = "Test.Secret";
+    private static readonly byte[] TestSecret = Encoding.UTF8.GetBytes("abc123_supersecretvalue");
 
     private FakeSettingsStore _settingsStore = null!;
     private DpapiCredentialStore _store = null!;

@@ -31,7 +31,7 @@ public partial class AppTools
     /// <summary>List every utility on the Utility Panel rail with its area and shown state.</summary>
     [McpServerTool(Name = "app_list_utilities", ReadOnly = true, Idempotent = true)]
     [ToolAlias("app.list_utilities")]
-    [RelatedGuides("workspace_panels")]
+    [RelatedGuides("workspace_panels", "utility_documents")]
     public async partial Task<CallToolResult> ListUtilities()
     {
         var stateResult = await ExecuteCommandAsync<IGetUtilitiesStateCommand, UtilitiesStateSnapshot>();

@@ -15,4 +15,4 @@ A JSON object with two arrays:
 
 - **The list is fixed when the project loads.** A package added, removed or edited on disk during the session is not reflected until the project reloads, and the load report then lists any failures. To see what a project declares right now, read its `package.toml` files and its `.celbridge` file.
 - **A `DuplicateName` failure means two manifests claim the same name, and all of them are skipped.** None loads until the conflict is resolved. Move, rename, or remove one of the colliding folders, then reload the project.
-- **`packageVersion` comes from the manifest**, not from `HISTORY.md`, so it is the version the package declares rather than the workshop version it was installed from. A malformed `package-version` fails the package with `InvalidManifest`, and `detail` quotes the value.
+- **`packageVersion` comes from the manifest's `package-version`.** A malformed `package-version` fails the package with `InvalidManifest`, and `detail` quotes the value.

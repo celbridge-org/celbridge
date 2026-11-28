@@ -1,5 +1,4 @@
 using System.Text;
-using Celbridge.Community;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Platform;
@@ -7,6 +6,7 @@ using Celbridge.Projects;
 using Celbridge.Reports;
 using Celbridge.Server;
 using Celbridge.Settings;
+using Celbridge.Workshop;
 
 namespace Celbridge.WorkspaceUI.Services;
 
@@ -19,7 +19,7 @@ public class WorkspaceLoader
     private readonly IServerService _serverService;
     private readonly IProjectLoadReporter _loadReporter;
     private readonly IAppEnvironment _appEnvironment;
-    private readonly ICommunityService _communityService;
+    private readonly IWorkshopService _workshopService;
 
     public WorkspaceLoader(
         ILogger<WorkspaceLoader> logger,
@@ -29,7 +29,7 @@ public class WorkspaceLoader
         IServerService serverService,
         IProjectLoadReporter loadReporter,
         IAppEnvironment appEnvironment,
-        ICommunityService communityService)
+        IWorkshopService workshopService)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
@@ -38,7 +38,7 @@ public class WorkspaceLoader
         _serverService = serverService;
         _loadReporter = loadReporter;
         _appEnvironment = appEnvironment;
-        _communityService = communityService;
+        _workshopService = workshopService;
     }
 
     public async Task<Result> LoadWorkspaceAsync()
@@ -127,10 +127,10 @@ public class WorkspaceLoader
                 _logger.LogWarning(startMonitoringResult, "Failed to start monitoring resources");
             }
 
-            // Write the Community document before the documents are restored. Every load wipes the temp: root that
-            // contains the document. A Community tab left open last session has to find the file already back in
+            // Write the Workshop document before the documents are restored. Every load wipes the temp: root that
+            // contains the document. A Workshop tab left open last session has to find the file already back in
             // place.
-            await _communityService.SeedDocumentAsync();
+            await _workshopService.SeedDocumentAsync();
 
             try
             {

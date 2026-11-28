@@ -6,7 +6,7 @@ using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
-using Celbridge.Community;
+using Celbridge.Workshop;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Celbridge.Tests.Helpers;
@@ -22,7 +22,7 @@ namespace Celbridge.Tests.Documents;
 public class UtilityServiceRegisterTests
 {
     private static readonly ResourceKey ProjectFileResource = new("Acme.celbridge");
-    private static readonly ResourceKey CommunityResource = new("temp:community.browser");
+    private static readonly ResourceKey WorkshopResource = new("temp:workshop.browser");
 
     private IServiceProvider _serviceProvider = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
@@ -38,8 +38,8 @@ public class UtilityServiceRegisterTests
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns(project);
 
-        var communityService = Substitute.For<ICommunityService>();
-        communityService.DocumentResource.Returns(CommunityResource);
+        var workshopService = Substitute.For<IWorkshopService>();
+        workshopService.DocumentResource.Returns(WorkshopResource);
 
         // IStringLocalizer.GetString(string) is an extension method over the indexer, so the indexer is what
         // NSubstitute can stub. Each key echoes itself, so a test can tell which was read.
@@ -52,7 +52,7 @@ public class UtilityServiceRegisterTests
 
         _serviceProvider = Substitute.For<IServiceProvider>();
         _serviceProvider.GetService(typeof(IProjectService)).Returns(projectService);
-        _serviceProvider.GetService(typeof(ICommunityService)).Returns(communityService);
+        _serviceProvider.GetService(typeof(IWorkshopService)).Returns(workshopService);
         _serviceProvider.GetService(typeof(IStringLocalizer)).Returns(stringLocalizer);
         _serviceProvider.GetService(typeof(IIconService)).Returns(new IconService());
         // Resolve() reads this dictionary directly, so it has to be a real one rather than a default null.
@@ -140,7 +140,7 @@ public class UtilityServiceRegisterTests
             BuiltInUtilityIds.Explorer,
             BuiltInUtilityIds.Search,
             BuiltInShortcutIds.ProjectSettings,
-            BuiltInShortcutIds.Community);
+            BuiltInShortcutIds.Workshop);
     }
 
     [Test]
@@ -277,13 +277,13 @@ public class UtilityServiceRegisterTests
         projectSettings.FileResource.Should().Be(ProjectFileResource);
         projectSettings.DisplayName.Should().Be("localized:UtilityPanel_ProjectSettingsTooltip");
 
-        var community = railItems.Single(railItem => railItem.ItemId == BuiltInShortcutIds.Community);
-        community.FileResource.Should().Be(CommunityResource);
-        community.DisplayName.Should().Be("localized:UtilityPanel_CommunityTooltip");
+        var workshop = railItems.Single(railItem => railItem.ItemId == BuiltInShortcutIds.Workshop);
+        workshop.FileResource.Should().Be(WorkshopResource);
+        workshop.DisplayName.Should().Be("localized:UtilityPanel_WorkshopTooltip");
 
         // A document shortcut opens a document and never occupies the panel, which is what makes it one.
-        community.PanelView.Should().BeNull();
-        community.DockArea.Should().Be(WorkspaceArea.Main);
+        workshop.PanelView.Should().BeNull();
+        workshop.DockArea.Should().Be(WorkspaceArea.Main);
     }
 
     [Test]
@@ -316,9 +316,9 @@ public class UtilityServiceRegisterTests
         // A utility always occupies an area, whether or not it has a live view yet.
         service.GetCurrentArea(BuiltInUtilityIds.Explorer).Should().Be(WorkspaceArea.Utility);
 
-        // No document is open for the Community, so it occupies nothing. Its declared area says where it
-        // would open, which is a different question.
-        service.GetCurrentArea(BuiltInShortcutIds.Community).Should().BeNull();
+        // The Workshop's document is closed, so the Workshop occupies no area. The Workshop's declared area applies
+        // only when the document opens.
+        service.GetCurrentArea(BuiltInShortcutIds.Workshop).Should().BeNull();
 
         // An id the register does not hold occupies nothing either, rather than claiming the panel.
         service.GetCurrentArea(EditorId.Create("acme", "absent")).Should().BeNull();
@@ -329,15 +329,15 @@ public class UtilityServiceRegisterTests
     {
         var service = CreateService();
 
-        // The user moved the Community tab out of the area its declaration names.
+        // The user moved the Workshop tab out of the area its declaration names.
         var openDocument = new OpenDocumentInfo(
-            CommunityResource,
+            WorkshopResource,
             new DocumentAddress(0, DocumentSection.BottomLeft, 0),
             BuiltInEditors.BrowserEditorId);
-        _documentsService.FindOpenDocument(CommunityResource).Returns(openDocument);
+        _documentsService.FindOpenDocument(WorkshopResource).Returns(openDocument);
 
         await service.CreateUtilitiesAsync(Array.Empty<ResolvedEditor>());
 
-        service.GetCurrentArea(BuiltInShortcutIds.Community).Should().Be(WorkspaceArea.Bottom);
+        service.GetCurrentArea(BuiltInShortcutIds.Workshop).Should().Be(WorkspaceArea.Bottom);
     }
 }

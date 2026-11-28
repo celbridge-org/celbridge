@@ -114,7 +114,7 @@ public class SearchFiltersViewModelTests
         {
             new(new ResourceKey("notes.md"), address, EditorId.Empty),
             new(new ResourceKey("utils:scratch.browser"), address, EditorId.Empty),
-            new(new ResourceKey("temp:community.browser"), address, EditorId.Empty),
+            new(new ResourceKey("temp:workshop.browser"), address, EditorId.Empty),
             new(new ResourceKey("docs/guide.md"), address, EditorId.Empty),
         });
         var filters = CreateFilters();

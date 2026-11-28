@@ -100,7 +100,7 @@ public class SafeModeServiceTests
         var safeModeService = new SafeModeService(_projectService);
 
         safeModeService.IsAllowed(BuiltInEditors.MarkdownEditorId).Should().BeTrue();
-        safeModeService.IsAllowed(BuiltInShortcutIds.Community).Should().BeTrue();
+        safeModeService.IsAllowed(BuiltInShortcutIds.Workshop).Should().BeTrue();
         safeModeService.IsAllowed(new EditorId("acme-tools.widget")).Should().BeTrue();
     }
 
@@ -146,8 +146,8 @@ public class SafeModeServiceTests
         safeModeService.IsAllowed(new EditorId("celbridge-notes.note")).Should().BeFalse();
         safeModeService.IsAllowed(new EditorId("celbridge-utility-demo.utility-demo")).Should().BeFalse();
 
-        // The Community button, and the rail button of the project's first shortcut.
-        safeModeService.IsAllowed(BuiltInShortcutIds.Community).Should().BeFalse();
+        // The Workshop button, and the rail button of the project's first shortcut.
+        safeModeService.IsAllowed(BuiltInShortcutIds.Workshop).Should().BeFalse();
         safeModeService.IsAllowed(new EditorId("celbridge.shortcut-1")).Should().BeFalse();
     }
 

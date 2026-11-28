@@ -1,14 +1,12 @@
 using Celbridge.Packages;
 using Celbridge.Projects;
-using Celbridge.Workshop;
 
 namespace Celbridge.Utilities;
 
 /// <summary>
-/// The file formats Celbridge's own machinery reads: the project file, package manifests,
-/// per-contribution editor manifests, and page manifests. They carry a role the application depends on
-/// rather than being project content, so they resolve to their own editor and no sidecar is written
-/// beside them.
+/// Recognizes Celbridge's own file formats: the project file, package manifests and per-contribution
+/// editor manifests. The application depends on these files. Each format resolves to its own editor, and
+/// Celbridge never writes a sidecar beside one of these files.
 /// </summary>
 public static class CelbridgeFileFormats
 {
@@ -24,7 +22,6 @@ public static class CelbridgeFileFormats
 
         return fileName.EndsWith(ProjectConstants.ProjectFileExtension, StringComparison.Ordinal)
             || fileName.Equals(PackageConstants.ManifestFileName, StringComparison.Ordinal)
-            || fileName.EndsWith(PackageConstants.EditorManifestExtension, StringComparison.Ordinal)
-            || fileName.Equals(PageConstants.ManifestFileName, StringComparison.Ordinal);
+            || fileName.EndsWith(PackageConstants.EditorManifestExtension, StringComparison.Ordinal);
     }
 }

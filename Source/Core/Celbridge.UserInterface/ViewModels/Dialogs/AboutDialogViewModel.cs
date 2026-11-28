@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Community;
 using Celbridge.Platform;
 
 namespace Celbridge.UserInterface.ViewModels;
@@ -23,12 +22,12 @@ public partial class AboutDialogViewModel : ObservableObject
 
     public void OpenWebsite()
     {
-        OpenLink(CommunityUrls.Celbridge);
+        OpenLink(CelbridgeUrls.Celbridge);
     }
 
     public void OpenGitHub()
     {
-        OpenLink(CommunityUrls.GitHub);
+        OpenLink(CelbridgeUrls.GitHub);
     }
 
     private void OpenLink(string url)

@@ -1,6 +1,6 @@
 # app_list_utilities
 
-Lists every utility the app can show: the built-in Utility Panel items (Explorer, Search), the built-in document shortcuts (Project Settings, Community), and any custom utilities the project contributes. Use it to discover what utilities exist and their ids before calling `app_show_utility`, and to see how each is currently presented and which one the user is looking at.
+Lists every utility in the app. The built-in Utility Panel items are Explorer and Search, and the built-in document shortcuts are Project Settings and the Workshop. The list also has the custom utilities from the project's packages. Call this tool before `app_show_utility` to learn the utilities' ids. The list also shows where each utility is, and whether the user can see it.
 
 The list is the utility rail as the user sees it: one entry per rail button. Some of those buttons open a document rather than showing something in the panel, and they are listed all the same, because a user pointing at a button expects you to find it.
 
@@ -10,7 +10,7 @@ The list is the utility rail as the user sees it: one entry per rail button. Som
 
 Before `app_show_utility`, to learn the valid ids. Also when the user asks what a project offers, or which panels are available: custom utilities vary per project, so this list is not fixed.
 
-It is also how you learn that a generated document exists. The Community document lives under the `temp:` root, which the resource tree does not enumerate, so its `resource` is discoverable here and nowhere else.
+The list is also the way to learn that a generated document exists. The Workshop document lives under the `temp:` root. The resource tree leaves out that root, so only this list gives the document's `resource`.
 
 ## Returns
 

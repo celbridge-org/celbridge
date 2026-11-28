@@ -11,7 +11,6 @@ public enum DialogKind
     Alert,
     Confirmation,
     InputText,
-    SecretInput,
     ResourcePicker,
     IconPicker,
     DownloadFile,
@@ -74,12 +73,6 @@ public interface IDialogService
     /// Display an Input Text Dialog.
     /// </summary>
     Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator, string? submitButtonKey = null);
-
-    /// <summary>
-    /// Display a Secret Input Dialog that masks the entered value, for secrets
-    /// such as an API key. Returns the entered secret, or fails when cancelled.
-    /// </summary>
-    Task<Result<string>> ShowSecretInputDialogAsync(string titleText, string headerText, string? submitButtonKey = null);
 
     /// <summary>
     /// Display an Add File Dialog with file type selection.

@@ -7,8 +7,8 @@ namespace Celbridge.Packages.Helpers;
 /// </summary>
 internal sealed partial record ManifestPackageSection
 {
-    // Matches the name the package is published under on the workshop. The "celbridge-" prefix is
-    // reserved for packages bundled with the app.
+    // The package's unique identifier. The "celbridge-" prefix is reserved for packages bundled with the
+    // app.
     public string? Name { get; init; }
 
     // Localization key naming the product, shown in Project Settings.

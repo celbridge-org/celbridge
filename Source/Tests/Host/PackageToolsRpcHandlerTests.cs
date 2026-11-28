@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.Json;
 using Celbridge.Host;
 using Celbridge.Server;
@@ -48,42 +47,6 @@ public class PackageToolsRpcHandlerTests
     }
 
     [Test]
-    public async Task ListToolsAsync_HidesWorkshopTools()
-    {
-        var bridge = new StubToolBridge
-        {
-            Tools = new[]
-            {
-                Descriptor("app_list_packages",        "app.list_packages"),
-                Descriptor("explorer_archive",         "explorer.archive"),
-                Descriptor("workshop_install_package", "workshop.install_package"),
-                Descriptor("workshop_publish_page",    "workshop.publish_page")
-            }
-        };
-        var handler = new PackageToolsRpcHandler(bridge);
-
-        var result = await handler.ListToolsAsync();
-
-        result.Select(t => t.Alias).Should().BeEquivalentTo("app.list_packages", "explorer.archive");
-    }
-
-    [Test]
-    public async Task ListToolsAsync_WithholdsEveryWorkshopTool()
-    {
-        var workshopTools = DiscoverTools()
-            .Where(tool => tool.Name.StartsWith("workshop_", StringComparison.Ordinal))
-            .ToArray();
-        workshopTools.Should().NotBeEmpty("the workshop_* tools should be discoverable by reflection");
-
-        var bridge = new StubToolBridge { Tools = workshopTools };
-        var handler = new PackageToolsRpcHandler(bridge);
-
-        var result = await handler.ListToolsAsync();
-
-        result.Should().BeEmpty();
-    }
-
-    [Test]
     public void CallToolAsync_WebViewNamespace_ThrowsDenied()
     {
         var bridge = new StubToolBridge();
@@ -113,26 +76,6 @@ public class PackageToolsRpcHandlerTests
             .Result
             .Which
             .ErrorCode.Should().Be(ToolRpcErrorCodes.ToolDenied);
-    }
-
-    [TestCase("workshop.publish_package")]
-    [TestCase("workshop_set_package_alias")]
-    [TestCase("workshop.unpublish_page")]
-    [TestCase("workshop_list_pages")]
-    public void CallToolAsync_WorkshopTool_ThrowsDenied(string name)
-    {
-        var bridge = new StubToolBridge();
-        var handler = new PackageToolsRpcHandler(bridge);
-
-        Func<Task> act = () => handler.CallToolAsync(name, (JsonElement?)null);
-
-        act.Should()
-            .ThrowAsync<LocalRpcException>()
-            .Result
-            .Which
-            .ErrorCode.Should().Be(ToolRpcErrorCodes.ToolDenied);
-
-        bridge.LastCallName.Should().BeNull();
     }
 
     [TestCase("app.list_packages")]
@@ -205,31 +148,6 @@ public class PackageToolsRpcHandlerTests
             Description: string.Empty,
             ReturnType: string.Empty,
             Parameters: Array.Empty<ToolParameter>());
-    }
-
-    // Every MCP tool in the tool assembly, described by its MCP name and alias.
-    private static IReadOnlyList<ToolDescriptor> DiscoverTools()
-    {
-        var tools = new List<ToolDescriptor>();
-
-        foreach (var type in typeof(Celbridge.Tools.AppTools).Assembly.GetTypes())
-        {
-            foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
-            {
-                var toolName = method.GetCustomAttribute<ModelContextProtocol.Server.McpServerToolAttribute>()?.Name;
-                if (string.IsNullOrEmpty(toolName))
-                {
-                    continue;
-                }
-
-                var alias = method.GetCustomAttribute<Celbridge.Tools.ToolAliasAttribute>()?.Alias ?? string.Empty;
-                tools.Add(Descriptor(toolName, alias));
-            }
-        }
-
-        return tools
-            .DistinctBy(tool => tool.Name)
-            .ToList();
     }
 
     private sealed class StubToolBridge : IMcpToolBridge

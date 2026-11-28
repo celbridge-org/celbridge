@@ -2,8 +2,7 @@ namespace Celbridge.Packages;
 
 /// <summary>
 /// Validation rules for package names. The package name is the package's
-/// unique identifier and matches the name the workshop server knows it by
-/// (e.g. "my-widget").
+/// unique identifier (e.g. "my-widget").
 /// </summary>
 public static class PackageName
 {

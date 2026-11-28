@@ -1,12 +1,12 @@
-namespace Celbridge.Community;
+namespace Celbridge.UserInterface;
 
 /// <summary>
 /// The Celbridge web pages the application links out to.
 /// </summary>
-public static class CommunityUrls
+public static class CelbridgeUrls
 {
     /// <summary>
-    /// The Celbridge site's landing page, which is also the Community document's Home target.
+    /// The Celbridge site's landing page.
     /// </summary>
     public const string Celbridge = "https://celbridge.org/";
 
@@ -19,6 +19,11 @@ public static class CommunityUrls
     /// The community discussion forum.
     /// </summary>
     public const string Forum = "https://celbridge.discourse.group/";
+
+    /// <summary>
+    /// The Workshop's address. The Celbridge site has no Workshop section yet, so the Workshop opens the landing page.
+    /// </summary>
+    public const string Workshop = "https://celbridge.org/";
 
     /// <summary>
     /// The Celbridge source repository.

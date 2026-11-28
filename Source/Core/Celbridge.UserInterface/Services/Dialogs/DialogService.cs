@@ -323,18 +323,6 @@ public class DialogService : IDialogService
         return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
     }
 
-    public async Task<Result<string>> ShowSecretInputDialogAsync(string titleText, string headerText, string? submitButtonKey = null)
-    {
-        if (!await WaitForClosingDialogAsync())
-        {
-            return RefuseSecondDialog();
-        }
-
-        var dialog = _dialogFactory.CreateSecretInputDialog(titleText, headerText, submitButtonKey);
-        _answerScheduler.OnDialogShown(DialogKind.SecretInput);
-        return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
-    }
-
     public async Task<Result<NewFileConfig>> ShowNewFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator)
     {
         if (!await WaitForClosingDialogAsync())

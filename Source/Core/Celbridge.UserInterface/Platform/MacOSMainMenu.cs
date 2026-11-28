@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Community;
 using Celbridge.Dialog;
 using Celbridge.Explorer;
 using Celbridge.Settings;
@@ -575,8 +574,8 @@ internal static class MacOSMainMenu
         var stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         var links = new List<MacAboutLink>
         {
-            new(stringLocalizer.GetString("Menu_About_Website"), CommunityUrls.Celbridge),
-            new(stringLocalizer.GetString("Menu_About_GitHub"), CommunityUrls.GitHub)
+            new(stringLocalizer.GetString("Menu_About_Website"), CelbridgeUrls.Celbridge),
+            new(stringLocalizer.GetString("Menu_About_GitHub"), CelbridgeUrls.GitHub)
         };
 
         MacOSMenuInterop.ShowAboutPanel(links);

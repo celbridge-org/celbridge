@@ -49,9 +49,9 @@ The schedule itself is fire-and-forget: the tool returns immediately after recor
 ### Python (`cel.ui.answer_dialog`)
 
 ```python
-# Confirm the next workshop_unpublish_package prompt.
+# Confirm the next explorer_delete prompt.
 cel.ui.answer_dialog("Confirmation")
-cel.workshop.unpublish_package("test-integration-pkg")
+cel.explorer.delete("Folder/Old.txt", showDialog=True)
 
 # Provide rename text for the next explorer_rename.
 cel.ui.answer_dialog("InputText", "Renamed.txt")
@@ -67,7 +67,7 @@ trigger_resource_pick()
 
 # Give a slow-loading dialog more headroom.
 cel.ui.answer_dialog("Confirmation", delayMs=500)
-cel.workshop.delete_package("heavy-package", "3")
+cel.explorer.delete("Folder/Large", showDialog=True)
 ```
 
 ### JavaScript

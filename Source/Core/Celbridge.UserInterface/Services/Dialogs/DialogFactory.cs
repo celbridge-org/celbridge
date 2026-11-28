@@ -89,22 +89,6 @@ public class DialogFactory : IDialogFactory
         return WithFocusGuard(dialog);
     }
 
-    public ISecretInputDialog CreateSecretInputDialog(string titleText, string headerText, string? submitButtonKey = null)
-    {
-        var dialog = new SecretInputDialog
-        {
-            TitleText = titleText,
-            HeaderText = headerText,
-        };
-
-        if (submitButtonKey is not null)
-        {
-            dialog.SubmitButtonKey = submitButtonKey;
-        }
-
-        return WithFocusGuard(dialog);
-    }
-
     public INewFileDialog CreateNewFileDialog(string defaultFileName, Range selectionRange, IValidator validator)
     {
         var dialog = new NewFileDialog();

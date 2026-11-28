@@ -35,7 +35,7 @@ public enum IconSymbol
     Presentation,
     Save,
     ExitFullScreen,
-    People,
+    Workshop,
     Chat,
     Upload,
     Download,
